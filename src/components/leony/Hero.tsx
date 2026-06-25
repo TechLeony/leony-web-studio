@@ -1,4 +1,3 @@
-import { WhatsAppButton } from "./WhatsAppButton";
 import { HeroVisual } from "./HeroVisual";
 import { ArrowRight } from "lucide-react";
 
@@ -36,13 +35,10 @@ export function Hero() {
           <div className="flex flex-wrap gap-3 pt-1">
             <a
               href="#sektorler"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-navy/90 transition-colors shadow-sm"
+              className="group inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors shadow-sm"
             >
-              İşletme Kategorini Seç <ArrowRight className="h-4 w-4" />
+              İşletme Kategorini Seç <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <WhatsAppButton message="Merhaba, Leony üzerinden web sitesi hizmetleri hakkında bilgi almak istiyorum.">
-              WhatsApp’tan Bilgi Al
-            </WhatsAppButton>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-xs md:text-sm text-muted-foreground">

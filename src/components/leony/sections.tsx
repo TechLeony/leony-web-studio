@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { LEONY_HIGHLIGHTS, BENEFITS, PROCESS_STEPS, CATEGORIES, DEMO_PROJECTS, PACKAGES, FAQS, waLink } from "@/lib/site";
 import { Section, SectionTitle } from "./Section";
-import { WhatsAppButton } from "./WhatsAppButton";
+import { CustomCategoryModal } from "./CustomCategoryModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowRight, Check, X as XIcon, Plus, Sparkles } from "lucide-react";
 import * as Icons from "lucide-react";
@@ -139,6 +140,7 @@ function ComparisonCol({
 }
 
 export function CategoriesSection() {
+  const [open, setOpen] = useState(false);
   return (
     <Section id="sektorler" className="bg-background">
       <SectionTitle
@@ -146,7 +148,7 @@ export function CategoriesSection() {
         title="İşletme Kategorini Seç"
         subtitle="Sektörüne uygun demo projeleri, örnek yapıları ve paketleri daha net incelemek için kategorini seç."
       />
-      <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {CATEGORIES.map((c) => {
           const Icon =
             ((Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[c.icon]) ??
@@ -155,40 +157,42 @@ export function CategoriesSection() {
             <a
               key={c.slug}
               href={`/sektor/${c.slug}`}
-              className="group relative rounded-2xl border border-border bg-card p-5 hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
+              className="group relative rounded-2xl border border-border bg-card p-5 hover:border-orange/60 hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
             >
-              <span className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-purple/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-navy to-purple text-navy-foreground grid place-items-center">
+              <span className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-orange/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-navy to-purple text-navy-foreground grid place-items-center group-hover:from-orange group-hover:to-pink transition-colors">
                 <Icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-foreground">{c.title}</h3>
+              <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">{c.title}</h3>
               <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{c.desc}</p>
-              <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-purple">
+              <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-purple group-hover:text-orange transition-colors">
                 Sektörü incele <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </div>
             </a>
           );
         })}
 
-        {/* Custom card */}
-        <div className="relative rounded-2xl border border-dashed border-border bg-gradient-to-br from-muted/60 to-card p-5 flex flex-col">
-          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange to-pink text-white grid place-items-center">
+        {/* Custom card — fully clickable, opens modal */}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Benim kategorim listede yok — bilgi formu aç"
+          className="group relative rounded-2xl border border-dashed border-border bg-gradient-to-br from-muted/60 to-card p-5 flex flex-col text-left hover:border-orange/60 hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer"
+        >
+          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange to-pink text-white grid place-items-center group-hover:scale-110 transition-transform">
             <Plus className="h-5 w-5" />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-foreground">Benim kategorim listede yok</h3>
+          <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">Benim kategorim listede yok</h3>
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">
-            İşletmene özel bir web çözümü için WhatsApp veya mail üzerinden iletişime geçebilirsin.
+            Kategoriniz listede yoksa işletmenize özel web çözümünü birlikte planlayabiliriz.
           </p>
-          <div className="mt-4">
-            <WhatsAppButton
-              variant="primary"
-              message="Merhaba, Leony üzerinden listede olmayan bir işletme kategorisi için web sitesi hizmeti hakkında bilgi almak istiyorum."
-            >
-              Özel Kategori İçin Yaz
-            </WhatsAppButton>
+          <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-orange">
+            Formu aç <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
-        </div>
+        </button>
       </div>
+
+      <CustomCategoryModal open={open} onClose={() => setOpen(false)} />
     </Section>
   );
 }
@@ -230,7 +234,7 @@ export function DemoProjectsSection() {
                     href={p.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-navy-foreground"
+                    className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
                   >
                     Demo’yu Gör <ArrowRight className="h-4 w-4" />
                   </a>
@@ -284,7 +288,27 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
         title="Sade hiyerarşi, net çözümler."
         subtitle="İşletmenin ihtiyacına uygun çözümü seçerek web sitesi yapısını daha net planlayabilirsin."
       />
-      <div className="mt-14 grid md:grid-cols-3 gap-5 items-stretch">
+
+      {/* Free design draft highlight banner */}
+      <div className="mt-8 flex justify-center">
+        <div className="relative inline-flex items-center gap-3 rounded-full border border-orange/30 bg-gradient-to-r from-orange/10 via-pink/10 to-purple/10 px-4 py-2.5 md:px-5 md:py-3 shadow-sm backdrop-blur">
+          <span
+            aria-hidden
+            className="absolute -inset-px -z-10 rounded-full bg-gradient-to-r from-orange/20 via-pink/20 to-purple/20 blur-md opacity-70"
+          />
+          <span className="grid place-items-center h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-orange to-pink text-white shadow">
+            <Sparkles className="h-3.5 w-3.5" />
+          </span>
+          <span className="text-xs md:text-sm font-semibold text-foreground leading-snug">
+            <span className="rounded-md bg-gradient-to-r from-orange to-pink bg-clip-text text-transparent font-extrabold uppercase tracking-wide mr-1">
+              Ücretsiz:
+            </span>
+            Müşteriye özel tasarım taslağı ve revize imkânı
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
         {PACKAGES.map((p) => {
           const wa = sectorLabel
             ? `Merhaba, Leony üzerinden ${sectorLabel} kategorisi için ${p.name} hakkında bilgi almak istiyorum.`
@@ -372,10 +396,10 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
                   className={
                     "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all " +
                     (pro
-                      ? "bg-white text-navy hover:bg-white/90"
+                      ? "bg-white text-navy hover:bg-orange hover:text-white"
                       : featured
-                        ? "bg-gradient-to-r from-purple to-pink text-white hover:opacity-95"
-                        : "bg-navy text-navy-foreground hover:bg-navy/90")
+                        ? "bg-gradient-to-r from-purple to-pink text-white hover:from-orange hover:to-pink"
+                        : "bg-navy text-navy-foreground hover:bg-orange")
                   }
                 >
                   {p.cta}

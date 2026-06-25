@@ -11,7 +11,8 @@ import {
 } from "@/components/leony/sections";
 import { ContactSection } from "@/components/leony/ContactSection";
 import { WhatsAppButton } from "@/components/leony/WhatsAppButton";
-import { SECTOR_CONTENT, SITE } from "@/lib/site";
+import { SectorPreview } from "@/components/leony/SectorPreview";
+import { SECTOR_CONTENT, SECTOR_NAV_LINKS, SITE } from "@/lib/site";
 import { ArrowLeft, Check, LayoutDashboard, Calendar, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/sektor/$slug")({
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/sektor/$slug")({
     <div className="min-h-screen grid place-items-center p-6 text-center">
       <div>
         <h1 className="text-2xl font-semibold">Sektör bulunamadı</h1>
-        <Link to="/" className="mt-4 inline-block text-purple font-medium">
+        <Link to="/" className="mt-4 inline-block text-purple font-medium hover:text-orange transition-colors">
           ← Anasayfaya dön
         </Link>
       </div>
@@ -60,7 +61,7 @@ function SectorPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header navLinks={SECTOR_NAV_LINKS} />
       <main>
         <section className="relative pt-28 md:pt-32 pb-12 md:pb-16 overflow-hidden">
           <div
@@ -76,7 +77,7 @@ function SectorPage() {
             }}
           />
           <div className="mx-auto max-w-7xl px-4 md:px-8">
-            <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-orange transition-colors">
               <ArrowLeft className="h-4 w-4" /> Tüm sektörler
             </Link>
             <div className="mt-6 grid lg:grid-cols-12 gap-10 items-start">
@@ -94,7 +95,7 @@ function SectorPage() {
                 <div className="flex flex-wrap gap-3 pt-2">
                   <a
                     href="#paketler"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-navy/90"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
                   >
                     Paketleri Karşılaştır
                   </a>
@@ -108,7 +109,7 @@ function SectorPage() {
 
               <div className="lg:col-span-5 grid grid-cols-2 gap-3">
                 {data.benefits.map((b: string) => (
-                  <div key={b} className="rounded-2xl border border-border bg-card p-4">
+                  <div key={b} className="rounded-2xl border border-border bg-card p-4 hover:border-orange/50 transition-colors">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple to-pink text-white grid place-items-center">
                       <Check className="h-4 w-4" />
                     </div>
@@ -119,6 +120,18 @@ function SectorPage() {
             </div>
           </div>
         </section>
+
+        {/* Sector-specific demo preview */}
+        <Section className="bg-background !pt-4 !pb-16">
+          <SectionTitle
+            eyebrow="Demo Önizleme"
+            title={`${data.label} için örnek site yapısı`}
+            subtitle="İşletmenizin web sitesinin nasıl görünebileceğine dair sektöre özel demo önizleme."
+          />
+          <div className="mt-12 mx-auto max-w-4xl pb-14">
+            <SectorPreview kind={data.preview} label={data.label} />
+          </div>
+        </Section>
 
         {data.advanced && (
           <Section className="bg-muted/40 !py-16">
@@ -133,7 +146,7 @@ function SectorPage() {
                 { icon: LayoutDashboard, t: "Admin Dashboard", d: "Talepleri ve randevuları tek arayüzden yönet." },
                 { icon: ShieldCheck, t: "Güven Veren Akış", d: "Profesyonel iletişim ve düzenli danışan deneyimi." },
               ].map((c) => (
-                <div key={c.t} className="rounded-2xl border border-border bg-card p-6">
+                <div key={c.t} className="rounded-2xl border border-border bg-card p-6 hover:border-orange/50 hover:-translate-y-0.5 transition-all">
                   <div className="h-10 w-10 rounded-lg bg-navy text-navy-foreground grid place-items-center">
                     <c.icon className="h-5 w-5" />
                   </div>

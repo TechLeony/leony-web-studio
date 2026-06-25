@@ -11,10 +11,10 @@ export function FloatingAssistant() {
       {open && (
         <div className="w-[88vw] max-w-sm rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-navy to-purple text-navy-foreground">
-            <div
-              className="h-10 w-10 rounded-full bg-cover bg-center ring-2 ring-white/40"
-              style={{ backgroundImage: `url(${LOGO_MARK})`, backgroundSize: "115%" }}
-              aria-hidden
+            <img
+              src={LOGO_MARK}
+              alt="Leony"
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-white/40"
             />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm">Leony Team</div>
@@ -24,7 +24,7 @@ export function FloatingAssistant() {
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Kapat"
-              className="grid place-items-center h-8 w-8 rounded-full bg-white/15 hover:bg-white/25"
+              className="grid place-items-center h-8 w-8 rounded-full bg-white/15 hover:bg-white/25 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -49,14 +49,9 @@ export function FloatingAssistant() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Leony asistanını aç"
-        className="relative h-16 w-16 rounded-full overflow-hidden shadow-xl ring-2 ring-white/70 hover:scale-105 transition-transform"
-        style={{
-          backgroundImage: `url(${LOGO_MARK})`,
-          backgroundSize: "118%",
-          backgroundPosition: "center 42%",
-        }}
+        className="relative h-16 w-16 rounded-full overflow-hidden shadow-xl ring-2 ring-white/70 hover:ring-orange/60 hover:scale-105 transition-all"
       >
-        <span className="absolute inset-0 rounded-full ring-1 ring-black/5" />
+        <img src={LOGO_MARK} alt="Leony" className="h-full w-full object-cover" />
       </button>
     </div>
   );
