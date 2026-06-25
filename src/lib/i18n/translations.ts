@@ -35,6 +35,18 @@ export type Dict = {
     body: string;
     highlights: string[];
   };
+  heroVisual: {
+    urlText: string;
+    webBlockEyebrow: string;
+    webBlockTitle: string;
+    metrics: { v: string; l: string }[];
+    quickLinks: string[];
+    adminTitle: string;
+    adminSub: string;
+    apptTitle: string;
+    apptSub: string;
+    chips: { contactForm: string; whatsappFlow: string; mobile: string; demos: string };
+  };
   whyWebsite: {
     eyebrow: string;
     titlePre: string;
