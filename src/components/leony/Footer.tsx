@@ -1,7 +1,7 @@
 import { FooterLogo, LOGO_MARK } from "./Logo";
-import { NAV_LINKS, SITE, SOCIAL_LINKS, waLink } from "@/lib/site";
+import { NAV_LINKS, SITE, SOCIAL_LINKS } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
-import { Mail, MessageCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 
 export function Footer() {
   const t = useT();
