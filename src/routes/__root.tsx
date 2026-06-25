@@ -123,10 +123,6 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
-  return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <Toaster richColors closeButton position="top-right" />
