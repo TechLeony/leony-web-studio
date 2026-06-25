@@ -1,6 +1,6 @@
 import horizontal from "@/assets/leony-horizontal-v2.png.asset.json";
 import mark from "@/assets/leony-mark-v2.png.asset.json";
-import footer from "@/assets/leony-footer-v2.png.asset.json";
+import footer from "@/assets/leony-footer-cropped.png.asset.json";
 
 export const LOGO_HORIZONTAL = horizontal.url;
 export const LOGO_MARK = mark.url;
