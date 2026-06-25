@@ -91,7 +91,7 @@ export function WhyWebsiteSection() {
       <div className="mt-12 flex justify-center">
         <a
           href="#sektorler"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-navy/90"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
         >
           İşletme Kategorini Seç <ArrowRight className="h-4 w-4" />
         </a>
@@ -301,7 +301,7 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
           </span>
           <span className="text-xs md:text-sm font-semibold text-foreground leading-snug">
             <span className="rounded-md bg-gradient-to-r from-orange to-pink bg-clip-text text-transparent font-extrabold uppercase tracking-wide mr-1">
-              Ücretsiz:
+              Bonus:
             </span>
             Müşteriye özel tasarım taslağı ve revize imkânı
           </span>

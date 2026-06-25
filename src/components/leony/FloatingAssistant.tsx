@@ -51,7 +51,7 @@ export function FloatingAssistant() {
         aria-label="Leony asistanını aç"
         className="relative h-16 w-16 rounded-full overflow-hidden shadow-xl ring-2 ring-white/70 hover:ring-orange/60 hover:scale-105 transition-all"
       >
-        <img src={LOGO_MARK} alt="Leony" className="h-full w-full object-cover" />
+        <img src={LOGO_MARK} alt="Leony" className="h-full w-full object-cover scale-125" />
       </button>
     </div>
   );

@@ -28,6 +28,7 @@ export const NAV_LINKS = [
 
 // Limited nav for sector subpages — only links to sections present there.
 export const SECTOR_NAV_LINKS = [
+  { label: "Anasayfa", href: "/" },
   { label: "Demo Projeler", href: "#demolar" },
   { label: "Paketler", href: "#paketler" },
   { label: "SSS", href: "#sss" },

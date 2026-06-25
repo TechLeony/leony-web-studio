@@ -12,7 +12,7 @@ export function Footer() {
       />
       <div className="relative mx-auto max-w-7xl px-4 md:px-8 py-14 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-2 space-y-4">
-          <div className="h-14 md:h-16"><FooterLogo className="h-14 md:h-16" /></div>
+          <div className="h-20 md:h-24"><FooterLogo className="h-20 md:h-24" /></div>
           <p className="max-w-md text-sm text-muted-foreground">{SITE.tagline}</p>
           <div className="flex flex-wrap gap-3 pt-1">
             <a
