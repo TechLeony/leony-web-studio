@@ -70,7 +70,7 @@ export function Header() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted"
+                className="px-3 py-3 rounded-lg text-base font-medium text-foreground hover:text-orange hover:bg-muted transition-colors"
               >
                 {l.label}
               </a>
