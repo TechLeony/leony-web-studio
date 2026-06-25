@@ -12,25 +12,37 @@ import {
 import { ContactSection } from "@/components/leony/ContactSection";
 import { WhatsAppButton } from "@/components/leony/WhatsAppButton";
 import { SectorPreview } from "@/components/leony/SectorPreview";
-import { SECTOR_CONTENT, SECTOR_NAV_LINKS, SITE } from "@/lib/site";
+import {
+  SECTOR_NAV_LINKS,
+  SECTOR_PREVIEW_KIND,
+  SECTOR_ADVANCED,
+  SITE,
+  type CategorySlug,
+} from "@/lib/site";
+import { useT } from "@/lib/i18n/context";
 import { ArrowLeft, Check, LayoutDashboard, Calendar, ShieldCheck } from "lucide-react";
+
+const KNOWN: CategorySlug[] = [
+  "cafe-restoran",
+  "klinik-dis-klinigi",
+  "guzellik-salonu-nail-studio",
+  "barber-kuafor",
+  "vet-klinik",
+  "terapist-psikolog",
+];
 
 export const Route = createFileRoute("/sektor/$slug")({
   loader: ({ params }) => {
-    const data = SECTOR_CONTENT[params.slug as keyof typeof SECTOR_CONTENT];
-    if (!data) throw notFound();
-    return { slug: params.slug, ...data };
+    if (!KNOWN.includes(params.slug as CategorySlug)) throw notFound();
+    return { slug: params.slug as CategorySlug };
   },
   head: ({ loaderData }) => {
-    const t = loaderData ? `${loaderData.label} | Leony` : "Sektör | Leony";
-    const d = loaderData?.subtitle ?? "";
     const url = loaderData ? `/sektor/${loaderData.slug}` : "/";
+    const t = `Sektör | Leony`;
     return {
       meta: [
         { title: t },
-        { name: "description", content: d },
         { property: "og:title", content: t },
-        { property: "og:description", content: d },
         { property: "og:site_name", content: SITE.brand },
         { property: "og:url", content: url },
         { property: "og:type", content: "article" },
@@ -39,46 +51,56 @@ export const Route = createFileRoute("/sektor/$slug")({
     };
   },
   component: SectorPage,
-  notFoundComponent: () => (
+  notFoundComponent: NotFoundView,
+  errorComponent: ErrorView,
+});
+
+function NotFoundView() {
+  const t = useT();
+  return (
     <div className="min-h-screen grid place-items-center p-6 text-center">
       <div>
-        <h1 className="text-2xl font-semibold">Sektör bulunamadı</h1>
+        <h1 className="text-2xl font-semibold">{t.sectorPage.notFoundTitle}</h1>
         <Link to="/" className="mt-4 inline-block text-purple font-medium hover:text-orange transition-colors">
-          ← Anasayfaya dön
+          {t.sectorPage.notFoundHome}
         </Link>
       </div>
     </div>
-  ),
-  errorComponent: () => (
+  );
+}
+
+function ErrorView() {
+  const t = useT();
+  return (
     <div className="min-h-screen grid place-items-center p-6 text-center">
-      <p className="text-muted-foreground">Bir hata oluştu.</p>
+      <p className="text-muted-foreground">{t.sectorPage.errorText}</p>
     </div>
-  ),
-});
+  );
+}
 
 function SectorPage() {
-  const data = Route.useLoaderData();
+  const { slug } = Route.useLoaderData();
+  const t = useT();
+  const data = t.sectors[slug];
+  const advanced = SECTOR_ADVANCED[slug];
+  const previewKind = SECTOR_PREVIEW_KIND[slug];
+
+  const advCards = [
+    { icon: Calendar, ...t.sectorPage.advCards[0] },
+    { icon: LayoutDashboard, ...t.sectorPage.advCards[1] },
+    { icon: ShieldCheck, ...t.sectorPage.advCards[2] },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
       <Header navLinks={SECTOR_NAV_LINKS} />
       <main>
         <section className="relative pt-28 md:pt-32 pb-12 md:pb-16 overflow-hidden">
-          <div
-            aria-hidden
-            className="absolute inset-0 -z-10 bg-grid-soft opacity-[0.3] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]"
-          />
-          <div
-            aria-hidden
-            className="absolute -top-32 right-[-10%] -z-10 h-[480px] w-[480px] rounded-full opacity-50"
-            style={{
-              background:
-                "radial-gradient(circle, color-mix(in oklab, var(--color-pink) 28%, transparent), transparent 60%)",
-            }}
-          />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-grid-soft opacity-[0.3] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
+          <div aria-hidden className="absolute -top-32 right-[-10%] -z-10 h-[480px] w-[480px] rounded-full opacity-50" style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--color-pink) 28%, transparent), transparent 60%)" }} />
           <div className="mx-auto max-w-7xl px-4 md:px-8">
             <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-orange transition-colors">
-              <ArrowLeft className="h-4 w-4" /> Tüm sektörler
+              <ArrowLeft className="h-4 w-4" /> {t.sectorPage.allSectors}
             </Link>
             <div className="mt-6 grid lg:grid-cols-12 gap-10 items-start">
               <div className="lg:col-span-7 space-y-5">
@@ -86,29 +108,20 @@ function SectorPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-orange via-pink to-purple" />
                   {data.label}
                 </div>
-                <h1 className="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.08]">
-                  {data.title}
-                </h1>
-                <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
-                  {data.subtitle}
-                </p>
+                <h1 className="text-3xl md:text-5xl font-semibold tracking-tight leading-[1.08]">{data.title}</h1>
+                <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">{data.subtitle}</p>
                 <div className="flex flex-wrap gap-3 pt-2">
-                  <a
-                    href="#paketler"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
-                  >
-                    Paketleri Karşılaştır
+                  <a href="#paketler" className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors">
+                    {t.sectorPage.comparePackages}
                   </a>
-                  <WhatsAppButton
-                    message={`Merhaba, Leony üzerinden ${data.label} kategorisi için web sitesi hizmetleri hakkında bilgi almak istiyorum.`}
-                  >
-                    WhatsApp’tan Bilgi Al
+                  <WhatsAppButton message={t.waMessages.sectorBody(data.label)}>
+                    {t.sectorPage.waCta}
                   </WhatsAppButton>
                 </div>
               </div>
 
               <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-                {data.benefits.map((b: string) => (
+                {data.benefits.map((b) => (
                   <div key={b} className="rounded-2xl border border-border bg-card p-4 hover:border-orange/50 transition-colors">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple to-pink text-white grid place-items-center">
                       <Check className="h-4 w-4" />
@@ -121,31 +134,22 @@ function SectorPage() {
           </div>
         </section>
 
-        {/* Sector-specific demo preview */}
         <Section className="bg-background !pt-4 !pb-16">
           <SectionTitle
-            eyebrow="Demo Önizleme"
-            title={`${data.label} için örnek site yapısı`}
-            subtitle="İşletmenizin web sitesinin nasıl görünebileceğine dair sektöre özel demo önizleme."
+            eyebrow={t.sectorPage.demoEyebrow}
+            title={t.sectorPage.demoTitleTpl(data.label)}
+            subtitle={t.sectorPage.demoSubtitle}
           />
           <div className="mt-12 mx-auto max-w-4xl pb-14">
-            <SectorPreview kind={data.preview} label={data.label} />
+            <SectorPreview kind={previewKind} label={data.label} />
           </div>
         </Section>
 
-        {data.advanced && (
+        {advanced && (
           <Section className="bg-muted/40 !py-16">
-            <SectionTitle
-              eyebrow="Yönetim odaklı"
-              title="Randevu, yönetim ve danışan akışı"
-              subtitle="İhtiyaca göre randevu sistemi, admin dashboard ve talep yönetimi entegre edilebilir."
-            />
+            <SectionTitle eyebrow={t.sectorPage.advEyebrow} title={t.sectorPage.advTitle} subtitle={t.sectorPage.advSubtitle} />
             <div className="mt-10 grid md:grid-cols-3 gap-4">
-              {[
-                { icon: Calendar, t: "Randevu Sistemi", d: "Online randevu oluşturma, takvim ve onay akışı." },
-                { icon: LayoutDashboard, t: "Admin Dashboard", d: "Talepleri ve randevuları tek arayüzden yönet." },
-                { icon: ShieldCheck, t: "Güven Veren Akış", d: "Profesyonel iletişim ve düzenli danışan deneyimi." },
-              ].map((c) => (
+              {advCards.map((c) => (
                 <div key={c.t} className="rounded-2xl border border-border bg-card p-6 hover:border-orange/50 hover:-translate-y-0.5 transition-all">
                   <div className="h-10 w-10 rounded-lg bg-navy text-navy-foreground grid place-items-center">
                     <c.icon className="h-5 w-5" />
