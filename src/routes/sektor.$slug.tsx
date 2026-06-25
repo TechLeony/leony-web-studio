@@ -106,7 +106,7 @@ function SectorPage() {
               </div>
 
               <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-                {data.benefits.map((b) => (
+                {data.benefits.map((b: string) => (
                   <div key={b} className="rounded-2xl border border-border bg-card p-4">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple to-pink text-white grid place-items-center">
                       <Check className="h-4 w-4" />
