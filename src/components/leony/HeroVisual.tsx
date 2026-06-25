@@ -117,7 +117,7 @@ export function HeroVisual() {
 
 function Chip({ className = "", icon, label }: { className?: string; icon: React.ReactNode; label: string }) {
   return (
-    <div className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur px-2.5 py-1 text-[11px] font-medium text-foreground shadow-md ${className}`}>
+    <div className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card/95 backdrop-blur px-2.5 py-1 font-medium text-foreground shadow-md ${className}`}>
       <span className="text-purple">{icon}</span>
       {label}
     </div>
