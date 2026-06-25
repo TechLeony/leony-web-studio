@@ -110,7 +110,7 @@ export function HeroVisual() {
       <Chip className="absolute -top-3 left-4 text-[10px] sm:text-[11px] px-2 sm:px-2.5" icon={<Send className="h-3 w-3" />} label={hv.chips.contactForm} />
       <Chip className="absolute top-8 sm:top-10 right-1 sm:-right-1 text-[10px] sm:text-[11px] px-2 sm:px-2.5" icon={<MessageSquare className="h-3 w-3" />} label={hv.chips.whatsappFlow} />
       <Chip className="absolute bottom-[72%] sm:bottom-32 -left-3 hidden sm:flex" icon={<Smartphone className="h-3 w-3" />} label={hv.chips.mobile} />
-      <Chip className="absolute bottom-[20%] sm:bottom-0 right-4 sm:right-12 text-[10px] sm:text-[11px] px-2 sm:px-2.5" icon={<Sparkles className="h-3 w-3" />} label={hv.chips.demos} />
+      <Chip className="absolute bottom-[54%] sm:bottom-0 right-4 sm:right-12 text-[10px] sm:text-[11px] px-2 sm:px-2.5" icon={<Sparkles className="h-3 w-3" />} label={hv.chips.demos} />
     </div>
   );
 }
