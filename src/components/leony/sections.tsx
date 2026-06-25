@@ -147,8 +147,9 @@ export function CategoriesSection() {
       />
       <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {CATEGORIES.map((c) => {
-          // @ts-expect-error icon name lookup
-          const Icon = (Icons[c.icon] as React.ComponentType<{ className?: string }>) ?? Icons.Briefcase;
+          const Icon =
+            ((Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[c.icon]) ??
+            Icons.Briefcase;
           return (
             <a
               key={c.slug}
