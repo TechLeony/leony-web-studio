@@ -390,6 +390,7 @@ const TR: Dict = {
           "WhatsApp ve mail yönlendirmeleri",
           "Daha gelişmiş içerik yerleşimi",
           "Daha güçlü SEO yapısı",
+          "Web siteniz için isteğe bağlı dil seçenekleri",
         ],
         delivery: "Teslimat: 5–7 iş günü",
         cta: "İşletme Paketi İçin Bilgi Al",
