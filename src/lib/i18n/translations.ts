@@ -1297,6 +1297,7 @@ const EN: Dict = {
           "WhatsApp and email routing",
           "More refined content layout",
           "Stronger SEO structure",
+          "Optional language choices for your website",
         ],
         delivery: "Delivery: 5–7 business days",
         cta: "Get info on the Business Package",
