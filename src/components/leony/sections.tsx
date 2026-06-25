@@ -18,9 +18,10 @@ export function WhatIsSection() {
         </div>
         <div className="lg:col-span-7 space-y-6">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Leony; markalar ve hizmet odaklı işletmeler için modern, mobil uyumlu ve iletişim odaklı
-            web çözümleri tasarlayan bir dijital stüdyodur. Amaç; güçlü bir dijital vitrin oluşturmak,
-            ziyaretçi deneyimini sadeleştirmek ve işletmeye daha profesyonel bir görünüm kazandırmaktır.
+            Leony; markalar ve hizmet odaklı işletmelerin dijitalde daha profesyonel, güvenilir ve
+            ulaşılabilir görünmesini sağlayan bir dijital stüdyodur. İşletmenin kendini net
+            anlatmasına, müşterilerin aradığı bilgilere kolayca ulaşmasına ve ilk izlenimin daha
+            güçlü olmasına odaklanır.
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {LEONY_HIGHLIGHTS.map((h) => (
