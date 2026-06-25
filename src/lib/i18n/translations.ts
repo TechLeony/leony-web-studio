@@ -1569,14 +1569,6 @@ const EN: Dict = {
     packageGeneric: (pkg) => `Hi, I’d like more info about the Leony ${pkg}.`,
     packageWithSector: (label, pkg) => `Hi, I’d like more info about the Leony ${pkg} for the ${label} category.`,
   },
-};
-
-export const TRANSLATIONS: Record<Lang, Dict> = { tr: TR, az: AZ, en: EN };
-
-export const LANG_LABELS: Record<Lang, string> = {
-  tr: "TR",
-  az: "AZ",
-  en: "EN",
   heroVisual: {
     urlText: "leony.app/demo",
     webBlockEyebrow: "Web Solution",
@@ -1598,4 +1590,13 @@ export const LANG_LABELS: Record<Lang, string> = {
       demos: "Demo Projects",
     },
   },
+};
+
+export const TRANSLATIONS: Record<Lang, Dict> = { tr: TR, az: AZ, en: EN };
+
+export const LANG_LABELS: Record<Lang, string> = {
+  tr: "TR",
+  az: "AZ",
+  en: "EN",
+};
 };
