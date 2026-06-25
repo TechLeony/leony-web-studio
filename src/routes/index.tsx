@@ -58,6 +58,7 @@ function Index() {
       </main>
       <Footer />
       <FloatingAssistant />
+      <ScrollToTop />
     </div>
   );
 }
