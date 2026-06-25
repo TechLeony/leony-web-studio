@@ -1,4 +1,4 @@
-import { HorizontalLogo, LOGO_MARK } from "./Logo";
+import { FooterLogo, LOGO_MARK } from "./Logo";
 import { NAV_LINKS, SITE, SOCIAL_LINKS, waLink } from "@/lib/site";
 import { Mail, MessageCircle } from "lucide-react";
 
@@ -12,12 +12,12 @@ export function Footer() {
       />
       <div className="relative mx-auto max-w-7xl px-4 md:px-8 py-14 grid gap-12 md:grid-cols-4">
         <div className="md:col-span-2 space-y-4">
-          <div className="h-12"><HorizontalLogo className="h-12" /></div>
+          <div className="h-14 md:h-16"><FooterLogo className="h-14 md:h-16" /></div>
           <p className="max-w-md text-sm text-muted-foreground">{SITE.tagline}</p>
           <div className="flex flex-wrap gap-3 pt-1">
             <a
               href={`mailto:${SITE.email}`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-purple"
+              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-orange transition-colors"
             >
               <Mail className="h-4 w-4" /> {SITE.email}
             </a>
@@ -25,7 +25,7 @@ export function Footer() {
               href={waLink("Merhaba, Leony hakkında bilgi almak istiyorum.")}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-whatsapp"
+              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-whatsapp transition-colors"
             >
               <MessageCircle className="h-4 w-4" /> WhatsApp
             </a>
@@ -37,7 +37,7 @@ export function Footer() {
           <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
-                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-foreground">
+                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors">
                   {l.label}
                 </a>
               </li>
@@ -50,11 +50,11 @@ export function Footer() {
           <ul className="space-y-2">
             {SOCIAL_LINKS.map((s) => (
               <li key={s.label}>
-                <a href={s.href} className="text-sm text-muted-foreground hover:text-foreground">{s.label}</a>
+                <a href={s.href} className="text-sm text-muted-foreground hover:text-orange transition-colors">{s.label}</a>
               </li>
             ))}
             <li>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+              <a href="#" className="text-sm text-muted-foreground hover:text-orange transition-colors">
                 KVKK / Gizlilik Politikası
               </a>
             </li>

@@ -5,7 +5,9 @@ import { HorizontalLogo } from "./Logo";
 import { WhatsAppButton } from "./WhatsAppButton";
 import { cn } from "@/lib/utils";
 
-export function Header() {
+type NavLink = { label: string; href: string };
+
+export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavLink> }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -31,7 +33,7 @@ export function Header() {
         </a>
 
         <nav className="hidden lg:flex items-center gap-7">
-          {NAV_LINKS.map((l) => (
+          {navLinks.map((l) => (
             <a
               key={l.href}
               href={l.href}
@@ -56,7 +58,7 @@ export function Header() {
           onClick={() => setOpen((v) => !v)}
           aria-label="Menüyü aç"
           aria-expanded={open}
-          className="lg:hidden grid place-items-center h-11 w-11 rounded-full border border-border bg-card text-foreground"
+          className="lg:hidden grid place-items-center h-11 w-11 rounded-full border border-border bg-card text-foreground hover:text-orange hover:border-orange/40 transition-colors"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -65,7 +67,7 @@ export function Header() {
       {open && (
         <div className="lg:hidden border-t border-border bg-background">
           <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-1">
-            {NAV_LINKS.map((l) => (
+            {navLinks.map((l) => (
               <a
                 key={l.href}
                 href={l.href}
