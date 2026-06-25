@@ -47,8 +47,8 @@ export function WhyWebsiteSection() {
     <Section id="neden-website" className="bg-muted/40">
       <SectionTitle
         eyebrow="Neden Website?"
-        title={<>İşletmenin dijital vitrini <span className="text-gradient-brand">daha fazlasını</span> yapmalı.</>}
-        subtitle="Leony çözümleri yalnızca estetik görünüm sunmaz; iletişim akışını düzenler, güven oluşturur ve işletmeye daha profesyonel bir dijital yapı kazandırır."
+        title={<>Web sitesi artık lüks değil, <span className="text-gradient-brand">işletmenizin dijital adresi.</span></>}
+        subtitle="Müşterilerinize, işletmenizi internet üzerinden tanıma, hizmetlerinizi inceleme ve sizinle kolayca iletişime geçme imkânı sunar. Bu da markanızın sektörde daha profesyonel, güvenilir ve erişilebilir görünmesini sağlar."
       />
 
       <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
