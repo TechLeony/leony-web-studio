@@ -843,6 +843,7 @@ const AZ: Dict = {
           "WhatsApp və mail yönləndirmələri",
           "Daha inkişaf etmiş məzmun yerləşməsi",
           "Daha güclü SEO strukturu",
+          "Vebsaytınız üçün isteğe bağlı dil seçimləri",
         ],
         delivery: "Təslim: 5–7 iş günü",
         cta: "Biznes Paketi üçün məlumat al",
