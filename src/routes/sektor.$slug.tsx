@@ -152,6 +152,7 @@ function SectorPage() {
       </main>
       <Footer />
       <FloatingAssistant />
+      <ScrollToTop />
     </div>
   );
 }
