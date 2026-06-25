@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import { NAV_LINKS } from "@/lib/site";
+import { NAV_LINKS, type NavKey } from "@/lib/site";
 import { HorizontalLogo } from "./Logo";
 import { WhatsAppButton } from "./WhatsAppButton";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
-type NavLink = { label: string; href: string };
+type NavLink = { key: NavKey; href: string };
 
 export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavLink> }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -28,7 +31,7 @@ export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavL
       )}
     >
       <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-4 px-4 md:px-8">
-        <a href="/" className="flex h-16 md:h-20 items-center" aria-label="Leony anasayfa">
+        <a href="/" className="flex h-16 md:h-20 items-center" aria-label="Leony">
           <HorizontalLogo className="h-16 md:h-20" />
         </a>
 
@@ -39,24 +42,22 @@ export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavL
               href={l.href}
               className="text-sm font-medium text-muted-foreground hover:text-orange transition-colors"
             >
-              {l.label}
+              {t.nav[l.key]}
             </a>
           ))}
         </nav>
 
-        <div className="hidden lg:block">
-          <WhatsAppButton
-            variant="whatsapp"
-            message="Merhaba, Leony üzerinden web sitesi hizmetleri hakkında bilgi almak istiyorum."
-          >
-            WhatsApp’tan Yaz
+        <div className="hidden lg:flex items-center gap-3">
+          <LanguageSwitcher />
+          <WhatsAppButton variant="whatsapp" message={t.waMessages.headerGeneric}>
+            {t.nav.waCta}
           </WhatsAppButton>
         </div>
 
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label="Menüyü aç"
+          aria-label={t.nav.menuOpen}
           aria-expanded={open}
           className="lg:hidden grid place-items-center h-11 w-11 rounded-full border border-border bg-card text-foreground hover:text-orange hover:border-orange/40 transition-colors"
         >
@@ -74,16 +75,19 @@ export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavL
                 onClick={() => setOpen(false)}
                 className="px-3 py-3 rounded-lg text-base font-medium text-foreground hover:text-orange hover:bg-muted transition-colors"
               >
-                {l.label}
+                {t.nav[l.key]}
               </a>
             ))}
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <LanguageSwitcher size="md" />
+            </div>
             <div className="pt-2">
               <WhatsAppButton
                 variant="whatsapp"
                 className="w-full"
-                message="Merhaba, Leony üzerinden web sitesi hizmetleri hakkında bilgi almak istiyorum."
+                message={t.waMessages.headerGeneric}
               >
-                WhatsApp’tan Yaz
+                {t.nav.waCta}
               </WhatsAppButton>
             </div>
           </div>

@@ -22,7 +22,7 @@ export function FooterLogo({ className = "" }: { className?: string }) {
     <img
       src={LOGO_FOOTER}
       alt="Made by Leony"
-      className={`block h-full w-auto select-none ${className}`}
+      className={`block h-auto w-auto select-none ${className}`}
       draggable={false}
     />
   );

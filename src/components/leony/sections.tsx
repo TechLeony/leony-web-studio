@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { LEONY_HIGHLIGHTS, BENEFITS, PROCESS_STEPS, CATEGORIES, DEMO_PROJECTS, PACKAGES, FAQS, waLink } from "@/lib/site";
+import {
+  CATEGORIES,
+  DEMO_IDS,
+  DEMO_LINKS,
+  PACKAGE_IDS,
+  PACKAGE_META,
+  waLink,
+  type DemoId,
+  type PackageId,
+} from "@/lib/site";
+import { useT } from "@/lib/i18n/context";
 import { Section, SectionTitle } from "./Section";
 import { CustomCategoryModal } from "./CustomCategoryModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -7,25 +17,23 @@ import { ArrowRight, Check, X as XIcon, Plus, Sparkles } from "lucide-react";
 import * as Icons from "lucide-react";
 
 export function WhatIsSection() {
+  const t = useT();
   return (
     <Section id="leony-nedir" className="bg-background">
       <div className="grid lg:grid-cols-12 gap-10 items-start">
         <div className="lg:col-span-5">
           <SectionTitle
             align="left"
-            eyebrow="Leony Nedir?"
-            title={<>Markalar için <span className="text-gradient-brand">modern dijital stüdyo</span> deneyimi.</>}
+            eyebrow={t.whatIs.eyebrow}
+            title={<>{t.whatIs.titlePre}<span className="text-gradient-brand">{t.whatIs.titleHighlight}</span>{t.whatIs.titlePost}</>}
           />
         </div>
         <div className="lg:col-span-7 space-y-6">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Leony; markalar ve hizmet odaklı işletmelerin dijitalde daha profesyonel, güvenilir ve
-            ulaşılabilir görünmesini sağlayan bir dijital stüdyodur. İşletmenin kendini net
-            anlatmasına, müşterilerin aradığı bilgilere kolayca ulaşmasına ve ilk izlenimin daha
-            güçlü olmasına odaklanır.
+            {t.whatIs.body}
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
-            {LEONY_HIGHLIGHTS.map((h) => (
+            {t.whatIs.highlights.map((h) => (
               <div
                 key={h}
                 className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
@@ -44,16 +52,17 @@ export function WhatIsSection() {
 }
 
 export function WhyWebsiteSection() {
+  const t = useT();
   return (
     <Section id="neden-website" className="bg-muted/40">
       <SectionTitle
-        eyebrow="Neden Website?"
-        title={<>Web sitesi artık lüks değil, <span className="text-gradient-brand">işletmenizin dijital adresi.</span></>}
-        subtitle="Müşterilerinize, işletmenizi internet üzerinden tanıma, hizmetlerinizi inceleme ve sizinle kolayca iletişime geçme imkânı sunar. Bu da markanızın sektörde daha profesyonel, güvenilir ve erişilebilir görünmesini sağlar."
+        eyebrow={t.whyWebsite.eyebrow}
+        title={<>{t.whyWebsite.titlePre}<span className="text-gradient-brand">{t.whyWebsite.titleHighlight}</span></>}
+        subtitle={t.whyWebsite.subtitle}
       />
 
       <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {BENEFITS.map((b, i) => (
+        {t.whyWebsite.benefits.map((b, i) => (
           <div
             key={b.title}
             className="group relative rounded-2xl border border-border bg-card p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all"
@@ -66,26 +75,8 @@ export function WhyWebsiteSection() {
       </div>
 
       <div className="mt-14 grid md:grid-cols-2 gap-4 rounded-3xl border border-border bg-card p-4 md:p-6">
-        <ComparisonCol
-          title="Sadece Sosyal Medya"
-          tone="muted"
-          items={[
-            "Bilgiler dağınık kalabilir",
-            "Hizmet yapısı sınırlı sunulur",
-            "İletişim süreci uzayabilir",
-            "Profesyonel algı zayıf kalabilir",
-          ]}
-        />
-        <ComparisonCol
-          title="Leony Website"
-          tone="brand"
-          items={[
-            "Bilgiler düzenli şekilde sunulur",
-            "Hizmetler daha net görünür",
-            "Talep akışı daha hızlı işler",
-            "Daha güçlü dijital görünüm oluşur",
-          ]}
-        />
+        <ComparisonCol title={t.whyWebsite.compareSocialTitle} tone="muted" items={t.whyWebsite.compareSocialItems} />
+        <ComparisonCol title={t.whyWebsite.compareLeonyTitle} tone="brand" items={t.whyWebsite.compareLeonyItems} />
       </div>
 
       <div className="mt-12 flex justify-center">
@@ -93,42 +84,22 @@ export function WhyWebsiteSection() {
           href="#sektorler"
           className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
         >
-          İşletme Kategorini Seç <ArrowRight className="h-4 w-4" />
+          {t.whyWebsite.cta} <ArrowRight className="h-4 w-4" />
         </a>
       </div>
     </Section>
   );
 }
 
-function ComparisonCol({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone: "muted" | "brand";
-}) {
+function ComparisonCol({ title, items, tone }: { title: string; items: string[]; tone: "muted" | "brand" }) {
   const isBrand = tone === "brand";
   return (
-    <div
-      className={
-        "rounded-2xl p-6 " +
-        (isBrand
-          ? "bg-gradient-to-br from-navy via-navy to-purple text-navy-foreground"
-          : "bg-muted/60 text-foreground")
-      }
-    >
+    <div className={"rounded-2xl p-6 " + (isBrand ? "bg-gradient-to-br from-navy via-navy to-purple text-navy-foreground" : "bg-muted/60 text-foreground")}>
       <div className="text-xs font-semibold uppercase tracking-wider opacity-80">{title}</div>
       <ul className="mt-4 space-y-3">
         {items.map((t) => (
           <li key={t} className="flex items-start gap-3 text-sm">
-            <span
-              className={
-                "mt-0.5 grid place-items-center h-5 w-5 rounded-full " +
-                (isBrand ? "bg-white/15" : "bg-card border border-border")
-              }
-            >
+            <span className={"mt-0.5 grid place-items-center h-5 w-5 rounded-full " + (isBrand ? "bg-white/15" : "bg-card border border-border")}>
               {isBrand ? <Check className="h-3 w-3" /> : <XIcon className="h-3 w-3 text-muted-foreground" />}
             </span>
             <span className={isBrand ? "" : "text-muted-foreground"}>{t}</span>
@@ -140,19 +111,17 @@ function ComparisonCol({
 }
 
 export function CategoriesSection() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <Section id="sektorler" className="bg-background">
-      <SectionTitle
-        eyebrow="Sektörler"
-        title="İşletme Kategorini Seç"
-        subtitle="Sektörüne uygun demo projeleri, örnek yapıları ve paketleri daha net incelemek için kategorini seç."
-      />
+      <SectionTitle eyebrow={t.categories.eyebrow} title={t.categories.title} subtitle={t.categories.subtitle} />
       <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {CATEGORIES.map((c) => {
           const Icon =
             ((Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[c.icon]) ??
             Icons.Briefcase;
+          const item = t.categories.items[c.slug];
           return (
             <a
               key={c.slug}
@@ -163,31 +132,28 @@ export function CategoriesSection() {
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-navy to-purple text-navy-foreground grid place-items-center group-hover:from-orange group-hover:to-pink transition-colors">
                 <Icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">{c.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{c.desc}</p>
+              <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">{item.title}</h3>
+              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{item.desc}</p>
               <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-purple group-hover:text-orange transition-colors">
-                Sektörü incele <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                {t.categories.incele} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </div>
             </a>
           );
         })}
 
-        {/* Custom card — fully clickable, opens modal */}
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Benim kategorim listede yok — bilgi formu aç"
+          aria-label={t.categories.customAria}
           className="group relative rounded-2xl border border-dashed border-border bg-gradient-to-br from-muted/60 to-card p-5 flex flex-col text-left hover:border-orange/60 hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer"
         >
           <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange to-pink text-white grid place-items-center group-hover:scale-110 transition-transform">
             <Plus className="h-5 w-5" />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">Benim kategorim listede yok</h3>
-          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">
-            Kategoriniz listede yoksa işletmenize özel web çözümünü birlikte planlayabiliriz.
-          </p>
+          <h3 className="mt-4 text-base font-semibold text-foreground group-hover:text-orange transition-colors">{t.categories.customTitle}</h3>
+          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{t.categories.customDesc}</p>
           <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-orange">
-            Formu aç <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            {t.categories.customCta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
         </button>
       </div>
@@ -198,55 +164,45 @@ export function CategoriesSection() {
 }
 
 export function DemoProjectsSection() {
+  const t = useT();
   return (
     <Section id="demolar" className="bg-muted/40">
-      <SectionTitle
-        eyebrow="Demo Projeler"
-        title="Sektörlere göre demo hub"
-        subtitle="Farklı sektörler için hazırlanan demo projeleri inceleyerek işletmene en uygun dijital yapıyı daha kolay belirleyebilirsin."
-      />
+      <SectionTitle eyebrow={t.demos.eyebrow} title={t.demos.title} subtitle={t.demos.subtitle} />
       <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {DEMO_PROJECTS.map((p) => (
-          <article
-            key={p.title}
-            className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
-          >
-            <DemoPreview title={p.title} />
-            <div className="p-5 flex flex-col flex-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-purple">
-                {p.sector}
+        {DEMO_IDS.map((id) => {
+          const p = t.demos.items[id];
+          const link = DEMO_LINKS[id as DemoId];
+          return (
+            <article key={id} className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col">
+              <DemoPreview title={p.title} />
+              <div className="p-5 flex flex-col flex-1">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-purple">
+                  {t.demos.sectorBySlug[p.sectorSlug]}
+                </div>
+                <h3 className="mt-1 text-base font-semibold text-foreground">{p.title}</h3>
+                <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{p.desc}</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {p.badges.map((b) => (
+                    <span key={b} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {t.demos.badges[b] ?? b}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  {link ? (
+                    <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors">
+                      {t.demos.viewDemo} <ArrowRight className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-muted-foreground">
+                      {t.demos.comingSoon}
+                    </span>
+                  )}
+                </div>
               </div>
-              <h3 className="mt-1 text-base font-semibold text-foreground">{p.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed flex-1">{p.desc}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {p.badges.map((b) => (
-                  <span
-                    key={b}
-                    className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                  >
-                    {b}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-4">
-                {p.link ? (
-                  <a
-                    href={p.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 items-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors"
-                  >
-                    Demo’yu Gör <ArrowRight className="h-4 w-4" />
-                  </a>
-                ) : (
-                  <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-muted-foreground">
-                    Hazırlanıyor
-                  </span>
-                )}
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </Section>
   );
@@ -273,51 +229,44 @@ function DemoPreview({ title }: { title: string }) {
           </div>
         </div>
       </div>
-      <div className="absolute bottom-2 right-3 text-[10px] font-medium text-white/80 truncate">
-        {title}
-      </div>
+      <div className="absolute bottom-2 right-3 text-[10px] font-medium text-white/80 truncate">{title}</div>
     </div>
   );
 }
 
 export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
+  const t = useT();
   return (
     <Section id="paketler" className="bg-background">
-      <SectionTitle
-        eyebrow="Paketler"
-        title="Sade hiyerarşi, net çözümler."
-        subtitle="İşletmenin ihtiyacına uygun çözümü seçerek web sitesi yapısını daha net planlayabilirsin."
-      />
+      <SectionTitle eyebrow={t.packages.eyebrow} title={t.packages.title} subtitle={t.packages.subtitle} />
 
-      {/* Free design draft highlight banner */}
       <div className="mt-8 flex justify-center">
         <div className="relative inline-flex items-center gap-3 rounded-full border border-orange/30 bg-gradient-to-r from-orange/10 via-pink/10 to-purple/10 px-4 py-2.5 md:px-5 md:py-3 shadow-sm backdrop-blur">
-          <span
-            aria-hidden
-            className="absolute -inset-px -z-10 rounded-full bg-gradient-to-r from-orange/20 via-pink/20 to-purple/20 blur-md opacity-70"
-          />
+          <span aria-hidden className="absolute -inset-px -z-10 rounded-full bg-gradient-to-r from-orange/20 via-pink/20 to-purple/20 blur-md opacity-70" />
           <span className="grid place-items-center h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-orange to-pink text-white shadow">
             <Sparkles className="h-3.5 w-3.5" />
           </span>
           <span className="text-xs md:text-sm font-semibold text-foreground leading-snug">
             <span className="rounded-md bg-gradient-to-r from-orange to-pink bg-clip-text text-transparent font-extrabold uppercase tracking-wide mr-1">
-              Bonus:
+              {t.packages.bonusTag}
             </span>
-            Müşteriye özel tasarım taslağı ve revize imkânı
+            {t.packages.bonusText}
           </span>
         </div>
       </div>
 
       <div className="mt-10 grid md:grid-cols-3 gap-5 items-stretch">
-        {PACKAGES.map((p) => {
+        {PACKAGE_IDS.map((id) => {
+          const p = t.packages.items[id as PackageId];
+          const meta = PACKAGE_META[id as PackageId];
           const wa = sectorLabel
-            ? `Merhaba, Leony üzerinden ${sectorLabel} kategorisi için ${p.name} hakkında bilgi almak istiyorum.`
-            : p.waMessage;
-          const featured = p.highlighted;
-          const pro = p.id === "profesyonel";
+            ? t.waMessages.packageWithSector(sectorLabel, p.name)
+            : t.waMessages.packageGeneric(p.name);
+          const featured = meta.highlighted;
+          const pro = id === "profesyonel";
           return (
             <div
-              key={p.id}
+              key={id}
               className={
                 "relative rounded-3xl border bg-card p-6 flex flex-col " +
                 (featured
@@ -329,7 +278,7 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
             >
               {featured && (
                 <span className="absolute -top-3 left-6 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple to-pink px-3 py-1 text-[11px] font-semibold text-white shadow">
-                  En çok tercih edilen
+                  {t.packages.featuredTag}
                 </span>
               )}
               {pro && p.badge && (
@@ -338,25 +287,16 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
                 </span>
               )}
               <div className={"text-xs font-semibold uppercase tracking-wider " + (pro ? "text-orange" : "text-purple")}>
-                Paket
+                {t.packages.paketLabel}
               </div>
               <h3 className={"mt-1 text-xl font-semibold " + (pro ? "" : "text-foreground")}>{p.name}</h3>
-              <p className={"mt-2 text-sm leading-relaxed " + (pro ? "text-white/80" : "text-muted-foreground")}>
-                {p.short}
-              </p>
-              <p className={"mt-3 text-xs italic " + (pro ? "text-white/70" : "text-muted-foreground")}>
-                {p.ideal}
-              </p>
+              <p className={"mt-2 text-sm leading-relaxed " + (pro ? "text-white/80" : "text-muted-foreground")}>{p.short}</p>
+              <p className={"mt-3 text-xs italic " + (pro ? "text-white/70" : "text-muted-foreground")}>{p.ideal}</p>
 
               <div className={"mt-5 h-px " + (pro ? "bg-white/15" : "bg-border")} />
 
               {p.inheritFrom && (
-                <div
-                  className={
-                    "mt-4 text-xs font-semibold " +
-                    (pro ? "text-orange" : "text-purple")
-                  }
-                >
+                <div className={"mt-4 text-xs font-semibold " + (pro ? "text-orange" : "text-purple")}>
                   {p.inheritFrom}
                 </div>
               )}
@@ -381,12 +321,8 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
                 ))}
               </ul>
 
-              <div className={"mt-6 text-xs font-medium " + (pro ? "text-white/80" : "text-muted-foreground")}>
-                {p.delivery}
-              </div>
-              <div className={"mt-1 text-xs " + (pro ? "text-white/70" : "text-muted-foreground")}>
-                Fiyat bilgisi için WhatsApp’tan teklif al.
-              </div>
+              <div className={"mt-6 text-xs font-medium " + (pro ? "text-white/80" : "text-muted-foreground")}>{p.delivery}</div>
+              <div className={"mt-1 text-xs " + (pro ? "text-white/70" : "text-muted-foreground")}>{t.packages.priceNote}</div>
 
               <div className="mt-5">
                 <a
@@ -414,17 +350,14 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
 }
 
 export function ProcessSection() {
+  const t = useT();
   return (
     <Section id="surec" className="bg-muted/40">
-      <SectionTitle
-        eyebrow="Süreç"
-        title="Nasıl Çalışıyoruz?"
-        subtitle="Süreç, işletmenin ihtiyacına uygun şekilde sade ve planlı ilerler."
-      />
+      <SectionTitle eyebrow={t.process.eyebrow} title={t.process.title} subtitle={t.process.subtitle} />
       <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {PROCESS_STEPS.map((s, i) => (
+        {t.process.steps.map((s, i) => (
           <div key={s.title} className="relative rounded-2xl border border-border bg-card p-6">
-            <div className="text-xs font-semibold text-purple">Adım {String(i + 1).padStart(2, "0")}</div>
+            <div className="text-xs font-semibold text-purple">{t.process.stepLabel} {String(i + 1).padStart(2, "0")}</div>
             <h3 className="mt-2 text-base font-semibold text-foreground">{s.title}</h3>
             <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{s.text}</p>
           </div>
@@ -435,12 +368,13 @@ export function ProcessSection() {
 }
 
 export function FAQSection() {
+  const t = useT();
   return (
     <Section id="sss" className="bg-background">
-      <SectionTitle eyebrow="SSS" title="Sık Sorulan Sorular" />
+      <SectionTitle eyebrow={t.faq.eyebrow} title={t.faq.title} />
       <div className="mt-12 mx-auto max-w-3xl rounded-2xl border border-border bg-card p-2 md:p-4">
         <Accordion type="single" collapsible className="w-full">
-          {FAQS.map((f, i) => (
+          {t.faq.items.map((f, i) => (
             <AccordionItem key={i} value={`item-${i}`} className="border-b last:border-b-0">
               <AccordionTrigger className="px-3 text-left text-base font-semibold text-foreground">
                 {f.q}

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 
 export function ScrollToTop() {
+  const t = useT();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export function ScrollToTop() {
     <button
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      aria-label="Yukarı çık"
+      aria-label={t.scrollTop.aria}
       className="fixed bottom-5 left-5 z-50 grid h-11 w-11 place-items-center rounded-full bg-navy text-navy-foreground shadow-xl ring-2 ring-white/40 hover:bg-orange hover:ring-orange/50 hover:scale-105 transition-all"
     >
       <ArrowUp className="h-5 w-5" />

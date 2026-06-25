@@ -1,8 +1,10 @@
 import { FooterLogo, LOGO_MARK } from "./Logo";
 import { NAV_LINKS, SITE, SOCIAL_LINKS, waLink } from "@/lib/site";
+import { useT } from "@/lib/i18n/context";
 import { Mail, MessageCircle } from "lucide-react";
 
 export function Footer() {
+  const t = useT();
   return (
     <footer className="relative border-t border-border bg-muted/40 overflow-hidden">
       <div
@@ -11,9 +13,9 @@ export function Footer() {
         style={{ backgroundImage: `url(${LOGO_MARK})` }}
       />
       <div className="relative mx-auto max-w-7xl px-4 md:px-8 py-14 grid gap-12 md:grid-cols-4">
-        <div className="md:col-span-2 space-y-4">
-          <div className="h-28 md:h-32"><FooterLogo className="h-28 md:h-32" /></div>
-          <p className="max-w-md text-sm text-muted-foreground">{SITE.tagline}</p>
+        <div className="md:col-span-2 space-y-4 max-w-md">
+          <FooterLogo className="w-40 md:w-44" />
+          <p className="text-sm text-muted-foreground">{t.footer.tagline}</p>
           <div className="flex flex-wrap gap-3 pt-1">
             <a
               href={`mailto:${SITE.email}`}
@@ -22,7 +24,7 @@ export function Footer() {
               <Mail className="h-4 w-4" /> {SITE.email}
             </a>
             <a
-              href={waLink("Merhaba, Leony hakkında bilgi almak istiyorum.")}
+              href={waLink(t.waMessages.footerGeneric)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-whatsapp transition-colors"
@@ -33,12 +35,12 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-3">Hızlı Bağlantılar</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-3">{t.footer.quickLinks}</h4>
           <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
                 <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors">
-                  {l.label}
+                  {t.nav[l.key]}
                 </a>
               </li>
             ))}
@@ -46,7 +48,7 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-3">Sosyal & Yasal</h4>
+          <h4 className="text-sm font-semibold text-foreground mb-3">{t.footer.socialLegal}</h4>
           <ul className="space-y-2">
             {SOCIAL_LINKS.map((s) => (
               <li key={s.label}>
@@ -55,7 +57,7 @@ export function Footer() {
             ))}
             <li>
               <a href="#" className="text-sm text-muted-foreground hover:text-orange transition-colors">
-                KVKK / Gizlilik Politikası
+                {t.footer.kvkk}
               </a>
             </li>
           </ul>
@@ -63,7 +65,7 @@ export function Footer() {
       </div>
       <div className="relative border-t border-border">
         <div className="mx-auto max-w-7xl px-4 md:px-8 py-5 text-xs text-muted-foreground">
-          © 2026 Leony. Tüm hakları saklıdır.
+          {t.footer.copyright}
         </div>
       </div>
     </footer>
