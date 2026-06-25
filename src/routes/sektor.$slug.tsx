@@ -79,7 +79,7 @@ function ErrorView() {
 }
 
 function SectorPage() {
-  const { slug } = Route.useLoaderData();
+  const { slug } = Route.useLoaderData() as { slug: CategorySlug };
   const t = useT();
   const data = t.sectors[slug];
   const advanced = SECTOR_ADVANCED[slug];
