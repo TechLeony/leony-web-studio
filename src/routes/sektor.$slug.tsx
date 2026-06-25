@@ -2,6 +2,7 @@ import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { Header } from "@/components/leony/Header";
 import { Footer } from "@/components/leony/Footer";
 import { FloatingAssistant } from "@/components/leony/FloatingAssistant";
+import { ScrollToTop } from "@/components/leony/ScrollToTop";
 import { Section, SectionTitle } from "@/components/leony/Section";
 import {
   DemoProjectsSection,
