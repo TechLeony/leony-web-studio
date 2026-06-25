@@ -25,9 +25,9 @@ export function Header() {
           : "bg-background/60 backdrop-blur",
       )}
     >
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 md:px-8">
-        <a href="/" className="flex h-12 items-center" aria-label="Leony anasayfa">
-          <HorizontalLogo className="h-12" />
+      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-4 px-4 md:px-8">
+        <a href="/" className="flex h-16 md:h-20 items-center" aria-label="Leony anasayfa">
+          <HorizontalLogo className="h-16 md:h-20" />
         </a>
 
         <nav className="hidden lg:flex items-center gap-7">
@@ -35,7 +35,7 @@ export function Header() {
             <a
               key={l.href}
               href={l.href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-orange transition-colors"
             >
               {l.label}
             </a>
