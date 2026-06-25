@@ -1,29 +1,62 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Header } from "@/components/leony/Header";
+import { Footer } from "@/components/leony/Footer";
+import { Hero } from "@/components/leony/Hero";
+import { FloatingAssistant } from "@/components/leony/FloatingAssistant";
+import {
+  WhatIsSection,
+  WhyWebsiteSection,
+  CategoriesSection,
+  DemoProjectsSection,
+  PackagesSection,
+  ProcessSection,
+  FAQSection,
+} from "@/components/leony/sections";
+import { ContactSection } from "@/components/leony/ContactSection";
+import { SITE } from "@/lib/site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Leony | Modern Web Tasarım ve Geliştirme" },
+      {
+        name: "description",
+        content:
+          "Leony, işletmeler için modern, mobil uyumlu ve iletişim odaklı web çözümleri sunar.",
+      },
+      { property: "og:title", content: "Leony | Modern Web Tasarım ve Geliştirme" },
+      {
+        property: "og:description",
+        content:
+          "Leony, işletmeler için modern, mobil uyumlu ve iletişim odaklı web çözümleri sunar.",
+      },
+      { property: "og:site_name", content: SITE.brand },
+      { property: "og:url", content: "/" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "/" }],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main>
+        <Hero />
+        <WhatIsSection />
+        <WhyWebsiteSection />
+        <CategoriesSection />
+        <DemoProjectsSection />
+        <PackagesSection />
+        <ProcessSection />
+        <FAQSection />
+        <ContactSection />
+      </main>
+      <Footer />
+      <FloatingAssistant />
     </div>
   );
 }
