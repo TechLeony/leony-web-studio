@@ -3,7 +3,7 @@
 export const SITE = {
   brand: "Leony",
   whatsappNumber:
-    (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "905000000000",
+    (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "905016800041",
   email:
     (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "info@leony.app",
   url:
