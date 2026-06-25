@@ -1,7 +1,9 @@
 import { HeroVisual } from "./HeroVisual";
 import { ArrowRight } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 
 export function Hero() {
+  const t = useT();
   return (
     <section className="relative pt-28 md:pt-32 pb-16 md:pb-24 overflow-hidden">
       <div
@@ -20,16 +22,15 @@ export function Hero() {
         <div className="space-y-7">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-orange via-pink to-purple" />
-            İşletmen için modern dijital vitrin
+            {t.hero.badge}
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.05]">
-            Markanızı öne çıkaran,{" "}
-            <span className="text-gradient-brand">hızlı ve güvenilir web çözümleriyle</span>{" "}
-            dijitalde güçlü bir ilk izlenim yaratın.
+            {t.hero.h1Pre}
+            <span className="text-gradient-brand">{t.hero.h1Highlight}</span>
+            {t.hero.h1Post}
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed">
-            Leony, işletmelerin dijitalde güven veren bir görünüm kazanması için modern web
-            siteleri, demo projeler ve ihtiyaca özel web çözümleri üretir.
+            {t.hero.sub}
           </p>
 
           <div className="flex flex-wrap gap-3 pt-1">
@@ -37,15 +38,15 @@ export function Hero() {
               href="#sektorler"
               className="group inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-6 text-sm font-semibold text-navy-foreground hover:bg-orange transition-colors shadow-sm"
             >
-              İşletme Kategorini Seç <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              {t.hero.cta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-xs md:text-sm text-muted-foreground">
-            {["Mobil uyumlu", "Modern arayüz", "Dönüşüm odaklı", "Hızlı teslim"].map((t, i) => (
-              <span key={t} className="inline-flex items-center gap-2">
+            {t.hero.chips.map((c, i) => (
+              <span key={c} className="inline-flex items-center gap-2">
                 {i > 0 && <span className="h-1 w-1 rounded-full bg-border" />}
-                {t}
+                {c}
               </span>
             ))}
           </div>
