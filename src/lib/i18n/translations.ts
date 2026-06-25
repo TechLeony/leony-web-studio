@@ -1599,4 +1599,3 @@ export const LANG_LABELS: Record<Lang, string> = {
   az: "AZ",
   en: "EN",
 };
-};
