@@ -94,6 +94,7 @@ export const PACKAGES = [
     features: [
       "Tek sayfalık modern website",
       "Mobil uyumlu tasarım",
+      "Müşteriye özel tasarım taslağı ve revize imkânı",
       "Hizmet / işletme bilgileri",
       "İletişim alanı",
       "WhatsApp yönlendirmesi",

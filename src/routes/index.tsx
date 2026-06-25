@@ -3,6 +3,7 @@ import { Header } from "@/components/leony/Header";
 import { Footer } from "@/components/leony/Footer";
 import { Hero } from "@/components/leony/Hero";
 import { FloatingAssistant } from "@/components/leony/FloatingAssistant";
+import { ScrollToTop } from "@/components/leony/ScrollToTop";
 import {
   WhatIsSection,
   WhyWebsiteSection,
@@ -57,6 +58,7 @@ function Index() {
       </main>
       <Footer />
       <FloatingAssistant />
+      <ScrollToTop />
     </div>
   );
 }

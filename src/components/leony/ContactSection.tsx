@@ -92,7 +92,7 @@ export function ContactSection() {
       <SectionTitle
         eyebrow="İletişim"
         title="İletişime Geç"
-        subtitle="Paket seçmeden de işletmen için uygun dijital çözümü konuşabiliriz."
+        subtitle="Hangi paketin size uygun olduğundan emin değil misiniz? Bizimle iletişime geçin, işletmenizin ihtiyaçlarını birlikte değerlendirelim ve sizin için en doğru dijital çözümü belirleyelim."
       />
 
       <div className="mt-12 mx-auto max-w-2xl rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">

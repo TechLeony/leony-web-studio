@@ -17,7 +17,7 @@ export function FloatingAssistant() {
               aria-hidden
             />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">Leony</div>
+              <div className="font-semibold text-sm">Leony Team</div>
               <div className="text-[11px] text-white/75">Genellikle birkaç dakikada yanıt verir</div>
             </div>
             <button
@@ -31,12 +31,12 @@ export function FloatingAssistant() {
           </div>
           <div className="p-4">
             <p className="text-sm text-foreground">
-              Merhaba <span aria-hidden>👋</span> Leony üzerinden web sitesi çözümleri hakkında hızlıca bilgi alabilirsin.
+              Merhaba <span aria-hidden>👋</span> Leony web sitesi hizmetleri hakkında bilgi almak istiyorum.
             </p>
             <div className="mt-4">
               <WhatsAppButton
                 className="w-full"
-                message="Merhaba, Leony üzerinden web sitesi hizmetleri hakkında bilgi almak istiyorum."
+                message="Merhaba, Leony web sitesi hizmetleri hakkında bilgi almak istiyorum."
               >
                 WhatsApp’tan Bilgi Al
               </WhatsAppButton>

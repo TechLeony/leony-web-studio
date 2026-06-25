@@ -18,9 +18,10 @@ export function WhatIsSection() {
         </div>
         <div className="lg:col-span-7 space-y-6">
           <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-            Leony; markalar ve hizmet odaklı işletmeler için modern, mobil uyumlu ve iletişim odaklı
-            web çözümleri tasarlayan bir dijital stüdyodur. Amaç; güçlü bir dijital vitrin oluşturmak,
-            ziyaretçi deneyimini sadeleştirmek ve işletmeye daha profesyonel bir görünüm kazandırmaktır.
+            Leony; markalar ve hizmet odaklı işletmelerin dijitalde daha profesyonel, güvenilir ve
+            ulaşılabilir görünmesini sağlayan bir dijital stüdyodur. İşletmenin kendini net
+            anlatmasına, müşterilerin aradığı bilgilere kolayca ulaşmasına ve ilk izlenimin daha
+            güçlü olmasına odaklanır.
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {LEONY_HIGHLIGHTS.map((h) => (
@@ -46,8 +47,8 @@ export function WhyWebsiteSection() {
     <Section id="neden-website" className="bg-muted/40">
       <SectionTitle
         eyebrow="Neden Website?"
-        title={<>İşletmenin dijital vitrini <span className="text-gradient-brand">daha fazlasını</span> yapmalı.</>}
-        subtitle="Leony çözümleri yalnızca estetik görünüm sunmaz; iletişim akışını düzenler, güven oluşturur ve işletmeye daha profesyonel bir dijital yapı kazandırır."
+        title={<>Web sitesi artık lüks değil, <span className="text-gradient-brand">işletmenizin dijital adresi.</span></>}
+        subtitle="Müşterilerinize, işletmenizi internet üzerinden tanıma, hizmetlerinizi inceleme ve sizinle kolayca iletişime geçme imkânı sunar. Bu da markanızın sektörde daha profesyonel, güvenilir ve erişilebilir görünmesini sağlar."
       />
 
       <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
