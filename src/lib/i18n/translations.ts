@@ -663,6 +663,27 @@ const TR: Dict = {
     packageGeneric: (pkg) => `Merhaba, Leony üzerinden ${pkg} hakkında bilgi almak istiyorum.`,
     packageWithSector: (label, pkg) => `Merhaba, Leony üzerinden ${label} kategorisi için ${pkg} hakkında bilgi almak istiyorum.`,
   },
+  heroVisual: {
+    urlText: "leony.app/demo",
+    webBlockEyebrow: "Web Çözümü",
+    webBlockTitle: "Modern, hızlı ve dönüşüm odaklı.",
+    metrics: [
+      { v: "+38%", l: "Talep" },
+      { v: "1.2s", l: "Yük" },
+      { v: "A+", l: "Mobil" },
+    ],
+    quickLinks: ["Randevu", "Galeri", "Menü", "İletişim"],
+    adminTitle: "Admin Dashboard",
+    adminSub: "Talepler · Bugün",
+    apptTitle: "Randevu Yönetimi",
+    apptSub: "Bugün · 4 yeni",
+    chips: {
+      contactForm: "İletişim Formu",
+      whatsappFlow: "WhatsApp Akışı",
+      mobile: "Mobil Uyumlu",
+      demos: "Demo Projeler",
+    },
+  },
 };
 
 const AZ: Dict = {
