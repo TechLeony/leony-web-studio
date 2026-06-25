@@ -24,13 +24,13 @@ export function Hero() {
             İşletmen için modern dijital vitrin
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.05]">
-            İşletmen için{" "}
-            <span className="text-gradient-brand">modern, hızlı ve güven veren</span>{" "}
-            web çözümleri.
+            Markanızı öne çıkaran,{" "}
+            <span className="text-gradient-brand">hızlı ve güvenilir web çözümleriyle</span>{" "}
+            dijitalde güçlü bir ilk izlenim yaratın.
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-xl leading-relaxed">
-            Leony, markaların dijital görünümünü güçlendiren; modern web siteleri, demo projeler
-            ve işletme ihtiyaçlarına uygun özel çözümler sunar.
+            Leony, işletmelerin dijitalde güven veren bir görünüm kazanması için modern web
+            siteleri, demo projeler ve ihtiyaca özel web çözümleri üretir.
           </p>
 
           <div className="flex flex-wrap gap-3 pt-1">
