@@ -1116,6 +1116,27 @@ const AZ: Dict = {
     packageGeneric: (pkg) => `Salam, Leony üzərindən ${pkg} haqqında məlumat almaq istəyirəm.`,
     packageWithSector: (label, pkg) => `Salam, Leony üzərindən ${label} kateqoriyası üçün ${pkg} haqqında məlumat almaq istəyirəm.`,
   },
+  heroVisual: {
+    urlText: "leony.app/demo",
+    webBlockEyebrow: "Veb Həll",
+    webBlockTitle: "Modern, sürətli və konversiya yönümlü.",
+    metrics: [
+      { v: "+38%", l: "Sorğu" },
+      { v: "1.2s", l: "Yüklənmə" },
+      { v: "A+", l: "Mobil" },
+    ],
+    quickLinks: ["Qəbul", "Qalereya", "Menyu", "Əlaqə"],
+    adminTitle: "Admin Dashboard",
+    adminSub: "Sorğular · Bu gün",
+    apptTitle: "Qəbul İdarəetməsi",
+    apptSub: "Bu gün · 4 yeni",
+    chips: {
+      contactForm: "Əlaqə Formu",
+      whatsappFlow: "WhatsApp Axını",
+      mobile: "Mobil Uyğun",
+      demos: "Demo Layihələr",
+    },
+  },
 };
 
 const EN: Dict = {
@@ -1556,4 +1577,25 @@ export const LANG_LABELS: Record<Lang, string> = {
   tr: "TR",
   az: "AZ",
   en: "EN",
+  heroVisual: {
+    urlText: "leony.app/demo",
+    webBlockEyebrow: "Web Solution",
+    webBlockTitle: "Modern, fast, and conversion-focused.",
+    metrics: [
+      { v: "+38%", l: "Leads" },
+      { v: "1.2s", l: "Load" },
+      { v: "A+", l: "Mobile" },
+    ],
+    quickLinks: ["Booking", "Gallery", "Menu", "Contact"],
+    adminTitle: "Admin Dashboard",
+    adminSub: "Leads · Today",
+    apptTitle: "Appointments",
+    apptSub: "Today · 4 new",
+    chips: {
+      contactForm: "Contact Form",
+      whatsappFlow: "WhatsApp Flow",
+      mobile: "Mobile friendly",
+      demos: "Demo Projects",
+    },
+  },
 };
