@@ -350,7 +350,7 @@ const TR: Dict = {
   },
   packages: {
     eyebrow: "Paketler",
-    title: "Sade hiyerarşi, net çözümler.",
+    title: "Markanızın dijital hedeflerine en uygun paket seçimi.",
     subtitle: "İşletmenin ihtiyacına uygun çözümü seçerek web sitesi yapısını daha net planlayabilirsin.",
     bonusTag: "Bonus:",
     bonusText: "Müşteriye özel tasarım taslağı ve revize imkânı",
@@ -804,7 +804,7 @@ const AZ: Dict = {
   },
   packages: {
     eyebrow: "Paketlər",
-    title: "Sadə iyerarxiya, aydın həllər.",
+    title: "Brendinizin rəqəmsal hədəflərinə ən uyğun paket seçimi.",
     subtitle: "Biznesinizin ehtiyacına uyğun həlli seçərək vebsayt strukturunu daha aydın planlaya bilərsiniz.",
     bonusTag: "Bonus:",
     bonusText: "Müştəriyə xüsusi dizayn eskizi və düzəliş imkanı",
@@ -1258,7 +1258,7 @@ const EN: Dict = {
   },
   packages: {
     eyebrow: "Packages",
-    title: "Simple hierarchy, clear solutions.",
+    title: "The best package choice for your brand's digital goals.",
     subtitle: "Pick the option that matches your needs and plan your website structure with clarity.",
     bonusTag: "Bonus:",
     bonusText: "Custom design draft and revision included",
