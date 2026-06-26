@@ -350,7 +350,7 @@ const TR: Dict = {
   },
   packages: {
     eyebrow: "Paketler",
-    title: "Sade hiyerarşi, net çözümler.",
+    title: "Markanızın dijital hedeflerine en uygun paket seçimi.",
     subtitle: "İşletmenin ihtiyacına uygun çözümü seçerek web sitesi yapısını daha net planlayabilirsin.",
     bonusTag: "Bonus:",
     bonusText: "Müşteriye özel tasarım taslağı ve revize imkânı",
