@@ -1258,7 +1258,7 @@ const EN: Dict = {
   },
   packages: {
     eyebrow: "Packages",
-    title: "Simple hierarchy, clear solutions.",
+    title: "The best package choice for your brand's digital goals.",
     subtitle: "Pick the option that matches your needs and plan your website structure with clarity.",
     bonusTag: "Bonus:",
     bonusText: "Custom design draft and revision included",
