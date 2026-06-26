@@ -804,7 +804,7 @@ const AZ: Dict = {
   },
   packages: {
     eyebrow: "Paketlər",
-    title: "Sadə iyerarxiya, aydın həllər.",
+    title: "Brendinizin rəqəmsal hədəflərinə ən uyğun paket seçimi.",
     subtitle: "Biznesinizin ehtiyacına uyğun həlli seçərək vebsayt strukturunu daha aydın planlaya bilərsiniz.",
     bonusTag: "Bonus:",
     bonusText: "Müştəriyə xüsusi dizayn eskizi və düzəliş imkanı",
