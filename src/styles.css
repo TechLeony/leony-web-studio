@@ -91,6 +91,9 @@
     text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  button, [type="button"], [type="submit"], [type="reset"], [role="button"], select, summary {
+    cursor: pointer;
+  }
 }
 
 @utility text-gradient-brand {
