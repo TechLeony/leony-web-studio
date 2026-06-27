@@ -1085,7 +1085,7 @@ const AZ: Dict = {
   assistant: {
     name: "Leony Team",
     status: "Adətən bir neçə dəqiqədə cavab verir",
-    greeting: "Salam 👋 Leony vebsayt xidmətləri haqqında məlumat almaq istəyirəm.",
+    greeting: "Salam 👋 Bizneziniz üçün vebsayt haqqında qısa məlumat almaq istəsəniz, WhatsApp üzərindən bizə yaza bilərsiniz.",
     waCta: "WhatsApp ilə məlumat al",
     openAria: "Leony asistentini aç",
     closeAria: "Bağla",
@@ -1112,7 +1112,7 @@ const AZ: Dict = {
   switcher: { aria: "Dil seç" },
   waMessages: {
     headerGeneric: "Salam, Leony üzərindən vebsayt xidmətləri haqqında məlumat almaq istəyirəm.",
-    assistant: "Salam, Leony vebsayt xidmətləri haqqında məlumat almaq istəyirəm.",
+    assistant: "Salam, biznesim üçün vebsayt haqqında məlumat almaq istəyirəm.",
     footerGeneric: "Salam, Leony haqqında məlumat almaq istəyirəm.",
     sectorBody: (label) => `Salam, Leony üzərindən ${label} kateqoriyası üçün vebsayt xidmətləri haqqında məlumat almaq istəyirəm.`,
     packageGeneric: (pkg) => `Salam, Leony üzərindən ${pkg} haqqında məlumat almaq istəyirəm.`,
@@ -1539,7 +1539,7 @@ const EN: Dict = {
   assistant: {
     name: "Leony Team",
     status: "Usually replies in a few minutes",
-    greeting: "Hi 👋 I’d like to learn more about Leony website services.",
+    greeting: "Hi 👋 If you’d like quick info about a website for your business, message us on WhatsApp.",
     waCta: "Ask on WhatsApp",
     openAria: "Open Leony assistant",
     closeAria: "Close",
@@ -1566,7 +1566,7 @@ const EN: Dict = {
   switcher: { aria: "Select language" },
   waMessages: {
     headerGeneric: "Hi, I’d like to learn more about Leony website services.",
-    assistant: "Hi, I’d like to learn more about Leony website services.",
+    assistant: "Hi, I’d like info about a website for my business.",
     footerGeneric: "Hi, I’d like to learn more about Leony.",
     sectorBody: (label) => `Hi, I’d like more info about Leony website services for the ${label} category.`,
     packageGeneric: (pkg) => `Hi, I’d like more info about the Leony ${pkg}.`,
