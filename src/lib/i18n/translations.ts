@@ -136,10 +136,14 @@ export type Dict = {
       customCategory: string;
       customCategoryPh: string;
       email: string;
+      emailOptional: string;
       emailPh: string;
       method: string;
       phone: string;
       phonePh: string;
+      whatsappLabel: string;
+      whatsappHelper: string;
+      countrySearchPh: string;
       message: string;
       messagePh: string;
     };
