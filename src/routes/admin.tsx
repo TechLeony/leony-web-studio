@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listLeads, updateLead } from "@/lib/admin.functions";
 import { SITE } from "@/lib/site";
 import { toast } from "sonner";
-import { LogOut, Search } from "lucide-react";
+import { Copy, LogOut, MessageCircle, Search } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -23,8 +23,12 @@ type Lead = {
   name: string;
   business_category: string;
   custom_business_category: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
+  phone_country: string | null;
+  phone_country_code: string | null;
+  phone_dial_code: string | null;
+  whatsapp_number: string | null;
   message: string;
   preferred_contact_method: string;
   selected_package: string | null;
@@ -183,7 +187,7 @@ function AdminDashboard({ email }: { email: string }) {
     if (q.trim()) {
       const needle = q.trim().toLowerCase();
       list = list.filter((l) =>
-        [l.name, l.email, l.phone, l.business_category, l.message]
+        [l.name, l.email, l.phone, l.whatsapp_number, l.business_category, l.message]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(needle)),
       );
@@ -367,9 +371,20 @@ function LeadCard({
         {lead.custom_business_category && (
           <Info label="Özel Kategori" value={lead.custom_business_category} />
         )}
-        <Info label="Email" value={<a className="hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>} />
-        {lead.phone && (
-          <Info label="Telefon" value={<a className="hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>} />
+        {(lead.whatsapp_number || lead.phone) && (
+          <Info
+            label="WhatsApp Numarası"
+            value={<WhatsAppCell number={lead.whatsapp_number || lead.phone || ""} />}
+          />
+        )}
+        {(lead.phone_country || lead.phone_dial_code) && (
+          <Info
+            label="Ülke"
+            value={`${lead.phone_country ?? ""}${lead.phone_dial_code ? ` (${lead.phone_dial_code})` : ""}`.trim()}
+          />
+        )}
+        {lead.email && (
+          <Info label="Email" value={<a className="hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>} />
         )}
         <Info label="Tercih Edilen İletişim" value={lead.preferred_contact_method} />
         {lead.selected_package && <Info label="Seçilen Paket" value={lead.selected_package} />}
@@ -424,6 +439,39 @@ function Empty({ children, tone = "default" }: { children: React.ReactNode; tone
       }
     >
       {children}
+    </div>
+  );
+}
+
+function WhatsAppCell({ number }: { number: string }) {
+  const digits = number.replace(/\D/g, "");
+  const waMsg = "Merhaba, Leony üzerinden oluşturduğunuz web sitesi talebi hakkında iletişime geçiyorum.";
+  const waHref = `https://wa.me/${digits}?text=${encodeURIComponent(waMsg)}`;
+  const display = number.startsWith("+") ? number : `+${digits}`;
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="font-mono tabular-nums">{display}</span>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(display).then(
+            () => toast.success("Kopyalandı"),
+            () => toast.error("Kopyalanamadı"),
+          );
+        }}
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-semibold hover:bg-muted cursor-pointer"
+        title="Numarayı kopyala"
+      >
+        <Copy className="h-3 w-3" /> Kopyala
+      </button>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-7 items-center gap-1 rounded-full bg-emerald-500 text-white px-2.5 text-[11px] font-semibold hover:bg-emerald-600"
+      >
+        <MessageCircle className="h-3 w-3" /> WhatsApp'tan Yaz
+      </a>
     </div>
   );
 }

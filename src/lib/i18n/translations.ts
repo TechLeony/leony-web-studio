@@ -136,10 +136,14 @@ export type Dict = {
       customCategory: string;
       customCategoryPh: string;
       email: string;
+      emailOptional: string;
       emailPh: string;
       method: string;
       phone: string;
       phonePh: string;
+      whatsappLabel: string;
+      whatsappHelper: string;
+      countrySearchPh: string;
       message: string;
       messagePh: string;
     };
@@ -464,10 +468,14 @@ const TR: Dict = {
       customCategory: "İşletme kategorini yaz",
       customCategoryPh: "Örn: Çiçekçi, Kişisel Antrenör...",
       email: "Email",
+      emailOptional: "Email / E-posta (opsiyonel)",
       emailPh: "ornek@email.com",
       method: "Tercih edilen iletişim yöntemi",
       phone: "Telefon (WhatsApp)",
-      phonePh: "+90 5XX XXX XX XX",
+      phonePh: "5XX XXX XX XX",
+      whatsappLabel: "WhatsApp Numaranız",
+      whatsappHelper: "Sizinle dönüş yapabilmemiz için WhatsApp numaranızı yazın.",
+      countrySearchPh: "Ülke kodu seçin",
       message: "Mesaj",
       messagePh: "İşletmen ve ihtiyacın hakkında kısaca bahset.",
     },
@@ -478,11 +486,11 @@ const TR: Dict = {
       category: "Kategori seç",
       customCategory: "İşletme kategorini yaz",
       email: "Geçerli bir email gir",
-      phone: "WhatsApp için telefon numarası gerekli",
+      phone: "WhatsApp numarası gerekli",
       message: "Kısa bir mesaj yaz",
     },
-    toastSuccess: "Bilgi talebin alındı. En kısa sürede dönüş yapılacak.",
-    toastError: "Gönderim sırasında bir hata oluştu. Lütfen tekrar dene.",
+    toastSuccess: "Talebiniz oluşturuldu. En kısa sürede sizinle iletişime geçeceğiz.",
+    toastError: "Talebiniz oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin veya WhatsApp üzerinden bizimle iletişime geçin.",
   },
   footer: {
     tagline: "İşletmeler için modern ve iletişim odaklı web çözümleri.",
@@ -918,10 +926,14 @@ const AZ: Dict = {
       customCategory: "Biznes kateqoriyanızı yazın",
       customCategoryPh: "Məs: Çiçəkçi, Şəxsi məşqçi...",
       email: "Email",
+      emailOptional: "Email / E-poçt (istəyə bağlı)",
       emailPh: "ornek@email.com",
       method: "Üstün tutulan əlaqə üsulu",
       phone: "Telefon (WhatsApp)",
-      phonePh: "+994 5X XXX XX XX",
+      phonePh: "5X XXX XX XX",
+      whatsappLabel: "WhatsApp nömrəniz",
+      whatsappHelper: "Sizinlə əlaqə saxlaya bilməyimiz üçün WhatsApp nömrənizi yazın.",
+      countrySearchPh: "Ölkə kodunu seçin",
       message: "Mesaj",
       messagePh: "Biznesiniz və ehtiyacınız barədə qısaca yazın.",
     },
@@ -932,11 +944,11 @@ const AZ: Dict = {
       category: "Kateqoriya seçin",
       customCategory: "Biznes kateqoriyanızı yazın",
       email: "Düzgün email daxil edin",
-      phone: "WhatsApp üçün telefon nömrəsi tələb olunur",
+      phone: "WhatsApp nömrəsi tələb olunur",
       message: "Qısa mesaj yazın",
     },
-    toastSuccess: "Məlumat sorğunuz qəbul edildi. Ən qısa zamanda cavab veriləcək.",
-    toastError: "Göndərmə zamanı xəta baş verdi. Yenidən cəhd edin.",
+    toastSuccess: "Sorğunuz yaradıldı. Ən qısa zamanda sizinlə əlaqə saxlayacağıq.",
+    toastError: "Sorğunuz göndərilərkən problem yarandı. Yenidən cəhd edin və ya WhatsApp üzərindən əlaqə saxlayın.",
   },
   footer: {
     tagline: "Bizneslər üçün modern və əlaqə yönümlü veb həllər.",
@@ -1372,10 +1384,14 @@ const EN: Dict = {
       customCategory: "Type your business category",
       customCategoryPh: "e.g. Florist, Personal Trainer...",
       email: "Email",
+      emailOptional: "Email (optional)",
       emailPh: "example@email.com",
       method: "Preferred contact method",
       phone: "Phone (WhatsApp)",
-      phonePh: "+1 555 555 5555",
+      phonePh: "555 555 5555",
+      whatsappLabel: "Your WhatsApp Number",
+      whatsappHelper: "Share your WhatsApp number so we can get back to you.",
+      countrySearchPh: "Select country code",
       message: "Message",
       messagePh: "Briefly tell us about your business and what you need.",
     },
@@ -1386,11 +1402,11 @@ const EN: Dict = {
       category: "Please pick a category",
       customCategory: "Please type your business category",
       email: "Enter a valid email",
-      phone: "Phone number is required for WhatsApp",
+      phone: "WhatsApp number is required",
       message: "Please write a short message",
     },
-    toastSuccess: "Your request has been received. We’ll get back to you shortly.",
-    toastError: "Something went wrong while sending. Please try again.",
+    toastSuccess: "Your request has been created. We will contact you as soon as possible.",
+    toastError: "We couldn't create your request. Please try again or reach us on WhatsApp.",
   },
   footer: {
     tagline: "Modern, contact-focused web solutions for businesses.",
