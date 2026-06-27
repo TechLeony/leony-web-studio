@@ -38,7 +38,7 @@ export const updateLead = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => updateSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context as any);
-    const patch: Record<string, unknown> = {};
+    const patch: { status?: "pending" | "confirmed" | "canceled"; admin_note?: string | null } = {};
     if (data.status !== undefined) patch.status = data.status;
     if (data.admin_note !== undefined) patch.admin_note = data.admin_note;
     if (Object.keys(patch).length === 0) return { ok: true };
