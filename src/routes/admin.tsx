@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listLeads, updateLead } from "@/lib/admin.functions";
 import { SITE } from "@/lib/site";
 import { toast } from "sonner";
-import { LogOut, Search } from "lucide-react";
+import { Copy, LogOut, MessageCircle, Search } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
