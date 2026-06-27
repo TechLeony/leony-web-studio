@@ -631,7 +631,7 @@ const TR: Dict = {
   assistant: {
     name: "Leony Team",
     status: "Genellikle birkaç dakikada yanıt verir",
-    greeting: "Merhaba 👋 Leony web sitesi hizmetleri hakkında bilgi almak istiyorum.",
+    greeting: "Merhaba 👋 İşletmeniz için web sitesi hakkında hızlıca bilgi almak isterseniz WhatsApp üzerinden bize yazabilirsiniz.",
     waCta: "WhatsApp’tan Bilgi Al",
     openAria: "Leony asistanını aç",
     closeAria: "Kapat",
@@ -658,7 +658,7 @@ const TR: Dict = {
   switcher: { aria: "Dil seç" },
   waMessages: {
     headerGeneric: "Merhaba, Leony üzerinden web sitesi hizmetleri hakkında bilgi almak istiyorum.",
-    assistant: "Merhaba, Leony web sitesi hizmetleri hakkında bilgi almak istiyorum.",
+    assistant: "Merhaba, işletmem için website hakkında bilgi almak istiyorum.",
     footerGeneric: "Merhaba, Leony hakkında bilgi almak istiyorum.",
     sectorBody: (label) => `Merhaba, Leony üzerinden ${label} kategorisi için web sitesi hizmetleri hakkında bilgi almak istiyorum.`,
     packageGeneric: (pkg) => `Merhaba, Leony üzerinden ${pkg} hakkında bilgi almak istiyorum.`,

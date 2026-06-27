@@ -5,9 +5,11 @@ export const SITE = {
   whatsappNumber:
     (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) ?? "905016800041",
   email:
-    (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "info@leony.app",
+    (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "contact@leony.tech",
   url:
-    (import.meta.env.VITE_SITE_URL as string | undefined) ?? "https://leony.app",
+    (import.meta.env.VITE_SITE_URL as string | undefined) ?? "https://leony.tech",
+  // Approved admin email — only this account can access /admin.
+  adminEmail: "contact@leony.tech",
 };
 
 export function waLink(message: string) {
@@ -36,10 +38,18 @@ export const SECTOR_NAV_LINKS: { key: NavKey; href: string }[] = [
   { key: "contact", href: "#iletisim" },
 ];
 
-export const SOCIAL_LINKS = [
-  { label: "Instagram", href: "#" },
-  { label: "GitHub", href: "#" },
-  { label: "LinkedIn", href: "#" },
+// TODO: Replace these placeholder URLs with the real Leony social profiles.
+// Set to null/undefined to hide an icon entirely from the footer.
+export const SOCIAL_URLS = {
+  instagram: "https://www.instagram.com/leony.tech" as string | null,
+  github: "https://github.com/leony-tech" as string | null,
+  linkedin: null as string | null,
+};
+
+export const SOCIAL_LINKS: { label: string; href: string | null }[] = [
+  { label: "Instagram", href: SOCIAL_URLS.instagram },
+  { label: "GitHub", href: SOCIAL_URLS.github },
+  { label: "LinkedIn", href: SOCIAL_URLS.linkedin },
 ];
 
 // Categories — slug + icon only; titles/descs come from translations.
