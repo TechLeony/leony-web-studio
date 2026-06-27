@@ -371,9 +371,20 @@ function LeadCard({
         {lead.custom_business_category && (
           <Info label="Özel Kategori" value={lead.custom_business_category} />
         )}
-        <Info label="Email" value={<a className="hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>} />
-        {lead.phone && (
-          <Info label="Telefon" value={<a className="hover:underline" href={`tel:${lead.phone}`}>{lead.phone}</a>} />
+        {(lead.whatsapp_number || lead.phone) && (
+          <Info
+            label="WhatsApp Numarası"
+            value={<WhatsAppCell number={lead.whatsapp_number || lead.phone || ""} />}
+          />
+        )}
+        {(lead.phone_country || lead.phone_dial_code) && (
+          <Info
+            label="Ülke"
+            value={`${lead.phone_country ?? ""}${lead.phone_dial_code ? ` (${lead.phone_dial_code})` : ""}`.trim()}
+          />
+        )}
+        {lead.email && (
+          <Info label="Email" value={<a className="hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>} />
         )}
         <Info label="Tercih Edilen İletişim" value={lead.preferred_contact_method} />
         {lead.selected_package && <Info label="Seçilen Paket" value={lead.selected_package} />}
