@@ -187,7 +187,7 @@ function AdminDashboard({ email }: { email: string }) {
     if (q.trim()) {
       const needle = q.trim().toLowerCase();
       list = list.filter((l) =>
-        [l.name, l.email, l.phone, l.business_category, l.message]
+        [l.name, l.email, l.phone, l.whatsapp_number, l.business_category, l.message]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(needle)),
       );
