@@ -20,48 +20,60 @@ export type Database = {
           business_category: string
           created_at: string
           custom_business_category: string | null
-          email: string
+          email: string | null
           id: string
           message: string
           name: string
           phone: string | null
+          phone_country: string | null
+          phone_country_code: string | null
+          phone_dial_code: string | null
           preferred_contact_method: string
           selected_package: string | null
           source: string | null
           status: string
           updated_at: string
+          whatsapp_number: string | null
         }
         Insert: {
           admin_note?: string | null
           business_category: string
           created_at?: string
           custom_business_category?: string | null
-          email: string
+          email?: string | null
           id?: string
           message: string
           name: string
           phone?: string | null
+          phone_country?: string | null
+          phone_country_code?: string | null
+          phone_dial_code?: string | null
           preferred_contact_method: string
           selected_package?: string | null
           source?: string | null
           status?: string
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Update: {
           admin_note?: string | null
           business_category?: string
           created_at?: string
           custom_business_category?: string | null
-          email?: string
+          email?: string | null
           id?: string
           message?: string
           name?: string
           phone?: string | null
+          phone_country?: string | null
+          phone_country_code?: string | null
+          phone_dial_code?: string | null
           preferred_contact_method?: string
           selected_package?: string | null
           source?: string | null
           status?: string
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
