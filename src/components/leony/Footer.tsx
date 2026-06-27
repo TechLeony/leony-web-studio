@@ -42,9 +42,16 @@ export function Footer() {
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-3">{t.footer.socialLegal}</h4>
           <ul className="space-y-2">
-            {SOCIAL_LINKS.map((s) => (
+            {SOCIAL_LINKS.filter((s) => !!s.href).map((s) => (
               <li key={s.label}>
-                <a href={s.href} className="text-sm text-muted-foreground hover:text-orange transition-colors">{s.label}</a>
+                <a
+                  href={s.href as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer"
+                >
+                  {s.label}
+                </a>
               </li>
             ))}
             <li>
