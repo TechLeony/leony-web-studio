@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Section, SectionTitle } from "./Section";
-import { CATEGORIES } from "@/lib/site";
+import { CATEGORIES, waLink } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
 import { submitLead } from "@/lib/leads.functions";
 import { toast } from "sonner";
@@ -27,13 +27,27 @@ const initial: FormState = {
   message: "",
 };
 
+function buildWaMessage(s: FormState) {
+  const lines = [
+    "Merhaba, Leony uzerinden web sitesi hizmeti hakkında bilgi almak istiyorum.",
+    "",
+    `Ad Soyad: ${s.name}`,
+    `İşletme Kategorisi: ${s.business_category}`,
+  ];
+  if (s.custom_business_category.trim()) lines.push(`Özel Kategori: ${s.custom_business_category}`);
+  lines.push(`Email: ${s.email}`);
+  if (s.phone.trim()) lines.push(`Telefon: ${s.phone}`);
+  lines.push(`Tercih Edilen İletişim: ${s.preferred_contact_method}`);
+  lines.push(`Mesaj: ${s.message}`);
+  return lines.join("\n");
+}
+
 export function ContactSection() {
   const t = useT();
   const submit = useServerFn(submitLead);
   const [state, setState] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const isWA = state.preferred_contact_method === "WhatsApp";
   const isOther = state.business_category === t.contact.categoryOther;
@@ -63,6 +77,7 @@ export function ContactSection() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     const parsed = schema.safeParse(state);
     if (!parsed.success) {
       const errs: Record<string, string> = {};
@@ -72,6 +87,9 @@ export function ContactSection() {
     }
     setErrors({});
     setSubmitting(true);
+
+    const waUrl = waLink(buildWaMessage(parsed.data as FormState));
+    let saveOk = true;
     try {
       await submit({
         data: {
@@ -83,18 +101,24 @@ export function ContactSection() {
           message: parsed.data.message,
           preferred_contact_method: parsed.data.preferred_contact_method,
           selected_package: null,
-          source: "leony-website",
+          source: "main_contact_form",
         },
       });
-      setSuccess(true);
-      setState(initial);
-      toast.success(t.contact.toastSuccess);
     } catch (err) {
       console.error(err);
-      toast.error(t.contact.toastError);
-    } finally {
-      setSubmitting(false);
+      saveOk = false;
     }
+
+    // Always open WhatsApp so the lead is never lost.
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+
+    if (saveOk) {
+      toast.success("Bilgi talebiniz alındı. WhatsApp üzerinden mesajınızı tamamlayabilirsiniz.");
+    } else {
+      toast.error("Bilgileriniz kaydedilirken bir sorun oluştu, ancak WhatsApp üzerinden iletişime geçebilirsiniz.");
+    }
+    setState(initial);
+    setSubmitting(false);
   }
 
   const categoryOptions = [
@@ -107,86 +131,71 @@ export function ContactSection() {
       <SectionTitle eyebrow={t.contact.eyebrow} title={t.contact.title} subtitle={t.contact.subtitle} />
 
       <div className="mt-12 mx-auto max-w-2xl rounded-3xl border border-border bg-card p-6 md:p-8 shadow-sm">
-        {success ? (
-          <div className="text-center py-8">
-            <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-purple to-pink grid place-items-center text-white text-xl">✓</div>
-            <h3 className="mt-4 text-xl font-semibold text-foreground">{t.contact.successTitle}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">{t.contact.successBody}</p>
-            <button
-              type="button"
-              onClick={() => setSuccess(false)}
-              className="mt-6 inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-sm font-medium hover:bg-muted"
-            >
-              {t.contact.successAgain}
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="grid gap-4" noValidate>
-            <Field label={t.contact.fields.name} error={errors.name}>
-              <input value={state.name} onChange={(e) => update("name", e.target.value)} className="input" placeholder={t.contact.fields.namePh} required />
+        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+          <Field label={t.contact.fields.name} error={errors.name}>
+            <input value={state.name} onChange={(e) => update("name", e.target.value)} className="input" placeholder={t.contact.fields.namePh} required />
+          </Field>
+
+          <Field label={t.contact.fields.category} error={errors.business_category}>
+            <select value={state.business_category} onChange={(e) => update("business_category", e.target.value)} className="input" required>
+              <option value="">{t.contact.fields.categoryPlaceholder}</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+
+          {isOther && (
+            <Field label={t.contact.fields.customCategory} error={errors.custom_business_category}>
+              <input value={state.custom_business_category} onChange={(e) => update("custom_business_category", e.target.value)} className="input" placeholder={t.contact.fields.customCategoryPh} />
             </Field>
+          )}
 
-            <Field label={t.contact.fields.category} error={errors.business_category}>
-              <select value={state.business_category} onChange={(e) => update("business_category", e.target.value)} className="input" required>
-                <option value="">{t.contact.fields.categoryPlaceholder}</option>
-                {categoryOptions.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+          <Field label={t.contact.fields.email} error={errors.email}>
+            <input type="email" value={state.email} onChange={(e) => update("email", e.target.value)} className="input" placeholder={t.contact.fields.emailPh} required />
+          </Field>
+
+          <Field label={t.contact.fields.method}>
+            <div className="grid grid-cols-2 gap-2">
+              {(["WhatsApp", "Mail"] as const).map((m) => {
+                const active = state.preferred_contact_method === m;
+                return (
+                  <button
+                    type="button"
+                    key={m}
+                    onClick={() => update("preferred_contact_method", m)}
+                    className={
+                      "h-11 rounded-xl border text-sm font-semibold transition-colors cursor-pointer " +
+                      (active
+                        ? "border-purple bg-gradient-to-r from-purple/10 to-pink/10 text-foreground"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {m === "WhatsApp" ? t.contact.methods.whatsapp : t.contact.methods.mail}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          {isWA && (
+            <Field label={t.contact.fields.phone} error={errors.phone}>
+              <input type="tel" value={state.phone} onChange={(e) => update("phone", e.target.value)} className="input" placeholder={t.contact.fields.phonePh} required />
             </Field>
+          )}
 
-            {isOther && (
-              <Field label={t.contact.fields.customCategory} error={errors.custom_business_category}>
-                <input value={state.custom_business_category} onChange={(e) => update("custom_business_category", e.target.value)} className="input" placeholder={t.contact.fields.customCategoryPh} />
-              </Field>
-            )}
+          <Field label={t.contact.fields.message} error={errors.message}>
+            <textarea rows={5} value={state.message} onChange={(e) => update("message", e.target.value)} className="input resize-none" placeholder={t.contact.fields.messagePh} required />
+          </Field>
 
-            <Field label={t.contact.fields.email} error={errors.email}>
-              <input type="email" value={state.email} onChange={(e) => update("email", e.target.value)} className="input" placeholder={t.contact.fields.emailPh} required />
-            </Field>
-
-            <Field label={t.contact.fields.method}>
-              <div className="grid grid-cols-2 gap-2">
-                {(["WhatsApp", "Mail"] as const).map((m) => {
-                  const active = state.preferred_contact_method === m;
-                  return (
-                    <button
-                      type="button"
-                      key={m}
-                      onClick={() => update("preferred_contact_method", m)}
-                      className={
-                        "h-11 rounded-xl border text-sm font-semibold transition-colors " +
-                        (active
-                          ? "border-purple bg-gradient-to-r from-purple/10 to-pink/10 text-foreground"
-                          : "border-border bg-background text-muted-foreground hover:text-foreground")
-                      }
-                    >
-                      {m === "WhatsApp" ? t.contact.methods.whatsapp : t.contact.methods.mail}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-
-            {isWA && (
-              <Field label={t.contact.fields.phone} error={errors.phone}>
-                <input type="tel" value={state.phone} onChange={(e) => update("phone", e.target.value)} className="input" placeholder={t.contact.fields.phonePh} required />
-              </Field>
-            )}
-
-            <Field label={t.contact.fields.message} error={errors.message}>
-              <textarea rows={5} value={state.message} onChange={(e) => update("message", e.target.value)} className="input resize-none" placeholder={t.contact.fields.messagePh} required />
-            </Field>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-full bg-navy text-navy-foreground text-sm font-semibold hover:bg-navy/90 disabled:opacity-60"
-            >
-              {submitting ? t.contact.submitting : t.contact.submit}
-            </button>
-          </form>
-        )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-2 inline-flex h-12 w-full items-center justify-center rounded-full bg-navy text-navy-foreground text-sm font-semibold hover:bg-navy/90 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {submitting ? t.contact.submitting : t.contact.submit}
+          </button>
+        </form>
       </div>
 
       <style>{`
