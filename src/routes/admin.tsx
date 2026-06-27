@@ -23,8 +23,12 @@ type Lead = {
   name: string;
   business_category: string;
   custom_business_category: string | null;
-  email: string;
+  email: string | null;
   phone: string | null;
+  phone_country: string | null;
+  phone_country_code: string | null;
+  phone_dial_code: string | null;
+  whatsapp_number: string | null;
   message: string;
   preferred_contact_method: string;
   selected_package: string | null;
