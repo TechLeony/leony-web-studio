@@ -442,3 +442,36 @@ function Empty({ children, tone = "default" }: { children: React.ReactNode; tone
     </div>
   );
 }
+
+function WhatsAppCell({ number }: { number: string }) {
+  const digits = number.replace(/\D/g, "");
+  const waMsg = "Merhaba, Leony üzerinden oluşturduğunuz web sitesi talebi hakkında iletişime geçiyorum.";
+  const waHref = `https://wa.me/${digits}?text=${encodeURIComponent(waMsg)}`;
+  const display = number.startsWith("+") ? number : `+${digits}`;
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="font-mono tabular-nums">{display}</span>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard?.writeText(display).then(
+            () => toast.success("Kopyalandı"),
+            () => toast.error("Kopyalanamadı"),
+          );
+        }}
+        className="inline-flex h-7 items-center gap-1 rounded-full border border-border bg-card px-2 text-[11px] font-semibold hover:bg-muted cursor-pointer"
+        title="Numarayı kopyala"
+      >
+        <Copy className="h-3 w-3" /> Kopyala
+      </button>
+      <a
+        href={waHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-7 items-center gap-1 rounded-full bg-emerald-500 text-white px-2.5 text-[11px] font-semibold hover:bg-emerald-600"
+      >
+        <MessageCircle className="h-3 w-3" /> WhatsApp'tan Yaz
+      </a>
+    </div>
+  );
+}
