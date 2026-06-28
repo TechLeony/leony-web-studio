@@ -70,14 +70,14 @@ export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavL
         <div className="lg:hidden border-t border-border bg-background">
           <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-1">
             {navLinks.map((l) => (
-              <a
+              <HashNavLink
                 key={l.href}
                 href={l.href}
-                onClick={() => setOpen(false)}
-                className="px-3 py-3 rounded-lg text-base font-medium text-foreground hover:text-orange hover:bg-muted transition-colors"
+                onNavigate={() => setOpen(false)}
+                className="px-3 py-3 rounded-lg text-base font-medium text-foreground hover:text-orange hover:bg-muted transition-colors cursor-pointer"
               >
                 {t.nav[l.key]}
-              </a>
+              </HashNavLink>
             ))}
             <div className="pt-2 flex items-center justify-between gap-3">
               <LanguageSwitcher size="md" />
