@@ -9,10 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KvkkRoute = KvkkRouteImport.update({
+  id: '/kvkk',
+  path: '/kvkk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -32,35 +44,63 @@ const SektorSlugRoute = SektorSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/kvkk': typeof KvkkRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/sektor/$slug': typeof SektorSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/kvkk': typeof KvkkRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/sektor/$slug': typeof SektorSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/kvkk': typeof KvkkRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/sektor/$slug': typeof SektorSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/sektor/$slug'
+  fullPaths: '/' | '/admin' | '/kvkk' | '/privacy-policy' | '/sektor/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/sektor/$slug'
-  id: '__root__' | '/' | '/admin' | '/sektor/$slug'
+  to: '/' | '/admin' | '/kvkk' | '/privacy-policy' | '/sektor/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/kvkk'
+    | '/privacy-policy'
+    | '/sektor/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  KvkkRoute: typeof KvkkRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   SektorSlugRoute: typeof SektorSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kvkk': {
+      id: '/kvkk'
+      path: '/kvkk'
+      fullPath: '/kvkk'
+      preLoaderRoute: typeof KvkkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -88,6 +128,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  KvkkRoute: KvkkRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   SektorSlugRoute: SektorSlugRoute,
 }
 export const routeTree = rootRouteImport
