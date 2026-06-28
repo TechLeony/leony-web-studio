@@ -100,6 +100,35 @@ export function ContactSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Restore unsubmitted form draft on mount.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<FormState>;
+      if (parsed && typeof parsed === "object") {
+        setState((s) => ({ ...s, ...parsed }));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Persist draft as the user types.
+  useEffect(() => {
+    if (success) return;
+    try {
+      const hasAny = Object.values(state).some((v) => typeof v === "string" && v.trim().length > 0);
+      if (hasAny) {
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(state));
+      } else {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [state, success]);
+
   // Track manual selection via ref so the async geo callback respects it.
   const countryManualRef = useRefMirror(countryManual);
 
