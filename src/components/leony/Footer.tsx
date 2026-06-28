@@ -3,6 +3,7 @@ import { NAV_LINKS, SITE, SOCIAL_LINKS } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
 import { Mail } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { HashNavLink } from "./HashNavLink";
 
 export function Footer() {
   const t = useT();
