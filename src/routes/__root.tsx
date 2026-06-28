@@ -133,9 +133,33 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
+        <HashScroller />
         <Outlet />
         <Toaster richColors closeButton position="top-right" />
       </LanguageProvider>
     </QueryClientProvider>
   );
+}
+
+function HashScroller() {
+  const { pathname, hash } = useRouterState({
+    select: (s) => ({ pathname: s.location.pathname, hash: s.location.hash }),
+  });
+  useEffect(() => {
+    if (!hash) return;
+    const id = hash.replace(/^#/, "");
+    if (!id) return;
+    // Retry briefly until the target element mounts (home sections lazy-render).
+    let attempts = 0;
+    const tick = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (attempts++ < 20) requestAnimationFrame(tick);
+    };
+    tick();
+  }, [pathname, hash]);
+  return null;
 }
