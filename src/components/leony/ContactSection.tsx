@@ -219,6 +219,11 @@ export function ContactSection() {
       toast.success(t.contact.toastSuccess);
       setSuccess(true);
       setState(initial);
+      try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       console.error(err);
       toast.error(t.contact.toastError);
