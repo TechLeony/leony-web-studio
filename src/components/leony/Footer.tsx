@@ -3,6 +3,7 @@ import { NAV_LINKS, SITE, SOCIAL_LINKS } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
 import { Mail } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { HashNavLink } from "./HashNavLink";
 
 export function Footer() {
   const t = useT();
@@ -33,9 +34,9 @@ export function Footer() {
           <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
-                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
+                <HashNavLink href={l.href} className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
                   {t.nav[l.key]}
-                </a>
+                </HashNavLink>
               </li>
             ))}
           </ul>
