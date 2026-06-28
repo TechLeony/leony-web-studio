@@ -34,9 +34,9 @@ export function Footer() {
           <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
-                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
+                <HashNavLink href={l.href} className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
                   {t.nav[l.key]}
-                </a>
+                </HashNavLink>
               </li>
             ))}
           </ul>
