@@ -4,6 +4,7 @@ import { NAV_LINKS, type NavKey } from "@/lib/site";
 import { HorizontalLogo } from "./Logo";
 import { WhatsAppButton } from "./WhatsAppButton";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { HashNavLink } from "./HashNavLink";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
