@@ -165,6 +165,7 @@ export type Dict = {
     quickLinks: string;
     socialLegal: string;
     kvkk: string;
+    privacyPolicy: string;
     copyright: string;
   };
   sectorPage: {
@@ -496,7 +497,8 @@ const TR: Dict = {
     tagline: "İşletmeler için modern ve iletişim odaklı web çözümleri.",
     quickLinks: "Hızlı Bağlantılar",
     socialLegal: "Sosyal & Yasal",
-    kvkk: "KVKK / Gizlilik Politikası",
+    kvkk: "KVKK Aydınlatma Metni",
+    privacyPolicy: "Gizlilik Politikası",
     copyright: "© 2026 Leony. Tüm hakları saklıdır.",
   },
   sectorPage: {
@@ -954,7 +956,8 @@ const AZ: Dict = {
     tagline: "Bizneslər üçün modern və əlaqə yönümlü veb həllər.",
     quickLinks: "Sürətli keçidlər",
     socialLegal: "Sosial və hüquqi",
-    kvkk: "Məxfilik siyasəti",
+    kvkk: "KVKK məlumatlandırma",
+    privacyPolicy: "Məxfilik Siyasəti",
     copyright: "© 2026 Leony. Bütün hüquqlar qorunur.",
   },
   sectorPage: {
@@ -1412,7 +1415,8 @@ const EN: Dict = {
     tagline: "Modern, contact-focused web solutions for businesses.",
     quickLinks: "Quick Links",
     socialLegal: "Social & Legal",
-    kvkk: "Privacy Policy",
+    kvkk: "KVKK Notice",
+    privacyPolicy: "Privacy Policy",
     copyright: "© 2026 Leony. All rights reserved.",
   },
   sectorPage: {
