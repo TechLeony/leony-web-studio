@@ -2,6 +2,7 @@ import { FooterLogo, LOGO_MARK } from "./Logo";
 import { NAV_LINKS, SITE, SOCIAL_LINKS } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
 import { Mail } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export function Footer() {
   const t = useT();
@@ -19,19 +20,20 @@ export function Footer() {
           <div className="flex flex-wrap gap-3 pt-1">
             <a
               href={`mailto:${SITE.email}`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-orange transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-orange transition-colors cursor-pointer"
             >
               <Mail className="h-4 w-4" /> {SITE.email}
             </a>
           </div>
         </div>
 
-        <div>
+        {/* Quick links — hidden on mobile (top menu already provides nav). */}
+        <div className="hidden md:block">
           <h4 className="text-sm font-semibold text-foreground mb-3">{t.footer.quickLinks}</h4>
           <ul className="space-y-2">
             {NAV_LINKS.map((l) => (
               <li key={l.href}>
-                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors">
+                <a href={`/${l.href}`} className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
                   {t.nav[l.key]}
                 </a>
               </li>
@@ -55,9 +57,14 @@ export function Footer() {
               </li>
             ))}
             <li>
-              <a href="#" className="text-sm text-muted-foreground hover:text-orange transition-colors">
+              <Link to="/privacy-policy" className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
+                {t.footer.privacyPolicy}
+              </Link>
+            </li>
+            <li>
+              <Link to="/kvkk" className="text-sm text-muted-foreground hover:text-orange transition-colors cursor-pointer">
                 {t.footer.kvkk}
-              </a>
+              </Link>
             </li>
           </ul>
         </div>

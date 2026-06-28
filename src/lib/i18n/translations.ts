@@ -165,6 +165,7 @@ export type Dict = {
     quickLinks: string;
     socialLegal: string;
     kvkk: string;
+    privacyPolicy: string;
     copyright: string;
   };
   sectorPage: {
@@ -486,7 +487,7 @@ const TR: Dict = {
       category: "Kategori seç",
       customCategory: "İşletme kategorini yaz",
       email: "Geçerli bir email gir",
-      phone: "WhatsApp numarası gerekli",
+      phone: "Lütfen geçerli bir WhatsApp numarası girin.",
       message: "Kısa bir mesaj yaz",
     },
     toastSuccess: "Talebiniz oluşturuldu. En kısa sürede sizinle iletişime geçeceğiz.",
@@ -496,7 +497,8 @@ const TR: Dict = {
     tagline: "İşletmeler için modern ve iletişim odaklı web çözümleri.",
     quickLinks: "Hızlı Bağlantılar",
     socialLegal: "Sosyal & Yasal",
-    kvkk: "KVKK / Gizlilik Politikası",
+    kvkk: "KVKK Aydınlatma Metni",
+    privacyPolicy: "Gizlilik Politikası",
     copyright: "© 2026 Leony. Tüm hakları saklıdır.",
   },
   sectorPage: {
@@ -944,7 +946,7 @@ const AZ: Dict = {
       category: "Kateqoriya seçin",
       customCategory: "Biznes kateqoriyanızı yazın",
       email: "Düzgün email daxil edin",
-      phone: "WhatsApp nömrəsi tələb olunur",
+      phone: "Zəhmət olmasa, düzgün WhatsApp nömrəsi daxil edin.",
       message: "Qısa mesaj yazın",
     },
     toastSuccess: "Sorğunuz yaradıldı. Ən qısa zamanda sizinlə əlaqə saxlayacağıq.",
@@ -954,7 +956,8 @@ const AZ: Dict = {
     tagline: "Bizneslər üçün modern və əlaqə yönümlü veb həllər.",
     quickLinks: "Sürətli keçidlər",
     socialLegal: "Sosial və hüquqi",
-    kvkk: "Məxfilik siyasəti",
+    kvkk: "KVKK məlumatlandırma",
+    privacyPolicy: "Məxfilik Siyasəti",
     copyright: "© 2026 Leony. Bütün hüquqlar qorunur.",
   },
   sectorPage: {
@@ -1402,7 +1405,7 @@ const EN: Dict = {
       category: "Please pick a category",
       customCategory: "Please type your business category",
       email: "Enter a valid email",
-      phone: "WhatsApp number is required",
+      phone: "Please enter a valid WhatsApp number.",
       message: "Please write a short message",
     },
     toastSuccess: "Your request has been created. We will contact you as soon as possible.",
@@ -1412,7 +1415,8 @@ const EN: Dict = {
     tagline: "Modern, contact-focused web solutions for businesses.",
     quickLinks: "Quick Links",
     socialLegal: "Social & Legal",
-    kvkk: "Privacy Policy",
+    kvkk: "KVKK Notice",
+    privacyPolicy: "Privacy Policy",
     copyright: "© 2026 Leony. All rights reserved.",
   },
   sectorPage: {

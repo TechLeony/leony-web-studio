@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CheckCircle2 } from "lucide-react";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
 import { Section, SectionTitle } from "./Section";
 import { CATEGORIES } from "@/lib/site";
 import { useT } from "@/lib/i18n/context";
@@ -125,9 +126,15 @@ export function ContactSection() {
       phone: z
         .string()
         .trim()
-        .min(6, t.contact.errors.phone)
+        .min(3, t.contact.errors.phone)
         .max(30, t.contact.errors.phone)
-        .refine((v) => /\d{6,}/.test(v.replace(/\D/g, "")), { message: t.contact.errors.phone }),
+        .refine(
+          (v) => {
+            const parsed = parsePhoneNumberFromString(v, country.code as CountryCode);
+            return !!parsed && parsed.isValid() && parsed.country === country.code;
+          },
+          { message: t.contact.errors.phone },
+        ),
       message: z.string().trim().min(5, t.contact.errors.message).max(2000),
     })
     .refine(
@@ -152,9 +159,14 @@ export function ContactSection() {
     setErrors({});
     setSubmitting(true);
 
-    const localDigits = parsed.data.phone.replace(/\D/g, "");
-    const dialDigits = country.dial.replace(/\D/g, "");
-    const whatsappNumber = `+${dialDigits}${localDigits.replace(new RegExp(`^${dialDigits}`), "")}`;
+    const parsedPhone = parsePhoneNumberFromString(parsed.data.phone, country.code as CountryCode);
+    if (!parsedPhone || !parsedPhone.isValid()) {
+      setErrors({ phone: t.contact.errors.phone });
+      setSubmitting(false);
+      return;
+    }
+    const whatsappNumber = parsedPhone.number; // E.164, e.g. +905016800041
+    const localDigits = parsedPhone.nationalNumber;
 
     try {
       await submit({
