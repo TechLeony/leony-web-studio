@@ -41,8 +41,8 @@ export const SECTOR_NAV_LINKS: { key: NavKey; href: string }[] = [
 // TODO: Replace these placeholder URLs with the real Leony social profiles.
 // Set to null/undefined to hide an icon entirely from the footer.
 export const SOCIAL_URLS = {
-  instagram: "https://www.instagram.com/leony.tech" as string | null,
-  github: "https://github.com/leony-tech" as string | null,
+  instagram: "https://www.instagram.com/tech.leony/" as string | null,
+  github: "https://github.com/TechLeony" as string | null,
   linkedin: null as string | null,
 };
 
