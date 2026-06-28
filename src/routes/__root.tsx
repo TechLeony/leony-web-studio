@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import faviconAsset from "@/assets/leony-mark-v2.png.asset.json";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -88,10 +89,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Leony" },
       { property: "og:site_name", content: "Leony" },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: faviconAsset.url },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: faviconAsset.url },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: faviconAsset.url },
+      { rel: "shortcut icon", type: "image/png", href: faviconAsset.url },
+      { rel: "apple-touch-icon", href: faviconAsset.url },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
