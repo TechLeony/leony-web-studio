@@ -38,13 +38,13 @@ export function Header({ navLinks = NAV_LINKS }: { navLinks?: ReadonlyArray<NavL
 
         <nav className="hidden lg:flex items-center gap-7">
           {navLinks.map((l) => (
-            <a
+            <HashNavLink
               key={l.href}
               href={l.href}
-              className="text-sm font-medium text-muted-foreground hover:text-orange transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-orange transition-colors cursor-pointer"
             >
               {t.nav[l.key]}
-            </a>
+            </HashNavLink>
           ))}
         </nav>
 
