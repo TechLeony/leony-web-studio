@@ -30,6 +30,7 @@ const initial: FormState = {
 };
 
 const COUNTRY_STORAGE_KEY = "leony.phone_country";
+const DRAFT_STORAGE_KEY = "leony_contact_form_draft";
 
 function detectCountryFromLocale(): Country {
   try {
