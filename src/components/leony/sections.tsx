@@ -208,7 +208,29 @@ export function DemoProjectsSection() {
   );
 }
 
-function DemoPreview({ title }: { title: string }) {
+const DEMO_THUMBNAILS: Partial<Record<DemoId, string>> = {
+  cafe: "/demo/mira-cafe/thumbnail.jpg",
+};
+
+const DEMO_THUMBNAIL_ALT: Partial<Record<DemoId, string>> = {
+  cafe: "Mira Bistro QR Menü demo arayüzü",
+};
+
+function DemoPreview({ title, thumbnail, alt }: { title: string; thumbnail?: string; alt?: string }) {
+  if (thumbnail) {
+    return (
+      <div className="relative h-40 overflow-hidden bg-muted">
+        <img
+          src={thumbnail}
+          alt={alt ?? title}
+          loading="lazy"
+          width={1280}
+          height={896}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
   return (
     <div className="relative h-40 bg-gradient-to-br from-navy via-purple to-pink overflow-hidden">
       <div className="absolute inset-0 bg-grid-soft opacity-20 mix-blend-overlay" />
