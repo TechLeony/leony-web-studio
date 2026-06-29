@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   id: '/privacy-policy',
@@ -46,12 +47,18 @@ const SektorSlugRoute = SektorSlugRouteImport.update({
   path: '/sektor/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -78,16 +87,24 @@ export interface FileRouteTypes {
     | '/admin'
     | '/kvkk'
     | '/privacy-policy'
+    | '/admin/tasks'
     | '/sektor/$slug'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kvkk' | '/privacy-policy' | '/sektor/$slug' | '/admin'
+  to:
+    | '/'
+    | '/kvkk'
+    | '/privacy-policy'
+    | '/admin/tasks'
+    | '/sektor/$slug'
+    | '/admin'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/kvkk'
     | '/privacy-policy'
+    | '/admin/tasks'
     | '/sektor/$slug'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -144,14 +161,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SektorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminTasksRoute: typeof AdminTasksRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminTasksRoute: AdminTasksRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
