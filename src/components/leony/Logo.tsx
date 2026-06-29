@@ -1,10 +1,9 @@
-import horizontal from "@/assets/leony-horizontal-v2.png.asset.json";
-import mark from "@/assets/leony-mark-v2.png.asset.json";
-import footer from "@/assets/leony-footer-cropped.png.asset.json";
-
-export const LOGO_HORIZONTAL = horizontal.url;
-export const LOGO_MARK = mark.url;
-export const LOGO_FOOTER = footer.url;
+export const LOGO_HORIZONTAL = "/leony-horizontal.png";
+export const LOGO_MARK = "/leony-mark.png";
+export const LOGO_FOOTER = "/leony-footer.png";
+export const LOGO_FAVICON = "/leony-favicon.png";
+export const LOGO_BOT = "/leony-bot-icon.png";
+export const OG_IMAGE = "/og-image.png";
 
 export function HorizontalLogo({ className = "" }: { className?: string }) {
   return (
