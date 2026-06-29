@@ -922,7 +922,7 @@ const AZ: Dict = {
     extras: {
       title: "Əlavə Xidmətlər və Baxım Seçimləri",
       text: "Paketlərə əlavə olaraq, biznesinizin ehtiyacına görə əlavə xidmətlər və ödənişli baxım seçimləri ayrıca təqdim oluna bilər. Təfərrüatlar layihə müzakirəsi zamanı paylaşılır.",
-      support: "Pulsuz texniki dəstək müddətləri paketlərə daxildir; davam edən baxım və yeniləmə ehtiyacları üçün ayrı planlama aparılır.",
+      support: "Xüsusi məzmun dəstəyi: brend dili, səhifə mətnləri və CTA mətnləri üçün peşəkar yazı xidməti ayrıca təqdim oluna bilər. Pulsuz texniki dəstək müddətləri paketlərə daxildir; davam edən baxım və yeniləmə ehtiyacları üçün ayrı planlama aparılır.",
       footnote: "Qiymətlər layihə əhatəsinə görə müəyyən edilir. Domen, hostinq, korporativ e-poçt və üçüncü tərəf servis haqları qiymətə daxil deyil; lazımi quraşdırma proseslərində texniki yönləndirmə təmin olunur.",
     },
   },
