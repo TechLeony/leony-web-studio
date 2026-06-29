@@ -174,7 +174,7 @@ export function DemoProjectsSection() {
           const link = DEMO_LINKS[id as DemoId];
           return (
             <article key={id} className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col">
-              <DemoPreview title={p.title} />
+              <DemoPreview title={p.title} thumbnail={DEMO_THUMBNAILS[id as DemoId]} alt={DEMO_THUMBNAIL_ALT[id as DemoId]} />
               <div className="p-5 flex flex-col flex-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-purple">
                   {t.demos.sectorBySlug[p.sectorSlug]}
@@ -208,7 +208,29 @@ export function DemoProjectsSection() {
   );
 }
 
-function DemoPreview({ title }: { title: string }) {
+const DEMO_THUMBNAILS: Partial<Record<DemoId, string>> = {
+  cafe: "/demo/mira-cafe/thumbnail.jpg",
+};
+
+const DEMO_THUMBNAIL_ALT: Partial<Record<DemoId, string>> = {
+  cafe: "Mira Bistro QR Menü demo arayüzü",
+};
+
+function DemoPreview({ title, thumbnail, alt }: { title: string; thumbnail?: string; alt?: string }) {
+  if (thumbnail) {
+    return (
+      <div className="relative h-40 overflow-hidden bg-muted">
+        <img
+          src={thumbnail}
+          alt={alt ?? title}
+          loading="lazy"
+          width={1280}
+          height={896}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
   return (
     <div className="relative h-40 bg-gradient-to-br from-navy via-purple to-pink overflow-hidden">
       <div className="absolute inset-0 bg-grid-soft opacity-20 mix-blend-overlay" />
