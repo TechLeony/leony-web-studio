@@ -69,7 +69,9 @@ export const DEMO_IDS = ["cafe", "clinic", "beauty", "barber", "vet", "therapist
 export type DemoId = (typeof DEMO_IDS)[number];
 
 // Demo links (optional external URLs) — none yet.
-export const DEMO_LINKS: Partial<Record<DemoId, string>> = {};
+export const DEMO_LINKS: Partial<Record<DemoId, string>> = {
+  cafe: "/demo/mira-cafe",
+};
 
 // Package ids; copy/features/CTA come from translations.
 export const PACKAGE_IDS = ["baslangic", "isletme", "profesyonel"] as const;
