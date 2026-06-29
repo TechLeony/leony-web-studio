@@ -219,20 +219,20 @@ const DEMO_THUMBNAIL_ALT: Partial<Record<DemoId, string>> = {
 function DemoPreview({ title, thumbnail, alt }: { title: string; thumbnail?: string; alt?: string }) {
   if (thumbnail) {
     return (
-      <div className="relative h-40 overflow-hidden bg-muted">
+      <div className="relative h-52 overflow-hidden bg-muted">
         <img
           src={thumbnail}
           alt={alt ?? title}
           loading="lazy"
           width={1280}
           height={896}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
       </div>
     );
   }
   return (
-    <div className="relative h-40 bg-gradient-to-br from-navy via-purple to-pink overflow-hidden">
+    <div className="relative h-52 bg-gradient-to-br from-navy via-purple to-pink overflow-hidden">
       <div className="absolute inset-0 bg-grid-soft opacity-20 mix-blend-overlay" />
       <div className="absolute left-4 right-4 top-4 rounded-md bg-white/95 shadow-lg overflow-hidden">
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/60">
