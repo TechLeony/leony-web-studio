@@ -443,7 +443,7 @@ const TR: Dict = {
     extras: {
       title: "Ek Hizmetler ve Bakım Seçenekleri",
       text: "Paketlere ek olarak, işletmenizin ihtiyacına göre ek hizmetler ve ücretli bakım seçenekleri ayrıca sunulabilir. Detaylar proje görüşmesi sırasında paylaşılır.",
-      support: "Ücretsiz teknik destek süreleri paketlere dahildir; devam eden bakım ve güncelleme ihtiyaçları için ayrı planlama yapılır.",
+      support: "Özel içerik desteği: marka dili, sayfa metinleri ve CTA metinleri için profesyonel yazım hizmeti ayrıca sunulabilir. Ücretsiz teknik destek süreleri paketlere dahildir; devam eden bakım ve güncelleme ihtiyaçları için ayrı planlama yapılır.",
       footnote: "Fiyatlar proje kapsamına göre belirlenir. Domain, hosting, kurumsal e-posta ve üçüncü parti servis ücretleri fiyata dahil değildir; gerekli kurulum süreçlerinde teknik yönlendirme sağlanır.",
     },
   },
