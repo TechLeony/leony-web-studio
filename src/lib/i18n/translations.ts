@@ -359,7 +359,7 @@ const TR: Dict = {
       "terapist-psikolog": "Terapist / Psikolog",
     },
     items: {
-      cafe: { title: "Cafe / Restoran Demo", sectorSlug: "cafe-restoran", desc: "Menü, konum, rezervasyon yönlendirmesi ve iletişim akışı için modern vitrin.", badges: ["menu", "mobile", "whatsapp"] },
+      cafe: { title: "Mira Bistro QR Menü", sectorSlug: "cafe-restoran", desc: "Mobil öncelikli QR menü, fiyat listesi ve temel işletme tanıtımı için hazırlanmış demo.", badges: ["qrMenu", "mobileFriendly", "priceList", "basicPackage"] },
       clinic: { title: "Klinik / Diş Kliniği Demo", sectorSlug: "klinik-dis-klinigi", desc: "Hizmetler, randevu akışı ve hasta talep yönetimi için profesyonel yapı.", badges: ["appointment", "formMgmt", "adminDash"] },
       beauty: { title: "Güzellik Salonu / Nail Studio Demo", sectorSlug: "guzellik-salonu-nail-studio", desc: "Hizmet listesi, galeri ve randevu/iletişim akışı için şık vitrin.", badges: ["gallery", "menu", "whatsapp"] },
       barber: { title: "Barber / Kuaför Demo", sectorSlug: "barber-kuafor", desc: "Hizmetler, galeri ve WhatsApp odaklı modern tek sayfa yapısı.", badges: ["mobile", "gallery", "whatsapp"] },
