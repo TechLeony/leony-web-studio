@@ -225,11 +225,15 @@ export type Dict = {
     subtitle: string;
     fields: { name: string; nameP: string; category: string; categoryP: string; email: string; emailP: string; phone: string; phoneP: string; message: string; messageP: string };
     submit: string;
+    submitting: string;
     errors: { name: string; category: string; email: string; phone: string; message: string };
     waPrefix: string;
     waLabels: { name: string; category: string; email: string; phone: string; message: string };
     closeAria: string;
     dialogAria: string;
+    successTitle: string;
+    toastSuccess: string;
+    toastError: string;
   };
   switcher: { aria: string };
   waMessages: {
