@@ -301,9 +301,9 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
                 </div>
               )}
 
-              <ul className="mt-4 space-y-2.5 flex-1">
+              <ul className={(pro ? "mt-4 space-y-2 " : "mt-4 space-y-2.5 ") + "flex-1"}>
                 {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm">
+                  <li key={f} className={"flex items-start gap-2.5 " + (pro ? "text-[13px] leading-snug" : "text-sm")}>
                     <span
                       className={
                         "mt-0.5 grid place-items-center h-5 w-5 rounded-full shrink-0 " +
@@ -344,6 +344,21 @@ export function PackagesSection({ sectorLabel }: { sectorLabel?: string }) {
             </div>
           );
         })}
+      </div>
+
+      <p className="mt-6 mx-auto max-w-3xl text-center text-xs text-muted-foreground leading-relaxed">
+        {t.packages.extras.footnote}
+      </p>
+
+      <div className="mt-8 mx-auto max-w-3xl rounded-2xl border border-border bg-gradient-to-br from-muted/50 to-card p-5 md:p-6 flex items-start gap-4 shadow-sm">
+        <span className="grid place-items-center h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-purple to-pink text-white">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-sm md:text-base font-semibold text-foreground">{t.packages.extras.title}</h3>
+          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{t.packages.extras.text}</p>
+          <p className="mt-2 text-xs text-muted-foreground/90 leading-relaxed">{t.packages.extras.support}</p>
+        </div>
       </div>
     </Section>
   );
