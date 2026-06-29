@@ -1401,7 +1401,7 @@ const EN: Dict = {
     extras: {
       title: "Additional Services & Maintenance Options",
       text: "In addition to the packages, extra services and paid maintenance options can be offered based on your business needs. Details are shared during the project discussion.",
-      support: "Free technical support periods are included in the packages; ongoing maintenance and update needs are planned separately.",
+      support: "Custom content support: professional copywriting for brand voice, page texts, and CTA copy is available as a separate service. Free technical support periods are included in the packages; ongoing maintenance and update needs are planned separately.",
       footnote: "Prices are set based on project scope. Domain, hosting, business email, and third-party service fees are not included; technical guidance is provided during the required setup steps.",
     },
   },
