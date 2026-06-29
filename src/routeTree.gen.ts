@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
+import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
@@ -47,6 +48,11 @@ const SektorSlugRoute = SektorSlugRouteImport.update({
   path: '/sektor/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoMiraCafeRoute = DemoMiraCafeRouteImport.update({
+  id: '/demo/mira-cafe',
+  path: '/demo/mira-cafe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminTasksRoute = AdminTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/admin/tasks': typeof AdminTasksRoute
+  '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/admin/tasks': typeof AdminTasksRoute
+  '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin': typeof AdminIndexRoute
 }
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/admin/tasks': typeof AdminTasksRoute
+  '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
 }
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/kvkk'
     | '/privacy-policy'
     | '/admin/tasks'
+    | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/kvkk'
     | '/privacy-policy'
     | '/admin/tasks'
+    | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin'
   id:
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/kvkk'
     | '/privacy-policy'
     | '/admin/tasks'
+    | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin/'
   fileRoutesById: FileRoutesById
@@ -114,6 +126,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   KvkkRoute: typeof KvkkRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
 }
 
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SektorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo/mira-cafe': {
+      id: '/demo/mira-cafe'
+      path: '/demo/mira-cafe'
+      fullPath: '/demo/mira-cafe'
+      preLoaderRoute: typeof DemoMiraCafeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/tasks': {
       id: '/admin/tasks'
       path: '/tasks'
@@ -188,6 +208,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   KvkkRoute: KvkkRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
 }
 export const routeTree = rootRouteImport
