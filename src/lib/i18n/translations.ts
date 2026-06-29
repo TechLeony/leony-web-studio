@@ -106,6 +106,12 @@ export type Dict = {
         badge?: string;
       }
     >;
+    extras: {
+      title: string;
+      text: string;
+      support: string;
+      footnote: string;
+    };
   };
   process: {
     eyebrow: string;
