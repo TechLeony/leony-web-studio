@@ -106,6 +106,12 @@ export type Dict = {
         badge?: string;
       }
     >;
+    extras: {
+      title: string;
+      text: string;
+      support: string;
+      footnote: string;
+    };
   };
   process: {
     eyebrow: string;
@@ -365,8 +371,8 @@ const TR: Dict = {
     items: {
       baslangic: {
         name: "Başlangıç Paketi",
-        short: "Temel dijital görünürlük isteyen işletmeler için sade ve modern başlangıç çözümü.",
-        ideal: "Tek sayfalık, temiz ve güven veren bir web sitesiyle dijitalde yer almak isteyen işletmeler.",
+        short: "Temel dijital görünürlük isteyen işletmeler için sade, modern ve güven veren başlangıç çözümü.",
+        ideal: "Tek sayfalık, temiz ve mobil uyumlu bir web sitesiyle dijitalde yer almak isteyen işletmeler için.",
         features: [
           "Tek sayfalık modern website",
           "Mobil uyumlu tasarım",
@@ -375,8 +381,10 @@ const TR: Dict = {
           "WhatsApp yönlendirmesi",
           "Sosyal medya linkleri",
           "Temel SEO yapısı",
+          "Google’da görünürlük için temel kurulum",
           "Domain / hosting süreci için yönlendirme desteği",
           "Yayına alma desteği",
+          "7 gün ücretsiz teknik destek",
         ],
         delivery: "Teslimat: 3–5 iş günü",
         cta: "Başlangıç Paketi İçin Bilgi Al",
@@ -384,8 +392,8 @@ const TR: Dict = {
       },
       isletme: {
         name: "İşletme Paketi",
-        short: "Daha kapsamlı içerik yapısı ve daha güçlü sunum isteyen işletmeler için.",
-        ideal: "Hizmetlerini, görsellerini ve iletişim akışını daha detaylı sunmak isteyen işletmeler.",
+        short: "Daha kapsamlı içerik yapısı, güçlü sunum ve performans takibi isteyen işletmeler için.",
+        ideal: "Hizmetlerini, görsellerini, iletişim akışını ve Google görünürlüğünü daha profesyonel sunmak isteyen işletmeler.",
         inheritFrom: "Başlangıç Paketindeki her şey +",
         features: [
           "Çok bölümlü website",
@@ -395,7 +403,11 @@ const TR: Dict = {
           "WhatsApp ve mail yönlendirmeleri",
           "Daha gelişmiş içerik yerleşimi",
           "Daha güçlü SEO yapısı",
-          "Web siteniz için isteğe bağlı dil seçenekleri",
+          "Google Analytics kurulumu",
+          "Search Console kurulumu",
+          "Ek dil seçeneği",
+          "Ziyaretçi ve iletişim performansı takibi",
+          "14 gün ücretsiz teknik destek",
         ],
         delivery: "Teslimat: 5–7 iş günü",
         cta: "İşletme Paketi İçin Bilgi Al",
@@ -403,22 +415,33 @@ const TR: Dict = {
       },
       profesyonel: {
         name: "Profesyonel Paket",
-        short: "Gelişmiş özelleştirme, yönetim seçenekleri ve özel akışlar isteyen işletmeler için en kapsamlı çözüm.",
-        ideal: "Standart tanıtım sitesinden daha fazlasına ihtiyaç duyan; özel sayfalar, formlar, yönetim veya randevu akışı isteyen markalar.",
+        short: "Standart web sitesinden daha fazlasını isteyen işletmeler için; yönetilebilir, geliştirilebilir ve özel akışlara sahip dijital sistem çözümü.",
+        ideal: "Randevu, başvuru, talep toplama, yönetim paneli veya özel müşteri akışlarıyla dijital sürecini büyütmek isteyen markalar için.",
         inheritFrom: "İşletme Paketindeki her şey +",
         features: [
-          "Gelişmiş özel sayfa yapısı",
+          "Özel ihtiyaçlara göre gelişmiş sayfa yapısı",
           "Admin dashboard seçeneği",
           "Randevu / booking sistemi seçeneği",
-          "Talep / form yönetimi",
-          "Gelişmiş yönetim odaklı yapı",
-          "Daha modüler ve geliştirilebilir sistem",
+          "Talep / başvuru / form yönetimi",
+          "Müşteri bilgilerinin güvenli şekilde tutulması",
+          "Gelişmiş dönüşüm ve iletişim takibi",
+          "Google Business Profile yönlendirme desteği",
+          "Çoklu dil yapısına uygun sistem kurgusu",
+          "Daha modüler ve geliştirilebilir altyapı",
+          "Özel entegrasyonlara uygun yapı",
+          "30 gün ücretsiz teknik destek",
         ],
         badge: "Gelişmiş Özelleştirme Seçenekleri",
         delivery: "Teslimat: 7–10 iş günü",
         cta: "Profesyonel Paket İçin Bilgi Al",
         waMessage: "Merhaba, Leony üzerinden Profesyonel Paket hakkında bilgi almak istiyorum.",
       },
+    },
+    extras: {
+      title: "Ek Hizmetler ve Bakım Seçenekleri",
+      text: "Paketlere ek olarak, işletmenizin ihtiyacına göre ek hizmetler ve ücretli bakım seçenekleri ayrıca sunulabilir. Detaylar proje görüşmesi sırasında paylaşılır.",
+      support: "Ücretsiz teknik destek süreleri paketlere dahildir; devam eden bakım ve güncelleme ihtiyaçları için ayrı planlama yapılır.",
+      footnote: "Fiyatlar proje kapsamına göre belirlenir. Domain, hosting, kurumsal e-posta ve üçüncü parti servis ücretleri fiyata dahil değildir; gerekli kurulum süreçlerinde teknik yönlendirme sağlanır.",
     },
   },
   process: {
@@ -824,8 +847,8 @@ const AZ: Dict = {
     items: {
       baslangic: {
         name: "Başlanğıc Paketi",
-        short: "Əsas rəqəmsal görünürlük istəyən bizneslər üçün sadə və modern başlanğıc həlli.",
-        ideal: "Tək səhifəlik, təmiz və etibar verən vebsaytla rəqəmsalda yer almaq istəyən bizneslər.",
+        short: "Əsas rəqəmsal görünürlük istəyən bizneslər üçün sadə, modern və etibar verən başlanğıc həlli.",
+        ideal: "Tək səhifəlik, təmiz və mobil uyğun bir vebsaytla rəqəmsalda yer almaq istəyən bizneslər üçün.",
         features: [
           "Tək səhifəlik modern vebsayt",
           "Mobil uyğun dizayn",
@@ -834,8 +857,10 @@ const AZ: Dict = {
           "WhatsApp yönləndirməsi",
           "Sosial media linkləri",
           "Əsas SEO strukturu",
+          "Google görünürlüyü üçün əsas quraşdırma",
           "Domen / hostinq prosesi üçün yönləndirmə dəstəyi",
           "Yayım dəstəyi",
+          "7 gün pulsuz texniki dəstək",
         ],
         delivery: "Təslim: 3–5 iş günü",
         cta: "Başlanğıc Paketi üçün məlumat al",
@@ -843,8 +868,8 @@ const AZ: Dict = {
       },
       isletme: {
         name: "Biznes Paketi",
-        short: "Daha geniş məzmun strukturu və daha güclü təqdimat istəyən bizneslər üçün.",
-        ideal: "Xidmətlərini, görüntülərini və əlaqə axınını daha ətraflı təqdim etmək istəyən bizneslər.",
+        short: "Daha geniş məzmun strukturu, güclü təqdimat və performans izləməsi istəyən bizneslər üçün.",
+        ideal: "Xidmətlərini, görüntülərini, əlaqə axınını və Google görünürlüyünü daha peşəkar təqdim etmək istəyən bizneslər.",
         inheritFrom: "Başlanğıc Paketindəki hər şey +",
         features: [
           "Çox bölməli vebsayt",
@@ -854,7 +879,11 @@ const AZ: Dict = {
           "WhatsApp və mail yönləndirmələri",
           "Daha inkişaf etmiş məzmun yerləşməsi",
           "Daha güclü SEO strukturu",
-          "Vebsaytınız üçün isteğe bağlı dil seçimləri",
+          "Google Analytics quraşdırması",
+          "Search Console quraşdırması",
+          "Əlavə dil seçimi",
+          "Ziyarətçi və əlaqə performans izləməsi",
+          "14 gün pulsuz texniki dəstək",
         ],
         delivery: "Təslim: 5–7 iş günü",
         cta: "Biznes Paketi üçün məlumat al",
@@ -862,22 +891,33 @@ const AZ: Dict = {
       },
       profesyonel: {
         name: "Peşəkar Paket",
-        short: "İnkişaf etmiş fərdiləşdirmə, idarəetmə seçimləri və xüsusi axınlar istəyən bizneslər üçün ən geniş həll.",
-        ideal: "Standart tanıtım saytından daha çoxuna ehtiyacı olan; xüsusi səhifələr, formlar, idarəetmə və ya qəbul axını istəyən brendlər.",
+        short: "Standart vebsaytdan daha çoxunu istəyən bizneslər üçün; idarə oluna bilən, inkişaf etdirilə bilən və xüsusi axınlara sahib rəqəmsal sistem həlli.",
+        ideal: "Qəbul, müraciət, sorğu toplama, idarəetmə paneli və ya xüsusi müştəri axınları ilə rəqəmsal prosesini böyütmək istəyən brendlər üçün.",
         inheritFrom: "Biznes Paketindəki hər şey +",
         features: [
-          "İnkişaf etmiş xüsusi səhifə strukturu",
+          "Xüsusi ehtiyaclara uyğun inkişaf etmiş səhifə strukturu",
           "Admin dashboard seçimi",
           "Qəbul / booking sistemi seçimi",
-          "Sorğu / form idarəetməsi",
-          "İnkişaf etmiş idarəetmə yönümlü struktur",
-          "Daha modul və genişləndirilə bilən sistem",
+          "Sorğu / müraciət / form idarəetməsi",
+          "Müştəri məlumatlarının təhlükəsiz şəkildə saxlanması",
+          "İnkişaf etmiş dönüşüm və əlaqə izləməsi",
+          "Google Business Profile yönləndirmə dəstəyi",
+          "Çoxdilli quruluşa uyğun sistem qurğusu",
+          "Daha modul və inkişaf etdirilə bilən infrastruktur",
+          "Xüsusi inteqrasiyalara uyğun struktur",
+          "30 gün pulsuz texniki dəstək",
         ],
         badge: "İnkişaf etmiş fərdiləşdirmə seçimləri",
         delivery: "Təslim: 7–10 iş günü",
         cta: "Peşəkar Paket üçün məlumat al",
         waMessage: "Salam, Leony üzərindən Peşəkar Paket haqqında məlumat almaq istəyirəm.",
       },
+    },
+    extras: {
+      title: "Əlavə Xidmətlər və Baxım Seçimləri",
+      text: "Paketlərə əlavə olaraq, biznesinizin ehtiyacına görə əlavə xidmətlər və ödənişli baxım seçimləri ayrıca təqdim oluna bilər. Təfərrüatlar layihə müzakirəsi zamanı paylaşılır.",
+      support: "Pulsuz texniki dəstək müddətləri paketlərə daxildir; davam edən baxım və yeniləmə ehtiyacları üçün ayrı planlama aparılır.",
+      footnote: "Qiymətlər layihə əhatəsinə görə müəyyən edilir. Domen, hostinq, korporativ e-poçt və üçüncü tərəf servis haqları qiymətə daxil deyil; lazımi quraşdırma proseslərində texniki yönləndirmə təmin olunur.",
     },
   },
   process: {
@@ -1283,8 +1323,8 @@ const EN: Dict = {
     items: {
       baslangic: {
         name: "Starter Package",
-        short: "A clean, modern starting point for businesses that want basic digital visibility.",
-        ideal: "Businesses that want to show up online with a tidy, trustworthy one-page website.",
+        short: "A clean, modern, and trustworthy starting point for businesses that want basic digital visibility.",
+        ideal: "For businesses that want to show up online with a tidy, mobile-friendly one-page website.",
         features: [
           "One-page modern website",
           "Mobile-friendly design",
@@ -1293,8 +1333,10 @@ const EN: Dict = {
           "WhatsApp routing",
           "Social media links",
           "Basic SEO structure",
+          "Basic setup for Google visibility",
           "Guidance for domain / hosting setup",
           "Launch support",
+          "7 days of free technical support",
         ],
         delivery: "Delivery: 3–5 business days",
         cta: "Get info on the Starter Package",
@@ -1302,8 +1344,8 @@ const EN: Dict = {
       },
       isletme: {
         name: "Business Package",
-        short: "For businesses that want a richer content structure and a stronger presentation.",
-        ideal: "Businesses that want to show their services, visuals, and contact flow in more detail.",
+        short: "For businesses that want a richer content structure, stronger presentation, and performance tracking.",
+        ideal: "Businesses that want a more professional presentation of services, visuals, contact flow, and Google visibility.",
         inheritFrom: "Everything in the Starter Package +",
         features: [
           "Multi-section website",
@@ -1313,7 +1355,11 @@ const EN: Dict = {
           "WhatsApp and email routing",
           "More refined content layout",
           "Stronger SEO structure",
-          "Optional language choices for your website",
+          "Google Analytics setup",
+          "Search Console setup",
+          "Additional language option",
+          "Visitor and contact performance tracking",
+          "14 days of free technical support",
         ],
         delivery: "Delivery: 5–7 business days",
         cta: "Get info on the Business Package",
@@ -1321,22 +1367,33 @@ const EN: Dict = {
       },
       profesyonel: {
         name: "Professional Package",
-        short: "The most complete option for businesses that need advanced customization, management, and custom flows.",
-        ideal: "Brands that need more than a standard brochure site — custom pages, forms, management, or booking flows.",
+        short: "For businesses that want more than a standard website — a manageable, extensible digital system with custom flows.",
+        ideal: "For brands looking to scale their digital process with booking, applications, request collection, an admin panel, or custom customer flows.",
         inheritFrom: "Everything in the Business Package +",
         features: [
-          "Advanced custom page structure",
+          "Advanced page structure tailored to specific needs",
           "Admin dashboard option",
           "Appointment / booking system option",
-          "Lead / form management",
-          "Advanced management-focused structure",
-          "More modular, extensible system",
+          "Request / application / form management",
+          "Secure handling of customer data",
+          "Advanced conversion and contact tracking",
+          "Google Business Profile guidance",
+          "System designed for multi-language structure",
+          "More modular, extensible foundation",
+          "Structure ready for custom integrations",
+          "30 days of free technical support",
         ],
         badge: "Advanced Customization Options",
         delivery: "Delivery: 7–10 business days",
         cta: "Get info on the Professional Package",
         waMessage: "Hi, I’d like more info about the Leony Professional Package.",
       },
+    },
+    extras: {
+      title: "Additional Services & Maintenance Options",
+      text: "In addition to the packages, extra services and paid maintenance options can be offered based on your business needs. Details are shared during the project discussion.",
+      support: "Free technical support periods are included in the packages; ongoing maintenance and update needs are planned separately.",
+      footnote: "Prices are set based on project scope. Domain, hosting, business email, and third-party service fees are not included; technical guidance is provided during the required setup steps.",
     },
   },
   process: {

@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import faviconAsset from "@/assets/leony-mark-v2.png.asset.json";
+import { LOGO_FAVICON } from "@/components/leony/Logo";
 
 function GlobalPending() {
   return (
@@ -9,7 +9,7 @@ function GlobalPending() {
       <div className="flex flex-col items-center gap-4">
         <div className="relative h-16 w-16">
           <img
-            src={faviconAsset.url}
+            src={LOGO_FAVICON}
             alt="Leony"
             className="h-16 w-16 rounded-full object-cover animate-pulse"
           />
