@@ -174,7 +174,7 @@ export function DemoProjectsSection() {
           const link = DEMO_LINKS[id as DemoId];
           return (
             <article key={id} className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col">
-              <DemoPreview title={p.title} />
+              <DemoPreview title={p.title} thumbnail={DEMO_THUMBNAILS[id as DemoId]} alt={DEMO_THUMBNAIL_ALT[id as DemoId]} />
               <div className="p-5 flex flex-col flex-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-purple">
                   {t.demos.sectorBySlug[p.sectorSlug]}
