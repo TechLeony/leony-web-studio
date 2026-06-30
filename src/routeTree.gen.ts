@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -18,6 +19,11 @@ import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   id: '/privacy-policy',
   path: '/privacy-policy',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/kvkk'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/'
     | '/kvkk'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/kvkk'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -126,12 +138,20 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   KvkkRoute: typeof KvkkRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy-policy': {
       id: '/privacy-policy'
       path: '/privacy-policy'
@@ -208,6 +228,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   KvkkRoute: KvkkRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
 }

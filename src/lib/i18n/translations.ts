@@ -261,9 +261,9 @@ const TR: Dict = {
   },
   hero: {
     badge: "İşletmen için modern dijital vitrin",
-    h1Pre: "Markanızı öne çıkaran, ",
-    h1Highlight: "hızlı ve güvenilir web çözümleriyle",
-    h1Post: " dijitalde güçlü bir ilk izlenim yaratın.",
+    h1Pre: "İşletmeniz İçin ",
+    h1Highlight: "Modern ve Müşteri Odaklı",
+    h1Post: " Web Siteleri",
     sub: "Leony, işletmelerin dijitalde güven veren bir görünüm kazanması için modern web siteleri, demo projeler ve ihtiyaca özel web çözümleri üretir.",
     cta: "İşletme Kategorini Seç",
     chips: ["Mobil uyumlu", "Modern arayüz", "Dönüşüm odaklı", "Hızlı teslim"],
