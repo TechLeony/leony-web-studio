@@ -11,7 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { LOGO_FAVICON, OG_IMAGE } from "@/components/leony/Logo";
+import { OG_IMAGE } from "@/components/leony/Logo";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n/context";
 import { reportLovableError } from "../lib/lovable-error-reporting";
