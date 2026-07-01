@@ -16,17 +16,15 @@ import {
 import { ContactSection } from "@/components/leony/ContactSection";
 
 const SITE_URL = "https://leony.tech";
-const OG_IMAGE_URL = `${SITE_URL}/og-image.png`;
-const LOGO_URL = `${SITE_URL}/leony-logo.png`;
+const OG_IMAGE_URL = `${SITE_URL}/leony-icon.png`;
+const LOGO_URL = `${SITE_URL}/leony-icon.png`;
 
 const TITLE = "Leony | İşletmeler İçin Modern Web Sitesi Tasarımı";
 const DESCRIPTION =
-  "Leony, cafe, restoran, güzellik salonu, klinik ve inşaat firmaları için modern, mobil uyumlu ve WhatsApp bağlantılı web siteleri tasarlar.";
+  "Leony, farklı sektörlerdeki işletmeler için marka kimliğini güçlendiren, modern ve kullanıcı odaklı dijital deneyimler tasarlar.";
 const OG_TITLE = "Leony | Modern Web Sitesi Tasarımı";
-const OG_DESCRIPTION =
-  "İşletmeniz için hızlı, şık, mobil uyumlu ve müşteri odaklı web siteleri. Sektörünüze özel demo seçenekleriyle Leony.";
-const TW_DESCRIPTION =
-  "İşletmeniz için hızlı, şık, mobil uyumlu ve WhatsApp bağlantılı web siteleri.";
+const OG_DESCRIPTION = DESCRIPTION;
+const TW_DESCRIPTION = DESCRIPTION;
 
 export const Route = createFileRoute("/")({
   head: () => ({
