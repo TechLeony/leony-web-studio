@@ -14,10 +14,13 @@ import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
+import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -44,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryofusIndexRoute = StoryofusIndexRouteImport.update({
+  id: '/storyofus/',
+  path: '/storyofus/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -64,6 +72,16 @@ const AdminTasksRoute = AdminTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStoryofusOrdersRoute = AdminStoryofusOrdersRouteImport.update({
+  id: '/storyofus-orders',
+  path: '/storyofus-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
+const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
+  id: '/storyofus/styles/$style',
+  path: '/storyofus/styles/$style',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -71,20 +89,26 @@ export interface FileRoutesByFullPath {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/storyofus': typeof StoryofusIndexRoute
+  '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,10 +117,13 @@ export interface FileRoutesById {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -106,20 +133,26 @@ export interface FileRouteTypes {
     | '/kvkk'
     | '/privacy-policy'
     | '/sitemap.xml'
+    | '/admin/storyofus-orders'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin/'
+    | '/storyofus/'
+    | '/storyofus/styles/$style'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/kvkk'
     | '/privacy-policy'
     | '/sitemap.xml'
+    | '/admin/storyofus-orders'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin'
+    | '/storyofus'
+    | '/storyofus/styles/$style'
   id:
     | '__root__'
     | '/'
@@ -127,10 +160,13 @@ export interface FileRouteTypes {
     | '/kvkk'
     | '/privacy-policy'
     | '/sitemap.xml'
+    | '/admin/storyofus-orders'
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/admin/'
+    | '/storyofus/'
+    | '/storyofus/styles/$style'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -141,6 +177,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
+  StoryofusIndexRoute: typeof StoryofusIndexRoute
+  StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -180,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/storyofus/': {
+      id: '/storyofus/'
+      path: '/storyofus'
+      fullPath: '/storyofus/'
+      preLoaderRoute: typeof StoryofusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -208,15 +253,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTasksRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/storyofus-orders': {
+      id: '/admin/storyofus-orders'
+      path: '/storyofus-orders'
+      fullPath: '/admin/storyofus-orders'
+      preLoaderRoute: typeof AdminStoryofusOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/storyofus/styles/$style': {
+      id: '/storyofus/styles/$style'
+      path: '/storyofus/styles/$style'
+      fullPath: '/storyofus/styles/$style'
+      preLoaderRoute: typeof StoryofusStylesStyleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminStoryofusOrdersRoute: typeof AdminStoryofusOrdersRoute
   AdminTasksRoute: typeof AdminTasksRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminStoryofusOrdersRoute: AdminStoryofusOrdersRoute,
   AdminTasksRoute: AdminTasksRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -231,6 +292,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
+  StoryofusIndexRoute: StoryofusIndexRoute,
+  StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
