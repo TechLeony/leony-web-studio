@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SITE } from "@/lib/site";
-import { LogOut, Inbox, ClipboardList } from "lucide-react";
+import { LogOut, Inbox, ClipboardList, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -67,6 +67,7 @@ function AdminLayout() {
             <nav className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
               <NavTab to="/admin" icon={<Inbox className="h-3.5 w-3.5" />} label="Leadler" exact />
               <NavTab to="/admin/tasks" icon={<ClipboardList className="h-3.5 w-3.5" />} label="Tasklar" />
+              <NavTab to="/admin/storyofus-orders" icon={<Heart className="h-3.5 w-3.5" />} label="Story of Us" />
             </nav>
             <button
               type="button"
