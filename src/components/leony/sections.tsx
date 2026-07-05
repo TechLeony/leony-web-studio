@@ -141,6 +141,25 @@ export function CategoriesSection() {
           );
         })}
 
+        <a
+          href="/storyofus-new"
+          className="group relative rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-100 p-5 flex flex-col hover:border-rose-400 hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden"
+        >
+          <span className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-rose-300/40 blur-2xl" />
+          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white grid place-items-center group-hover:scale-110 transition-transform">
+            <Icons.Heart className="h-5 w-5 fill-white" />
+          </div>
+          <h3 className="mt-4 text-base font-semibold text-rose-900 group-hover:text-rose-700 transition-colors">
+            StoryOfUs — Sevgiline özel site
+          </h3>
+          <p className="mt-1.5 text-sm text-rose-950/70 leading-relaxed flex-1">
+            Fotoğraflar, notlar, şarkı ve sürprizlerle kişiye özel romantik bir web sitesi. Sadece 199 TL.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-rose-600">
+            Keşfet <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </div>
+        </a>
+
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -156,6 +175,7 @@ export function CategoriesSection() {
             {t.categories.customCta} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
         </button>
+
       </div>
 
       <CustomCategoryModal open={open} onClose={() => setOpen(false)} />

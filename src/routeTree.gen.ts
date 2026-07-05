@@ -18,11 +18,13 @@ import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as StoryofusOldIndexRouteImport } from './routes/storyofus-old.index'
 import { Route as StoryofusNewIndexRouteImport } from './routes/storyofus-new.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StoryofusNewDemoRouteImport } from './routes/storyofus-new.demo'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
+import { Route as StoryofusNewSetupDemoRouteImport } from './routes/storyofus-new.setup.demo'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -69,6 +71,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const StoryofusNewDemoRoute = StoryofusNewDemoRouteImport.update({
+  id: '/storyofus-new/demo',
+  path: '/storyofus-new/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SektorSlugRoute = SektorSlugRouteImport.update({
   id: '/sektor/$slug',
   path: '/sektor/$slug',
@@ -94,6 +101,11 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   path: '/storyofus/styles/$style',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryofusNewSetupDemoRoute = StoryofusNewSetupDemoRouteImport.update({
+  id: '/storyofus-new/setup/demo',
+  path: '/storyofus-new/setup/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -105,10 +117,12 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesByTo {
@@ -120,10 +134,12 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus-new': typeof StoryofusNewIndexRoute
   '/storyofus-old': typeof StoryofusOldIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesById {
@@ -137,10 +153,12 @@ export interface FileRoutesById {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRouteTypes {
@@ -155,10 +173,12 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -170,10 +190,12 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin'
     | '/storyofus-new'
     | '/storyofus-old'
     | '/storyofus'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   id:
     | '__root__'
@@ -186,10 +208,12 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesById: FileRoutesById
 }
@@ -201,9 +225,11 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
+  StoryofusNewDemoRoute: typeof StoryofusNewDemoRoute
   StoryofusNewIndexRoute: typeof StoryofusNewIndexRoute
   StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
+  StoryofusNewSetupDemoRoute: typeof StoryofusNewSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
@@ -272,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/storyofus-new/demo': {
+      id: '/storyofus-new/demo'
+      path: '/storyofus-new/demo'
+      fullPath: '/storyofus-new/demo'
+      preLoaderRoute: typeof StoryofusNewDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sektor/$slug': {
       id: '/sektor/$slug'
       path: '/sektor/$slug'
@@ -307,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusStylesStyleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/storyofus-new/setup/demo': {
+      id: '/storyofus-new/setup/demo'
+      path: '/storyofus-new/setup/demo'
+      fullPath: '/storyofus-new/setup/demo'
+      preLoaderRoute: typeof StoryofusNewSetupDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -332,21 +372,13 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
+  StoryofusNewDemoRoute: StoryofusNewDemoRoute,
   StoryofusNewIndexRoute: StoryofusNewIndexRoute,
   StoryofusOldIndexRoute: StoryofusOldIndexRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
+  StoryofusNewSetupDemoRoute: StoryofusNewSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
