@@ -18,6 +18,7 @@ import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as StoryofusOldIndexRouteImport } from './routes/storyofus-old.index'
 import { Route as StoryofusNewIndexRouteImport } from './routes/storyofus-new.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StoryofusNewDemoRouteImport } from './routes/storyofus-new.demo'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
@@ -69,6 +70,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const StoryofusNewDemoRoute = StoryofusNewDemoRouteImport.update({
+  id: '/storyofus-new/demo',
+  path: '/storyofus-new/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SektorSlugRoute = SektorSlugRouteImport.update({
   id: '/sektor/$slug',
   path: '/sektor/$slug',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus-new': typeof StoryofusNewIndexRoute
   '/storyofus-old': typeof StoryofusOldIndexRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin'
     | '/storyofus-new'
     | '/storyofus-old'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus-new/demo'
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
+  StoryofusNewDemoRoute: typeof StoryofusNewDemoRoute
   StoryofusNewIndexRoute: typeof StoryofusNewIndexRoute
   StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/storyofus-new/demo': {
+      id: '/storyofus-new/demo'
+      path: '/storyofus-new/demo'
+      fullPath: '/storyofus-new/demo'
+      preLoaderRoute: typeof StoryofusNewDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sektor/$slug': {
       id: '/sektor/$slug'
       path: '/sektor/$slug'
@@ -332,6 +352,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
+  StoryofusNewDemoRoute: StoryofusNewDemoRoute,
   StoryofusNewIndexRoute: StoryofusNewIndexRoute,
   StoryofusOldIndexRoute: StoryofusOldIndexRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
