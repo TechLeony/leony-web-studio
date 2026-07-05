@@ -31,8 +31,12 @@ function StoryOfUsLanding() {
 
       {/* Nav */}
       <header className="relative z-10 px-6 py-5 flex items-center justify-between max-w-6xl mx-auto">
-        <Link to="/" className="font-serif text-lg tracking-tight text-rose-700">
-          Leony
+        <Link to="/" className="inline-flex items-center">
+          <img
+            src="/logos/leony-logo-ask-sitesi.png"
+            alt="Leony"
+            className="h-8 w-auto object-contain sm:h-10"
+          />
         </Link>
         <a
           href="#pay"
@@ -389,8 +393,24 @@ function StoryOfUsLanding() {
         </div>
       </section>
 
-      <footer className="relative z-10 py-8 text-center text-xs text-rose-950/60">
-        leony.tech · StoryOfUs · ile ❤️ yapıldı
+      <footer className="relative z-10 flex items-center justify-center gap-1.5 py-8 text-center text-xs text-rose-950/60">
+        <img
+          src="/logos/favicon-ask-site.png"
+          alt=""
+          aria-hidden="true"
+          className="h-4 w-4 object-contain opacity-75"
+        />
+        <span>
+          made by{" "}
+          <a
+            href="https://leony.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-rose-700 hover:underline"
+          >
+            leony.tech
+          </a>
+        </span>
       </footer>
     </div>
   );
