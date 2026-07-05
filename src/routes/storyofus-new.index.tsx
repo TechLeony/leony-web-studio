@@ -21,8 +21,7 @@ export const Route = createFileRoute("/storyofus-new/")({
   component: StoryOfUsLanding,
 });
 
-const PINK_BG =
-  "bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_45%,#ffd1de_100%)]";
+const PINK_BG = "bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_45%,#ffd1de_100%)]";
 
 function StoryOfUsLanding() {
   return (
@@ -35,7 +34,7 @@ function StoryOfUsLanding() {
           <img
             src="/logos/leony-logo-ask-sitesi.png"
             alt="Leony"
-            className="h-8 w-auto object-contain sm:h-10"
+            className="h-12 w-auto object-contain sm:h-17"
           />
         </Link>
         <a
@@ -93,9 +92,17 @@ function StoryOfUsLanding() {
         <ol className="grid md:grid-cols-5 gap-4">
           {[
             { n: "1", t: "Ödemeni yap", d: "Shopier üzerinden güvenle ödemeni tamamla." },
-            { n: "2", t: "Hediyeni kişiselleştir", d: "Ödemeni tamamladıktan sonra mailine gelen özel linkten hediyeni kişiselleştirmeye başla." },
+            {
+              n: "2",
+              t: "Hediyeni kişiselleştir",
+              d: "Ödemeni tamamladıktan sonra mailine gelen özel linkten hediyeni kişiselleştirmeye başla.",
+            },
             { n: "3", t: "Bilgilerini gir", d: "Fotoğraflar, notlar, şarkı ve renkleri seç." },
-            { n: "4", t: "Sana özel link", d: "Web siten hazır olduğunda özel linkin mailine gelsin." },
+            {
+              n: "4",
+              t: "Sana özel link",
+              d: "Web siten hazır olduğunda özel linkin mailine gelsin.",
+            },
             { n: "5", t: "Sevgiline gönder", d: "Linki paylaş, o an başlasın 💌" },
           ].map((s) => (
             <li
@@ -123,7 +130,8 @@ function StoryOfUsLanding() {
               Örnek hediye sitesi önizlemesi
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-rose-950/70 sm:text-base">
-              Sevgilin linke tıkladığında fotoğraflarınız, anılarınız ve hikayeniz romantik bir deneyime dönüşür.
+              Sevgilin linke tıkladığında fotoğraflarınız, anılarınız ve hikayeniz romantik bir
+              deneyime dönüşür.
             </p>
           </div>
 
@@ -144,7 +152,9 @@ function StoryOfUsLanding() {
                   Sadece ikinize ait romantik bir dünya
                 </h3>
                 <p className="mt-4 text-sm leading-relaxed text-rose-950/70 sm:text-base">
-                  İlk bakışta isimleriniz, özel tarihiniz ve anılarınız görünür. Devamında fotoğraflar, zaman çizelgesi, aşk mektubu ve şarkınız aynı duygusal akışta birleşir.
+                  İlk bakışta isimleriniz, özel tarihiniz ve anılarınız görünür. Devamında
+                  fotoğraflar, zaman çizelgesi, aşk mektubu ve şarkınız aynı duygusal akışta
+                  birleşir.
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -211,9 +221,7 @@ function StoryOfUsLanding() {
                             <p className="relative text-sm font-semibold text-rose-950">
                               {item.title}
                             </p>
-                            <p className="relative mt-1 text-xs text-rose-950/65">
-                              {item.caption}
-                            </p>
+                            <p className="relative mt-1 text-xs text-rose-950/65">{item.caption}</p>
                           </div>
                         ))}
                       </div>
@@ -249,8 +257,16 @@ function StoryOfUsLanding() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { i: Heart, t: "İsimler & tarih", d: "İki isim ve ilişkinizin başladığı özel tarih." },
-            { i: PenLine, t: "Kişisel notlar", d: "Aşk mektubu, romantik giriş yazısı ve mini notlar." },
-            { i: Camera, t: "3–5 fotoğraf", d: "Polaroid tarzında, altına açıklamalarla birlikte." },
+            {
+              i: PenLine,
+              t: "Kişisel notlar",
+              d: "Aşk mektubu, romantik giriş yazısı ve mini notlar.",
+            },
+            {
+              i: Camera,
+              t: "3–5 fotoğraf",
+              d: "Polaroid tarzında, altına açıklamalarla birlikte.",
+            },
             { i: Music, t: "Spotify şarkısı", d: "Sizin şarkınız, sitede bir buton ile çalsın." },
             { i: Palette, t: "Renk & font", d: "Kendi paletinizi ve yazı tipini seç." },
             { i: Sparkles, t: "Gizli sürpriz", d: "En sonda tıklanınca açılan özel bir mesaj." },
@@ -317,13 +333,16 @@ function StoryOfUsLanding() {
       </section>
 
       {/* CTA */}
-      <section
-        id="pay"
-        className="relative z-10 bg-[#ffdce7]/60 px-4 py-16 sm:px-6 sm:py-20"
-      >
+      <section id="pay" className="relative z-10 bg-[#ffdce7]/60 px-4 py-16 sm:px-6 sm:py-20">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-fuchsia-500 via-pink-600 to-rose-600 px-5 py-10 text-center text-white shadow-2xl shadow-pink-500/35 sm:rounded-[3rem] sm:px-10 sm:py-14 md:px-16 md:py-16">
-          <Heart className="absolute -left-8 -top-8 h-36 w-36 text-white/15 drop-shadow-[0_0_28px_rgba(255,255,255,0.45)] sm:h-44 sm:w-44" strokeWidth={1.2} />
-          <Heart className="absolute -bottom-10 -right-8 h-40 w-40 text-white/15 drop-shadow-[0_0_32px_rgba(255,255,255,0.45)] sm:h-52 sm:w-52" strokeWidth={1.2} />
+          <Heart
+            className="absolute -left-8 -top-8 h-36 w-36 text-white/15 drop-shadow-[0_0_28px_rgba(255,255,255,0.45)] sm:h-44 sm:w-44"
+            strokeWidth={1.2}
+          />
+          <Heart
+            className="absolute -bottom-10 -right-8 h-40 w-40 text-white/15 drop-shadow-[0_0_32px_rgba(255,255,255,0.45)] sm:h-52 sm:w-52"
+            strokeWidth={1.2}
+          />
           <Sparkles className="absolute left-[16%] top-12 h-4 w-4 text-white/40" />
           <Heart className="absolute right-[18%] top-16 h-3.5 w-3.5 fill-white/20 text-white/40" />
           <Sparkles className="absolute bottom-20 left-[22%] h-3.5 w-3.5 text-white/35" />
