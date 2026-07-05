@@ -14,7 +14,6 @@ import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as StoryofusOldIndexRouteImport } from './routes/storyofus-old.index'
 import { Route as StoryofusNewIndexRouteImport } from './routes/storyofus-new.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -47,11 +46,6 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoryofusIndexRoute = StoryofusIndexRouteImport.update({
-  id: '/storyofus/',
-  path: '/storyofus/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StoryofusOldIndexRoute = StoryofusOldIndexRouteImport.update({
@@ -108,7 +102,6 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
-  '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesByTo {
@@ -123,7 +116,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/storyofus-new': typeof StoryofusNewIndexRoute
   '/storyofus-old': typeof StoryofusOldIndexRoute
-  '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesById {
@@ -140,7 +132,6 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
-  '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRouteTypes {
@@ -158,7 +149,6 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
-    | '/storyofus/'
     | '/storyofus/styles/$style'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,7 +163,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/storyofus-new'
     | '/storyofus-old'
-    | '/storyofus'
     | '/storyofus/styles/$style'
   id:
     | '__root__'
@@ -189,7 +178,6 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/storyofus-new/'
     | '/storyofus-old/'
-    | '/storyofus/'
     | '/storyofus/styles/$style'
   fileRoutesById: FileRoutesById
 }
@@ -203,7 +191,6 @@ export interface RootRouteChildren {
   SektorSlugRoute: typeof SektorSlugRoute
   StoryofusNewIndexRoute: typeof StoryofusNewIndexRoute
   StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
-  StoryofusIndexRoute: typeof StoryofusIndexRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
@@ -242,13 +229,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storyofus/': {
-      id: '/storyofus/'
-      path: '/storyofus'
-      fullPath: '/storyofus/'
-      preLoaderRoute: typeof StoryofusIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/storyofus-old/': {
@@ -334,9 +314,18 @@ const rootRouteChildren: RootRouteChildren = {
   SektorSlugRoute: SektorSlugRoute,
   StoryofusNewIndexRoute: StoryofusNewIndexRoute,
   StoryofusOldIndexRoute: StoryofusOldIndexRoute,
-  StoryofusIndexRoute: StoryofusIndexRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
