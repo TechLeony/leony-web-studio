@@ -1,0 +1,13 @@
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/storyofus/")({
+  component: StoryOfUsPlaceholder,
+});
+
+function StoryOfUsPlaceholder() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <h1 className="text-2xl font-semibold text-foreground">StoryOfUs coming soon</h1>
+    </div>
+  );
+}
