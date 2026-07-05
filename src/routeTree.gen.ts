@@ -24,6 +24,7 @@ import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
+import { Route as StoryofusNewSetupDemoRouteImport } from './routes/storyofus-new.setup.demo'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -100,6 +101,11 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   path: '/storyofus/styles/$style',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryofusNewSetupDemoRoute = StoryofusNewSetupDemoRouteImport.update({
+  id: '/storyofus-new/setup/demo',
+  path: '/storyofus-new/setup/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesByTo {
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/storyofus-new': typeof StoryofusNewIndexRoute
   '/storyofus-old': typeof StoryofusOldIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesById {
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRouteTypes {
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/storyofus-new'
     | '/storyofus-old'
     | '/storyofus'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   id:
     | '__root__'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
+    | '/storyofus-new/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesById: FileRoutesById
 }
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   StoryofusNewIndexRoute: typeof StoryofusNewIndexRoute
   StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
+  StoryofusNewSetupDemoRoute: typeof StoryofusNewSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
@@ -327,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusStylesStyleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/storyofus-new/setup/demo': {
+      id: '/storyofus-new/setup/demo'
+      path: '/storyofus-new/setup/demo'
+      fullPath: '/storyofus-new/setup/demo'
+      preLoaderRoute: typeof StoryofusNewSetupDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -356,6 +376,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusNewIndexRoute: StoryofusNewIndexRoute,
   StoryofusOldIndexRoute: StoryofusOldIndexRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
+  StoryofusNewSetupDemoRoute: StoryofusNewSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
