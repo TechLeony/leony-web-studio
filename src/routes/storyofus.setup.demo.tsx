@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Heart, Upload, X, Plus, CheckCircle2 } from "lucide-react";
 
-export const Route = createFileRoute("/storyofus-new/setup/demo")({
+export const Route = createFileRoute("/storyofus/setup/demo")({
   head: () => ({
     meta: [
       { title: "StoryOfUs Setup (Demo) | Leony" },
@@ -30,11 +30,19 @@ function SetupDemo() {
     startDate: "",
     hero: "",
     letter: "",
+    songTitle: "",
+    artist: "",
     songUrl: "",
+    songNote: "",
+    voiceNoteTitle: "",
+    voiceNoteFileName: "",
+    voiceNoteTranscript: "",
     font: "cursive",
     mainColor: "#e11d48",
     bgColor: "#fff5f7",
     accentColor: "#ec4899",
+    accessPin: "",
+    accessPinHint: "",
     finalMessage: "",
   });
   const [photos, setPhotos] = useState<Photo[]>([
@@ -60,6 +68,9 @@ function SetupDemo() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!/^\d{4}$/.test(form.accessPin)) {
+      return;
+    }
     setDone(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -82,7 +93,7 @@ function SetupDemo() {
             özel linkin mailine düşecek.
           </p>
           <Link
-            to="/storyofus-new"
+            to="/storyofus"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-rose-700 text-white px-6 py-3 hover:bg-rose-800 transition"
           >
             <Heart className="h-4 w-4 fill-white" /> Ana sayfaya dön
@@ -95,7 +106,7 @@ function SetupDemo() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_100%)] text-rose-950">
       <header className="px-6 py-5 flex items-center justify-between max-w-4xl mx-auto">
-        <Link to="/storyofus-new" className="font-serif text-lg text-rose-700">
+        <Link to="/storyofus" className="font-serif text-lg text-rose-700">
           Leony · StoryOfUs
         </Link>
         <span className="text-xs text-rose-950/60">Demo Setup</span>
@@ -275,11 +286,65 @@ function SetupDemo() {
           </Card>
 
           <Card title="Şarkı & tasarım">
+            <Grid2>
+              <Field label="Spotify şarkı adı">
+                <Input
+                  value={form.songTitle}
+                  onChange={upd("songTitle")}
+                  placeholder="Örn: Ahu"
+                />
+              </Field>
+              <Field label="Sanatçı adı">
+                <Input
+                  value={form.artist}
+                  onChange={upd("artist")}
+                  placeholder="Örn: Mabel Matiz"
+                />
+              </Field>
+            </Grid2>
             <Field label="Spotify / şarkı linki">
               <Input
                 value={form.songUrl}
                 onChange={upd("songUrl")}
                 placeholder="https://open.spotify.com/track/..."
+              />
+            </Field>
+            <Field label="Şarkı notu" helper="Opsiyonel. Şarkının sizin için anlamını yaz.">
+              <Textarea
+                value={form.songNote}
+                onChange={upd("songNote")}
+                rows={2}
+                placeholder="Bu şarkıyı her dinlediğimde aklıma sen geliyorsun."
+              />
+            </Field>
+            <Grid2>
+              <Field label="Ses notu başlığı" helper="Opsiyonel.">
+                <Input
+                  value={form.voiceNoteTitle}
+                  onChange={upd("voiceNoteTitle")}
+                  placeholder="Sadece senin için"
+                />
+              </Field>
+              <Field label="Ses notu dosyası" helper="Ses yükleme alanı demo amaçlıdır.">
+                <label className="flex h-11 cursor-pointer items-center rounded-lg border border-dashed border-rose-300 bg-white px-3 text-sm text-rose-950/70 hover:bg-rose-50">
+                  {form.voiceNoteFileName || "Ses dosyası yükle"}
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      setForm({ ...form, voiceNoteFileName: e.target.files?.[0]?.name ?? "" })
+                    }
+                  />
+                </label>
+              </Field>
+            </Grid2>
+            <Field label="Ses notu metni" helper="Opsiyonel. Metni oku butonuyla gösterilir.">
+              <Textarea
+                value={form.voiceNoteTranscript}
+                onChange={upd("voiceNoteTranscript")}
+                rows={3}
+                placeholder="Merhaba aşkım..."
               />
             </Field>
             <Field label="Yazı tipi (font)">
@@ -306,6 +371,40 @@ function SetupDemo() {
                 <Color value={form.accentColor} onChange={upd("accentColor")} />
               </Field>
             </Grid2>
+          </Card>
+
+          <Card title="Romantik giriş şifresi">
+            <Field
+              label="Sürpriz şifresi"
+              helper="Sevgilinin tahmin edebileceği özel bir 4 haneli sayı seç."
+            >
+              <Input
+                value={form.accessPin}
+                onChange={(e) =>
+                  setForm({ ...form, accessPin: e.target.value.replace(/\D/g, "").slice(0, 4) })
+                }
+                placeholder="Örn: 2022"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+              />
+            </Field>
+            <Field
+              label="Şifre ipucu"
+              helper="Şifreyi unutmaması için küçük, romantik bir ipucu yaz."
+            >
+              <Input
+                value={form.accessPinHint}
+                onChange={upd("accessPinHint")}
+                placeholder="Örn: Tanıştığımız yıl"
+              />
+            </Field>
+            {form.accessPin && !/^\d{4}$/.test(form.accessPin) && (
+              <p className="rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                Şifre tam olarak 4 rakam olmalı.
+              </p>
+            )}
           </Card>
 
           <Card title="Gizli son mesaj">
@@ -340,11 +439,12 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, helper, children }: { label: string; helper?: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="text-xs font-medium text-rose-900/80">{label}</span>
       <div className="mt-1.5">{children}</div>
+      {helper && <span className="mt-1.5 block text-[11px] leading-relaxed text-rose-950/55">{helper}</span>}
     </label>
   );
 }

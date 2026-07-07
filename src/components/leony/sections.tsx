@@ -142,7 +142,7 @@ export function CategoriesSection() {
         })}
 
         <a
-          href="/storyofus-new"
+          href="/storyofus"
           className="group relative rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-100 p-5 flex flex-col hover:border-rose-400 hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden"
         >
           <span className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-rose-300/40 blur-2xl" />
