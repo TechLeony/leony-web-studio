@@ -27,7 +27,12 @@ export const Route = createFileRoute("/storyofus/styles/$style")({
   component: StylePage,
 });
 
+// function StylePage() {
+//   const { style } = Route.useLoaderData();
+//   return <Configurator style={style} />;
+// }
 function StylePage() {
-  const { style } = Route.useLoaderData();
-  return <Configurator style={style} />;
+  const { style } = Route.useParams();
+
+  return <Configurator style={style as StyleId} />;
 }

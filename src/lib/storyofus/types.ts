@@ -46,10 +46,19 @@ export interface StoryOrder {
   visibility: VisibilityId;
   visibilityExtraPrice: number;
   password?: string | null;
+  accessPin: string;
+  accessPinHint?: string | null;
 
   loveNote: string;
   story: string;
   song: string;
+  spotifySongTitle?: string | null;
+  spotifyArtist?: string | null;
+  spotifyNote?: string | null;
+  spotifyUrl?: string | null;
+  voiceNoteTitle?: string | null;
+  voiceNoteAudioFileName?: string | null;
+  voiceNoteTranscript?: string | null;
   photos: string[];
 
   marketingPermissionType: MarketingPermissionId;

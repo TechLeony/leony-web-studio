@@ -533,6 +533,15 @@ function OrderFormModal(props: FormProps) {
   const [loveNote, setLoveNote] = useState("");
   const [story, setStory] = useState("");
   const [song, setSong] = useState("");
+  const [spotifySongTitle, setSpotifySongTitle] = useState("");
+  const [spotifyArtist, setSpotifyArtist] = useState("");
+  const [spotifyNote, setSpotifyNote] = useState("");
+  const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [voiceNoteTitle, setVoiceNoteTitle] = useState("");
+  const [voiceNoteAudioFileName, setVoiceNoteAudioFileName] = useState("");
+  const [voiceNoteTranscript, setVoiceNoteTranscript] = useState("");
+  const [accessPin, setAccessPin] = useState("");
+  const [accessPinHint, setAccessPinHint] = useState("");
   const [password, setPassword] = useState("");
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
@@ -558,6 +567,8 @@ function OrderFormModal(props: FormProps) {
       return toast.error("Her iki partnerin adı zorunludur.");
     if (!isValidSlug(desiredSlug))
       return toast.error("Lütfen boşluk kullanmadan, sadece harf, sayı ve tire içeren bir link yazın.");
+    if (!/^\d{4}$/.test(accessPin))
+      return toast.error("Sürpriz şifresi tam olarak 4 rakam olmalıdır.");
     if (visibility === "password_protected" && password.trim().length < 4)
       return toast.error("Site şifresi en az 4 karakter olmalıdır.");
     if (!consent1 || !consent2 || !consent3)
@@ -590,9 +601,18 @@ function OrderFormModal(props: FormProps) {
         visibility,
         visibilityExtraPrice: vis.extraPrice,
         password: visibility === "password_protected" ? password : null,
+        accessPin,
+        accessPinHint: accessPinHint.trim() || null,
         loveNote: loveNote.trim(),
         story: story.trim(),
         song: song.trim(),
+        spotifySongTitle: spotifySongTitle.trim() || null,
+        spotifyArtist: spotifyArtist.trim() || null,
+        spotifyNote: spotifyNote.trim() || null,
+        spotifyUrl: spotifyUrl.trim() || null,
+        voiceNoteTitle: voiceNoteTitle.trim() || null,
+        voiceNoteAudioFileName: voiceNoteAudioFileName || null,
+        voiceNoteTranscript: voiceNoteTranscript.trim() || null,
         photos: [],
         marketingPermissionType: marketingPerm,
         marketingDiscount: perm.discount,
@@ -708,6 +728,98 @@ function OrderFormModal(props: FormProps) {
           <Field label="Şarkınız">
             <input value={song} onChange={(e) => setSong(e.target.value)} className={inputCls} />
           </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Spotify şarkı adı" helper="Örn: Ahu">
+              <input
+                value={spotifySongTitle}
+                onChange={(e) => setSpotifySongTitle(e.target.value)}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Sanatçı adı" helper="Örn: Mabel Matiz">
+              <input
+                value={spotifyArtist}
+                onChange={(e) => setSpotifyArtist(e.target.value)}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <Field label="Spotify şarkı linki">
+            <input
+              value={spotifyUrl}
+              onChange={(e) => setSpotifyUrl(e.target.value)}
+              placeholder="https://open.spotify.com/track/..."
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Şarkı notu" helper="İstersen şarkının sizin için anlamını kısaca yaz.">
+            <textarea
+              value={spotifyNote}
+              onChange={(e) => setSpotifyNote(e.target.value)}
+              className={inputCls}
+              rows={2}
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Ses notu başlığı" helper="Opsiyonel. Örn: Sadece senin için">
+              <input
+                value={voiceNoteTitle}
+                onChange={(e) => setVoiceNoteTitle(e.target.value)}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Ses notu dosyası" helper="Ses yükleme alanı backend bağlanınca aktif olacak.">
+              <label className="block cursor-pointer rounded-xl border border-dashed border-border bg-white px-3 py-2 text-sm text-muted-foreground transition hover:border-rose-200">
+                {voiceNoteAudioFileName || "Ses dosyası yükle"}
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => setVoiceNoteAudioFileName(e.target.files?.[0]?.name ?? "")}
+                />
+              </label>
+            </Field>
+          </div>
+          <Field label="Ses notu metni" helper="Opsiyonel. Kullanıcı isterse Metni oku butonuyla görür.">
+            <textarea
+              value={voiceNoteTranscript}
+              onChange={(e) => setVoiceNoteTranscript(e.target.value)}
+              className={inputCls}
+              rows={3}
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Sürpriz şifresi"
+              required
+              helper="Sevgilinin tahmin edebileceği özel bir 4 haneli sayı seç."
+            >
+              <input
+                value={accessPin}
+                onChange={(e) => setAccessPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="Örn: 2022"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                className={inputCls}
+                required
+              />
+            </Field>
+            <Field
+              label="Şifre ipucu"
+              helper="Şifreyi unutmaması için küçük, romantik bir ipucu yaz."
+            >
+              <input
+                value={accessPinHint}
+                onChange={(e) => setAccessPinHint(e.target.value)}
+                placeholder="Örn: Tanıştığımız yıl"
+                className={inputCls}
+              />
+            </Field>
+          </div>
 
           <div className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
             Fotoğraf yükleme alanı yakında aktif olacak. Şimdilik sipariş sonrası sizinle iletişime geçilecektir.

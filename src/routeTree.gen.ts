@@ -16,15 +16,14 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as StoryofusOldIndexRouteImport } from './routes/storyofus-old.index'
-import { Route as StoryofusNewIndexRouteImport } from './routes/storyofus-new.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as StoryofusNewDemoRouteImport } from './routes/storyofus-new.demo'
+import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
-import { Route as StoryofusNewSetupDemoRouteImport } from './routes/storyofus-new.setup.demo'
+import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -61,19 +60,14 @@ const StoryofusOldIndexRoute = StoryofusOldIndexRouteImport.update({
   path: '/storyofus-old/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusNewIndexRoute = StoryofusNewIndexRouteImport.update({
-  id: '/storyofus-new/',
-  path: '/storyofus-new/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const StoryofusNewDemoRoute = StoryofusNewDemoRouteImport.update({
-  id: '/storyofus-new/demo',
-  path: '/storyofus-new/demo',
+const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
+  id: '/storyofus/demo',
+  path: '/storyofus/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SektorSlugRoute = SektorSlugRouteImport.update({
@@ -101,9 +95,9 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   path: '/storyofus/styles/$style',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusNewSetupDemoRoute = StoryofusNewSetupDemoRouteImport.update({
-  id: '/storyofus-new/setup/demo',
-  path: '/storyofus-new/setup/demo',
+const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
+  id: '/storyofus/setup/demo',
+  path: '/storyofus/setup/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -117,12 +111,11 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
-  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
+  '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin/': typeof AdminIndexRoute
-  '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
-  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
+  '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesByTo {
@@ -134,12 +127,11 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
-  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
+  '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin': typeof AdminIndexRoute
-  '/storyofus-new': typeof StoryofusNewIndexRoute
   '/storyofus-old': typeof StoryofusOldIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
-  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
+  '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRoutesById {
@@ -153,12 +145,11 @@ export interface FileRoutesById {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
-  '/storyofus-new/demo': typeof StoryofusNewDemoRoute
+  '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin/': typeof AdminIndexRoute
-  '/storyofus-new/': typeof StoryofusNewIndexRoute
   '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
-  '/storyofus-new/setup/demo': typeof StoryofusNewSetupDemoRoute
+  '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
 }
 export interface FileRouteTypes {
@@ -173,12 +164,11 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
-    | '/storyofus-new/demo'
+    | '/storyofus/demo'
     | '/admin/'
-    | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
-    | '/storyofus-new/setup/demo'
+    | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -190,12 +180,11 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
-    | '/storyofus-new/demo'
+    | '/storyofus/demo'
     | '/admin'
-    | '/storyofus-new'
     | '/storyofus-old'
     | '/storyofus'
-    | '/storyofus-new/setup/demo'
+    | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
   id:
     | '__root__'
@@ -208,12 +197,11 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
-    | '/storyofus-new/demo'
+    | '/storyofus/demo'
     | '/admin/'
-    | '/storyofus-new/'
     | '/storyofus-old/'
     | '/storyofus/'
-    | '/storyofus-new/setup/demo'
+    | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
   fileRoutesById: FileRoutesById
 }
@@ -225,11 +213,10 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
-  StoryofusNewDemoRoute: typeof StoryofusNewDemoRoute
-  StoryofusNewIndexRoute: typeof StoryofusNewIndexRoute
+  StoryofusDemoRoute: typeof StoryofusDemoRoute
   StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
-  StoryofusNewSetupDemoRoute: typeof StoryofusNewSetupDemoRoute
+  StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
@@ -284,13 +271,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusOldIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus-new/': {
-      id: '/storyofus-new/'
-      path: '/storyofus-new'
-      fullPath: '/storyofus-new/'
-      preLoaderRoute: typeof StoryofusNewIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -298,11 +278,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/storyofus-new/demo': {
-      id: '/storyofus-new/demo'
-      path: '/storyofus-new/demo'
-      fullPath: '/storyofus-new/demo'
-      preLoaderRoute: typeof StoryofusNewDemoRouteImport
+    '/storyofus/demo': {
+      id: '/storyofus/demo'
+      path: '/storyofus/demo'
+      fullPath: '/storyofus/demo'
+      preLoaderRoute: typeof StoryofusDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sektor/$slug': {
@@ -340,11 +320,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusStylesStyleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus-new/setup/demo': {
-      id: '/storyofus-new/setup/demo'
-      path: '/storyofus-new/setup/demo'
-      fullPath: '/storyofus-new/setup/demo'
-      preLoaderRoute: typeof StoryofusNewSetupDemoRouteImport
+    '/storyofus/setup/demo': {
+      id: '/storyofus/setup/demo'
+      path: '/storyofus/setup/demo'
+      fullPath: '/storyofus/setup/demo'
+      preLoaderRoute: typeof StoryofusSetupDemoRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -372,11 +352,10 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
-  StoryofusNewDemoRoute: StoryofusNewDemoRoute,
-  StoryofusNewIndexRoute: StoryofusNewIndexRoute,
+  StoryofusDemoRoute: StoryofusDemoRoute,
   StoryofusOldIndexRoute: StoryofusOldIndexRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
-  StoryofusNewSetupDemoRoute: StoryofusNewSetupDemoRoute,
+  StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
