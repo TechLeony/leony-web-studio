@@ -1,5 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { Heart, Camera, Music, PenLine, Palette, Sparkles, Mail, Lock, Clock } from "lucide-react";
+import { GlobalPending } from "@/components/leony/GlobalPending";
 
 export const Route = createFileRoute("/storyofus/")({
   head: () => ({
@@ -22,10 +24,22 @@ export const Route = createFileRoute("/storyofus/")({
 });
 
 const PINK_BG = "bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_45%,#ffd1de_100%)]";
+const STORYOFUS_LOADING_DURATION_MS = 3000;
 
 function StoryOfUsLanding() {
+  const [demoLoading, setDemoLoading] = useState(false);
+  const navigate = useNavigate();
+
+  async function navigateDemo() {
+    if (demoLoading) return;
+    setDemoLoading(true);
+    await new Promise((resolve) => window.setTimeout(resolve, STORYOFUS_LOADING_DURATION_MS));
+    navigate({ to: "/storyofus/demo" });
+  }
+
   return (
     <div className={`min-h-screen ${PINK_BG} text-rose-950`}>
+      {demoLoading && <GlobalPending />}
       <FloatingHearts />
       <PromoMarqueeBar />
 
@@ -96,12 +110,14 @@ function StoryOfUsLanding() {
             <Heart className="h-5 w-5 fill-white" /> Sürprize Başla 💌
           </a>
 
-          <Link
-            to="/storyofus/demo"
-            className="mt-2 text-sm text-rose-700 underline underline-offset-4 decoration-rose-300 hover:text-rose-900"
+          <button
+            type="button"
+            onClick={navigateDemo}
+            disabled={demoLoading}
+            className="mt-2 text-sm text-rose-700 underline underline-offset-4 decoration-rose-300 hover:text-rose-900 disabled:pointer-events-none disabled:opacity-60"
           >
             Örnek hediyeyi görmek için tıklayın →
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -192,6 +208,7 @@ function StoryOfUsLanding() {
                     "Minik bir ses notunuz",
                     "Ödülle dolu eğlenceli oyunlar",
                     "Özel şarkınız",
+                    "Puzzle tamamlama",
                   ].map((pill) => (
                     <span
                       key={pill}
@@ -202,12 +219,14 @@ function StoryOfUsLanding() {
                   ))}
                 </div>
 
-                <Link
-                  to="/storyofus/demo"
-                  className="mt-7 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-rose-700 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-rose-300/40 transition hover:bg-rose-800 hover:shadow-rose-400/50 sm:w-auto sm:text-base"
+                <button
+                  type="button"
+                  onClick={navigateDemo}
+                  disabled={demoLoading}
+                  className="mt-7 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-rose-700 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-rose-300/40 transition hover:bg-rose-800 hover:shadow-rose-400/50 disabled:pointer-events-none disabled:opacity-70 sm:w-auto sm:text-base"
                 >
                   Örnek Hediyeyi İncele 💌 <Heart className="h-4 w-4 fill-white" />
-                </Link>
+                </button>
               </div>
 
               <div className="mx-auto w-full max-w-[20rem] sm:max-w-sm">
@@ -366,6 +385,10 @@ function StoryOfUsLanding() {
               q: "Link herkese açık mı olacak?",
               a: "Hayır. Kişiye özel link üretilir ve siteye giriş kodu eklenir. (Giriş kodu müşteri tarafından seçilir)",
             },
+            {
+              q: "Kişisel verilerimiz korunuyor, mu sayfa korunaklı mı?",
+              a: "Evet, tüm verileriniz tam korunmaktadır, sayfaya sizden başka dışarıdan kimse erişemez.",
+            },
           ].map((f) => (
             <details
               key={f.q}
@@ -492,7 +515,7 @@ function PromoMarqueeBar() {
     "399 TL yerine sadece 199 TL",
     "Tek seferlik ödeme · Süresiz link",
     "Fotoğraflarınız, anılarınız ve şarkınız tek bir romantik linkte",
-    "İndirim yalnızca lansman dönemi için geçerlidir ✨",
+    "Kaçmaz İNDİRİM yalnızca lansman dönemi için geçerlidir ✨",
   ];
 
   return (

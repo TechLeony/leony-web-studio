@@ -31,7 +31,7 @@ const demoStoryData = {
     wrongPasswordMessage: "Eminimm yanlışlıkla rakamı kaydırmışsındırr, tekrar dene 💌",
   },
   accessPin: "2022",
-  accessPinHint: "Tanışma yılımzz",
+  accessPinHint: "Tanışma yılımızz",
   relationship: {
     partnerName: "Ceren",
     recipientName: "Ceren",
@@ -43,7 +43,7 @@ const demoStoryData = {
     relationshipStartDate: "2022-03-12T00:00:00",
     relationshipStartLabel: "12 Mart 2022’den beri",
     heroEyebrow: "Bizim sonsuz aşk hikâyemizz",
-    heroMessage: "Bizim tatlışş yolculuğumuzz",
+    heroMessage: "Bizim tatlışş yolculuğumuzz 💖",
     heroLeftPhoto: {
       src: "/demo-assets/ceren-hero-right.png",
       alt: "Ceren solo portresi",
@@ -172,7 +172,7 @@ const demoStoryData = {
   },
   spotify: {
     sectionTitle: "Bize Özel",
-    subtitle: "Bu şarkıyı her dinlediğimde aklıma sen geliyorsunn",
+    subtitle: "Bu şarkıyı her dinlediğimde aklıma sen geliyorsunn 🥹",
     label: "BİZİM ŞARKIMIZZ",
     songTitle: "Ahu",
     artist: "Mabel Matiz",
@@ -226,8 +226,6 @@ const demoStoryData = {
     durationLimitSeconds: 10,
     src: "",
     audioUrl: "/demo-assets/arda-ceren-voice-note.mp3",
-    transcript:
-      "Merhaba aşkım. Eğer bunu dinliyorsan, sana hazırladığım küçük sürprizin içindesin demektir. Bazen seni ne kadar sevdiğimi anlatmak için kelimeler yetmiyor. Ama bilmeni istiyorum; hayatımda olduğun için çok şanslıyım. Umarım bu küçük site yüzünde güzel bir gülümseme bırakır. Seni çok seviyorum.",
     autoplay: false,
     playText: "Ses notunu aç",
     replayText: "Tekrar aç",
@@ -307,7 +305,7 @@ const demoStoryData = {
   finalSurprise: {
     finalGiftButtonText: "Sana bir sürprizim daha var",
     finalLabel: "Gizli mesaj",
-    finalSecretNote: "Seni her gün bir öncekinden çook daha fazla çok seviyorumm, hayatımm.",
+    finalSecretNote: "Seni her gün bir öncekinden çook daha fazla çok seviyorumm, hayatımm 💖💖",
   },
   interactiveFeatures: {
     coupleWrapped: { enabled: true },
@@ -408,7 +406,6 @@ function StoryDemo() {
   const [loveComplete, setLoveComplete] = useState(false);
   const [voicePlaying, setVoicePlaying] = useState(false);
   const [voiceTouched, setVoiceTouched] = useState(false);
-  const [showVoiceTranscript, setShowVoiceTranscript] = useState(false);
   const [voiceProgress, setVoiceProgress] = useState(0);
   const [voiceDuration, setVoiceDuration] = useState(0);
   const [voiceUnavailable, setVoiceUnavailable] = useState(false);
@@ -450,7 +447,6 @@ function StoryDemo() {
     sectionTitle: customerStory?.voiceNote?.sectionTitle || story.voiceNote.sectionTitle,
     title: customerStory?.voiceNote?.title || story.voiceNote.title,
     audioUrl: customerStory?.voiceNote?.audioUrl || story.voiceNote.audioUrl || story.voiceNote.src,
-    transcript: customerStory?.voiceNote?.transcript || story.voiceNote.transcript,
     playText: story.voiceNote.playText,
     replayText: story.voiceNote.replayText,
     stopText: story.voiceNote.stopText,
@@ -1000,20 +996,6 @@ function StoryDemo() {
             {voiceUnavailable && (
               <p className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-[color:var(--sou-muted)] animate-in fade-in slide-in-from-top-1 duration-300">
                 Ses notu henüz eklenmedi.
-              </p>
-            )}
-            {voiceNote.transcript && (
-              <button
-                type="button"
-                onClick={() => setShowVoiceTranscript((shown) => !shown)}
-                className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-rose-50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[color:var(--sou-primary)] transition hover:bg-rose-100 sm:w-auto"
-              >
-                {showVoiceTranscript ? "Metni gizle" : "Metni oku"}
-              </button>
-            )}
-            {showVoiceTranscript && voiceNote.transcript && (
-              <p className="mt-4 whitespace-pre-line rounded-2xl bg-white/75 px-4 py-4 text-sm leading-relaxed text-[color:var(--sou-muted)] animate-in fade-in slide-in-from-top-1 duration-300">
-                {voiceNote.transcript}
               </p>
             )}
           </div>

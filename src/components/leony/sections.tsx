@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   CATEGORIES,
   DEMO_IDS,
@@ -15,6 +16,9 @@ import { CustomCategoryModal } from "./CustomCategoryModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowRight, Check, X as XIcon, Plus, Sparkles } from "lucide-react";
 import * as Icons from "lucide-react";
+import { GlobalPending } from "@/components/leony/GlobalPending";
+
+const STORYOFUS_LOADING_DURATION_MS = 3000;
 
 export function WhatIsSection() {
   const t = useT();
@@ -113,8 +117,19 @@ function ComparisonCol({ title, items, tone }: { title: string; items: string[];
 export function CategoriesSection() {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [storyLoading, setStoryLoading] = useState(false);
+  const navigate = useNavigate();
+
+  async function navigateStoryOfUs() {
+    if (storyLoading) return;
+    setStoryLoading(true);
+    await new Promise((resolve) => window.setTimeout(resolve, STORYOFUS_LOADING_DURATION_MS));
+    navigate({ to: "/storyofus" });
+  }
+
   return (
     <Section id="sektorler" className="bg-background">
+      {storyLoading && <GlobalPending />}
       <SectionTitle eyebrow={t.categories.eyebrow} title={t.categories.title} subtitle={t.categories.subtitle} />
       <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {CATEGORIES.map((c) => {
@@ -141,9 +156,11 @@ export function CategoriesSection() {
           );
         })}
 
-        <a
-          href="/storyofus"
-          className="group relative rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-100 p-5 flex flex-col hover:border-rose-400 hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden"
+        <button
+          type="button"
+          onClick={navigateStoryOfUs}
+          disabled={storyLoading}
+          className="group relative rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-pink-100 p-5 flex flex-col text-left hover:border-rose-400 hover:shadow-xl hover:-translate-y-0.5 transition-all overflow-hidden disabled:pointer-events-none disabled:opacity-75"
         >
           <span className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-rose-300/40 blur-2xl" />
           <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white grid place-items-center group-hover:scale-110 transition-transform">
@@ -158,7 +175,7 @@ export function CategoriesSection() {
           <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-rose-600">
             Keşfet <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </div>
-        </a>
+        </button>
 
         <button
           type="button"
