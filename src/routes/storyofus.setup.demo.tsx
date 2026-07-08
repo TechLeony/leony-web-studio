@@ -291,14 +291,14 @@ function SetupDemo() {
                 <Input
                   value={form.songTitle}
                   onChange={upd("songTitle")}
-                  placeholder="Örn: Ahu"
+                  placeholder="Örn: Şarkımız"
                 />
               </Field>
               <Field label="Sanatçı adı">
                 <Input
                   value={form.artist}
                   onChange={upd("artist")}
-                  placeholder="Örn: Mabel Matiz"
+                  placeholder="Örn: Bize özel"
                 />
               </Field>
             </Grid2>

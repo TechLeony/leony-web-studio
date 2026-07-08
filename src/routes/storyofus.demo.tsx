@@ -22,19 +22,19 @@ type AnimationStyle = "soft-slide" | "fade" | "none";
 
 const demoStoryData = {
   intro: {
-    introTitle: "Canım birtanem sevgilimm,",
-    introSubtitle: "Sana bir sürpriz hazırladımm",
+    introTitle: "Canım birtanem sevgilim,",
+    introSubtitle: "Sana bir sürpriz hazırladım",
     introButtonText: "Sürprizi gör",
-    openingText: "Romantik Hikayemizee yolculukk...",
+    openingText: "Romantik Hikayemize yolculuk...",
     openingDoneDelayMs: 1700,
-    passwordModalTitle: "Sayfayı açmak için küçük sırrı tahmin et bakalımm",
-    wrongPasswordMessage: "Eminimm yanlışlıkla rakamı kaydırmışsındırr, tekrar dene 💌",
+    passwordModalTitle: "Sayfayı açmak için küçük sırrı tahmin et bakalım",
+    wrongPasswordMessage: "Eminim yanlışlıkla rakamı kaydırmışsındır, tekrar dene 💌",
   },
   accessPin: "2022",
-  accessPinHint: "Tanışma yılımızz",
+  accessPinHint: "Tanışma yılımız",
   relationship: {
     partnerName: "Ceren",
-    recipientName: "Ceren",
+    recipientName: "Arda",
     coupleNames: {
       first: "Ceren",
       second: "Arda",
@@ -42,8 +42,8 @@ const demoStoryData = {
     },
     relationshipStartDate: "2022-03-12T00:00:00",
     relationshipStartLabel: "12 Mart 2022’den beri",
-    heroEyebrow: "Bizim sonsuz aşk hikâyemizz",
-    heroMessage: "Bizim tatlışş yolculuğumuzz 💖",
+    heroEyebrow: "Bizim sonsuz aşk hikâyemiz",
+    heroMessage: "Bizim tatlış yolculuğumuz 💖",
     heroLeftPhoto: {
       src: "/demo-assets/ceren-hero-right.png",
       alt: "Ceren solo portresi",
@@ -58,12 +58,12 @@ const demoStoryData = {
     },
   },
   stats: {
-    statsTitle: "Birlikte geçirdiğimizz süre",
+    statsTitle: "Birlikte geçirdiğimiz süre",
     statsSinceText: "12 Mart 2022’den beri",
-    loveMeterQuestion: "Sence seni ne kadar seviyorumm?",
-    loveMeterButtonText: "Hadii hemen butona bas da öğrenelimm heheh",
-    loveMeterResultTitle: "Seni düşündüğünden dahaa çokkk seviyorumm",
-    loveMeterResultMessage: "Başka türlü olacağını mı düşünmüştün yoksaa???",
+    loveMeterQuestion: "Sence seni ne kadar seviyorum?",
+    loveMeterButtonText: "Hadi hemen butona bas da öğrenelim",
+    loveMeterResultTitle: "Seni düşündüğünden daha çok seviyorum",
+    loveMeterResultMessage: "Başka türlü olacağını mı düşünmüştün yoksa?",
     loveMeterTarget: 100,
     counterLabels: {
       years: "yıl",
@@ -74,63 +74,55 @@ const demoStoryData = {
     },
   },
   memories: {
-    memoriesTitle: "Anılarımızı minik minik topladımm",
+    memoriesTitle: "Benim gözümde SEN",
     galleryMode: "polaroid" as GalleryMode,
     animationStyle: "soft-slide" as AnimationStyle,
-    helperText: "Birlikte biriktirdiğimiz küçük ama kalbimde kocaman duran anlar.",
+    helperText: "Seni benim gözümden anlatan küçük kareler💖",
     items: [
       {
-        title: "Kafe anımız",
-        caption: "Birlikteyken en sıradan an bile güzel.",
+        title: "En tatlış fotiğin",
+        caption: "Çok tatlı bir bebeksin",
         date: "12.03.2022",
         photoSrc: "/demo-assets/arda-ceren-cafe.png",
-        photoAlt: "Ceren ve Arda kafe anısı",
+        photoAlt: "Ceren tatlı fotoğraf",
         placeholder: "from-rose-200 via-pink-200 to-fuchsia-300",
       },
       {
-        title: "Ayna selfiemiz",
-        caption: "Küçük anılar, en değerli olanlar.",
+        title: "En komik halin",
+        caption: "Minik ve komik bitanemsin",
         date: "02.04.2022",
         photoSrc: "/demo-assets/arda-ceren-mirror.png",
-        photoAlt: "Ceren ve Arda ayna selfiesi",
+        photoAlt: "Ceren komik fotoğraf",
         placeholder: "from-fuchsia-200 via-rose-200 to-pink-300",
       },
       {
-        title: "Yürüyüşümüz",
-        caption: "Seninle geçen zaman hep en sevdiğim zaman.",
+        title: "En çekici sen",
+        caption: "Güzelliğin adeta beni benden alıyor",
         date: "18.06.2022",
         photoSrc: "/demo-assets/arda-ceren-walk.png",
-        photoAlt: "Ceren ve Arda yürüyüş anısı",
+        photoAlt: "Ceren cekici fotoğraf",
         placeholder: "from-amber-100 via-rose-200 to-red-200",
       },
       {
-        title: "Gün batımı",
-        caption: "Sarılınca dünya biraz daha sessizleşiyor.",
+        title: "En bebek halin",
+        caption: "Minik kız çoçuğusun",
         date: "27.08.2022",
         photoSrc: "/demo-assets/arda-ceren-hug.png",
-        photoAlt: "Ceren ve Arda gün batımı sarılması",
+        photoAlt: "Ceren bebek hali",
         placeholder: "from-rose-200 via-orange-100 to-pink-300",
       },
       {
-        title: "Ev halimiz",
-        caption: "Biz olmayı çok sevdim.",
-        date: "11.11.2022",
-        photoSrc: "/demo-assets/arda-ceren-couch.png",
-        photoAlt: "Ceren ve Arda koltukta sıcak an",
-        placeholder: "from-pink-100 via-rose-100 to-fuchsia-200",
-      },
-      {
-        title: "Yakın anımız",
+        title: "En güzel gülüşün",
         caption: "Gülüşünün olduğu her yer biraz daha güzel.",
         date: "24.12.2022",
         photoSrc: "/demo-assets/arda-ceren-closeup.png",
-        photoAlt: "Ceren ve Arda yakın romantik an",
+        photoAlt: "Ceren güzel gülüşü",
         placeholder: "from-fuchsia-100 via-pink-200 to-rose-300",
       },
     ],
   },
   timeline: {
-    timelineTitle: "Bizim hikayemizz",
+    timelineTitle: "Bizim hikayemiz",
     items: [
       {
         date: "12 Mart 2022",
@@ -172,25 +164,25 @@ const demoStoryData = {
   },
   spotify: {
     sectionTitle: "Bize Özel",
-    subtitle: "Bu şarkıyı her dinlediğimde aklıma sen geliyorsunn 🥹",
-    label: "BİZİM ŞARKIMIZZ",
+    subtitle: "Bu şarkıyı her dinlediğimde aklıma sen geliyorsun 🥹",
+    label: "BİZİM ŞARKIMIZ",
     songTitle: "Ahu",
     artist: "Mabel Matiz",
-    note: "Bu şarkı tam olarakk bizi anlatıyorr 💖",
+    note: "Bu şarkı tam olarak bizi anlatıyor 💖",
     spotifyUrl: "https://open.spotify.com/track/5dIFM4dkwEjMnFppbHTsEA?si=50cef257e6e34cbd",
   },
   photoPuzzle: {
-    title: "Aşkımızın Parçalarıı",
+    title: "Aşkımızın Parçaları",
     subtitle:
-      "Her parçada bize ait bir anı saklı. Fotoğrafı tamamla ve hikâyemizi yeniden birleştirr",
-    buttonText: "Hadi başlayalımm 💖",
+      "Her parçada bize ait bir anı saklı. Fotoğrafı tamamla ve hikâyemizi yeniden birleştir",
+    buttonText: "Hadi başlayalım 💖",
     imageUrl: "/demo-assets/arda-ceren-puzzle.png",
-    completionTitle: "Harikasınn bebeğimm! 💖",
-    completionMessage: "Biz tamamlandıkça, bu hikâye daha da güzelleşti sanırımm 💗",
+    completionTitle: "Harikasın bebeğim! 💖",
+    completionMessage: "Biz tamamlandıkça, bu hikâye daha da güzelleşti sanırım 💗",
   },
   openWhenLetters: {
     sectionTitle: "Your open when letters",
-    sectionSubtitle: "Küçük notlar bıraktımm, ihtiyacın olduğunda aç diyee.",
+    sectionSubtitle: "Küçük notlar bıraktım, ihtiyacın olduğunda aç diye",
     items: [
       {
         title: "Beni özlediğinde aç",
@@ -222,8 +214,8 @@ const demoStoryData = {
   voiceNote: {
     enabled: true,
     sectionTitle: "Küçük bir ses notum sana 💖",
-    title: "Bitanemee",
-    durationLimitSeconds: 10,
+    title: "Bitaneme",
+    durationLimitSeconds: 30,
     src: "",
     audioUrl: "/demo-assets/arda-ceren-voice-note.mp3",
     autoplay: false,
@@ -232,61 +224,61 @@ const demoStoryData = {
     stopText: "Durdur",
   },
   couponQuiz: {
-    title: "Hadi biraz eğlenelimm",
-    subtitle: "Tüm ödülleri kazanacağına eminimm",
+    title: "Hadi biraz eğlenelim",
+    subtitle: "Tüm ödülleri kazanacağına eminim",
     nextButtonText: "Sıradaki soru",
-    completionText: "Hadi iyisinn, hepsini kaptın 😂",
+    completionText: "Hadi iyisin, hepsini kaptın 😂",
     questions: [
       {
         question: "İlk buluşmamızda en çok neye gülmüştük?",
         options: ["Kahve siparişime", "Yağmura yakalanmamıza", "Yanlış masaya oturmama"],
         correctAnswer: "Yağmura yakalanmamıza",
-        reward: "Kahve date kazandınn",
+        reward: "Kahve date kazandın",
       },
       {
         question: "En sevdiğimiz sakin plan hangisi?",
         options: ["Film gecesi", "Sabah koşusu", "Uzun alışveriş turu"],
         correctAnswer: "Film gecesi",
-        reward: "1 film gecesi kazandınn",
+        reward: "1 film gecesi kazandın",
       },
       {
         question: "En hızlı iyileştiren şey ne?",
         options: ["Uzun bir sarılma", "Sessiz kalmak", "Telefonu kapatmak"],
         correctAnswer: "Uzun bir sarılma",
-        reward: "Sonzuz uzunn uzun sarılma kuponu kazandınn :)",
+        reward: "Sonzuz uzun uzun sarılma kuponu kazandın :)",
       },
     ],
   },
   coupleWrapped: {
-    title: "Bizim ilişki özetimizz",
-    subtitle: "Küçük ama çok gerçek bir özet heheh",
+    title: "Bizim ilişki özetimiz",
+    subtitle: "Küçük ama çok gerçek bir özet",
     stats: [
       {
         label: "%100 aşk",
-        description: "Başka türlüsünü düşünememm bilee",
+        description: "Başka türlüsünü düşünemem bilee",
       },
       {
         label: "%87 gülme krizi",
-        description: "Birlikteyken sakinn kalamayızz kii hehehe",
+        description: "Birlikteyken sakinn kalamayız ki",
       },
       {
         label: "%64 tatlı trip",
         description: "Ama cute olanından",
       },
       {
-        label: "%999 bir-birimizii özlemee",
-        description: "Bunu hesaplamayaa matematiğimm yetmedii",
+        label: "%999 bir-birimizi özleme",
+        description: "Bunu hesaplamaya matematiğim yetmedi",
       },
     ],
   },
   reasons: {
-    reasonsTitle: "Seni benim için özel kılan sadece birkaç sebepp",
+    reasonsTitle: "Seni benim için özel kılan sadece birkaç sebep",
     items: [
-      "Gülüşünle tüm kalbimi rahatlatıyorsunn",
-      "En sıradan günümüzü bile varlığınlaa özel yapman",
+      "Gülüşünle tüm kalbimi rahatlatıyorsun",
+      "En sıradan günümüzü bile varlığınla özel yapman",
       "Beni dinlerken gözlerinin parlaması",
-      "Küçük şeylere çocuk gibi sevinmenn",
-      "Yanındayken çok huzurluu hissedebilmem",
+      "Küçük şeylere çocuk gibi sevinmen",
+      "Yanındayken çok huzurlu hissedebilmem",
       "Kalbimin evini senin yanında bulması",
     ],
   },
@@ -305,7 +297,7 @@ const demoStoryData = {
   finalSurprise: {
     finalGiftButtonText: "Sana bir sürprizim daha var",
     finalLabel: "Gizli mesaj",
-    finalSecretNote: "Seni her gün bir öncekinden çook daha fazla çok seviyorumm, hayatımm 💖💖",
+    finalSecretNote: "Seni her gün bir öncekinden çok daha fazla çok seviyorum, hayatım 💖💖",
   },
   interactiveFeatures: {
     coupleWrapped: { enabled: true },
@@ -344,6 +336,12 @@ const demoStoryData = {
     density: 38,
     showHeroSparkles: true,
   },
+};
+
+const neutralSpotifyFallback = {
+  songTitle: "Şarkımız",
+  artist: "Bize özel",
+  note: "Bu şarkı bana hep seni hatırlatıyor 💖",
 };
 
 function getElapsed(startIso: string) {
@@ -434,14 +432,21 @@ function StoryDemo() {
       }) as CSSProperties,
     [story],
   );
+  const customerSpotify = customerStory?.spotify;
   const spotify = {
-    sectionTitle: customerStory?.spotify?.sectionTitle || story.spotify.sectionTitle,
-    subtitle: customerStory?.spotify?.subtitle || story.spotify.subtitle,
-    label: customerStory?.spotify?.label || story.spotify.label,
-    songTitle: customerStory?.spotify?.songTitle || story.spotify.songTitle,
-    artist: customerStory?.spotify?.artist || story.spotify.artist,
-    note: customerStory?.spotify?.note || story.spotify.note,
-    spotifyUrl: customerStory?.spotify?.spotifyUrl || story.spotify.spotifyUrl,
+    sectionTitle: customerSpotify?.sectionTitle || story.spotify.sectionTitle,
+    subtitle: customerSpotify?.subtitle || story.spotify.subtitle,
+    label: customerSpotify?.label || story.spotify.label,
+    songTitle: customerSpotify
+      ? customerSpotify.songTitle || neutralSpotifyFallback.songTitle
+      : story.spotify.songTitle,
+    artist: customerSpotify
+      ? customerSpotify.artist || neutralSpotifyFallback.artist
+      : story.spotify.artist,
+    note: customerSpotify
+      ? customerSpotify.note || neutralSpotifyFallback.note
+      : story.spotify.note,
+    spotifyUrl: customerSpotify ? customerSpotify.spotifyUrl || "" : story.spotify.spotifyUrl,
   };
   const voiceNote = {
     sectionTitle: customerStory?.voiceNote?.sectionTitle || story.voiceNote.sectionTitle,
