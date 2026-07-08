@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, X } from "lucide-react";
+import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-react";
 
 export const Route = createFileRoute("/storyofus/demo")({
   head: () => ({
@@ -22,7 +22,7 @@ type AnimationStyle = "soft-slide" | "fade" | "none";
 
 const demoStoryData = {
   intro: {
-    introTitle: "Canım birtanem sevgilim,",
+    introTitle: "Canım sevgilim,",
     introSubtitle: "Sana bir sürpriz hazırladım",
     introButtonText: "Sürprizi gör",
     openingText: "Romantik Hikayemize yolculuk...",
@@ -31,7 +31,7 @@ const demoStoryData = {
     wrongPasswordMessage: "Eminim yanlışlıkla rakamı kaydırmışsındır, tekrar dene 💌",
   },
   accessPin: "2022",
-  accessPinHint: "Tanışma yılımız",
+  accessPinHint: "Tanışma yılımız(demo şifresi:2022)",
   relationship: {
     partnerName: "Ceren",
     recipientName: "Arda",
@@ -62,8 +62,8 @@ const demoStoryData = {
     statsSinceText: "12 Mart 2022’den beri",
     loveMeterQuestion: "Sence seni ne kadar seviyorum?",
     loveMeterButtonText: "Hadi hemen butona bas da öğrenelim",
-    loveMeterResultTitle: "Seni düşündüğünden daha çok seviyorum",
-    loveMeterResultMessage: "Başka türlü olacağını mı düşünmüştün yoksa?",
+    loveMeterResultTitle: "Seni düşündüğünden daha çok seviyorum 💖",
+    loveMeterResultMessage: "Başka türlü olacağını mı düşünmüştün yoksa? :)",
     loveMeterTarget: 100,
     counterLabels: {
       years: "yıl",
@@ -82,40 +82,35 @@ const demoStoryData = {
       {
         title: "En tatlış fotiğin",
         caption: "Çok tatlı bir bebeksin",
-        date: "12.03.2022",
-        photoSrc: "/demo-assets/arda-ceren-cafe.png",
+        photoSrc: "/demo-assets/ceren-tatli-fotograf.png",
         photoAlt: "Ceren tatlı fotoğraf",
         placeholder: "from-rose-200 via-pink-200 to-fuchsia-300",
       },
       {
         title: "En komik halin",
         caption: "Minik ve komik bitanemsin",
-        date: "02.04.2022",
-        photoSrc: "/demo-assets/arda-ceren-mirror.png",
+        photoSrc: "/demo-assets/ceren-komik-fotograf.png",
         photoAlt: "Ceren komik fotoğraf",
         placeholder: "from-fuchsia-200 via-rose-200 to-pink-300",
       },
       {
         title: "En çekici sen",
         caption: "Güzelliğin adeta beni benden alıyor",
-        date: "18.06.2022",
-        photoSrc: "/demo-assets/arda-ceren-walk.png",
+        photoSrc: "/demo-assets/ceren-cekici-fotograf.png",
         photoAlt: "Ceren cekici fotoğraf",
         placeholder: "from-amber-100 via-rose-200 to-red-200",
       },
       {
         title: "En bebek halin",
         caption: "Minik kız çoçuğusun",
-        date: "27.08.2022",
-        photoSrc: "/demo-assets/arda-ceren-hug.png",
+        photoSrc: "/demo-assets/ceren-bebek-fotograf.png",
         photoAlt: "Ceren bebek hali",
         placeholder: "from-rose-200 via-orange-100 to-pink-300",
       },
       {
         title: "En güzel gülüşün",
         caption: "Gülüşünün olduğu her yer biraz daha güzel.",
-        date: "24.12.2022",
-        photoSrc: "/demo-assets/arda-ceren-closeup.png",
+        photoSrc: "/demo-assets/ceren-gulus-fotograf.png",
         photoAlt: "Ceren güzel gülüşü",
         placeholder: "from-fuchsia-100 via-pink-200 to-rose-300",
       },
@@ -126,39 +121,43 @@ const demoStoryData = {
     items: [
       {
         date: "12 Mart 2022",
-        title: "Her şey bir merhaba ile başladı",
-        description:
-          "O gün bunun bizi böyle güzel bir hikâyeye götüreceğini bilmiyorduk. Ama bir şekilde, her şey tam da olması gerektiği gibi başladı.",
+        title: "İlk tanışmamız",
+        description: "Her şeyin başladığı o tatlı an… İyi ki yollarımız kesişmiş.",
         photoSrc: "/demo-assets/arda-ceren-cafe.png",
         photoAlt: "Ceren ve Arda ilk tanışma anısı",
         placeholder: "from-rose-100 via-pink-200 to-fuchsia-200",
       },
       {
         date: "2 Nisan 2022",
-        title: "Saatlerin nasıl geçtiğini anlamadık",
-        description:
-          "Küçük bir sohbet diye başlayan şey, saatler süren ve hiç bitsin istemediğimiz bir ana dönüştü.",
+        title: "İlk buluşmamız",
+        description: "Biraz heyecan, biraz utangaçlık, bolca güzel his.",
         photoSrc: "/demo-assets/arda-ceren-mirror.png",
         photoAlt: "Ceren ve Arda birlikte geçen uzun sohbet",
         placeholder: "from-amber-100 via-rose-200 to-pink-300",
       },
       {
         date: "18 Haziran 2022",
-        title: "Birlikte ilk karemiz",
-        description:
-          "Belki sadece bir fotoğraftı ama şimdi bakınca, hikâyemizin en tatlı başlangıç anılarından biri gibi geliyor.",
+        title: "İlk fotoğrafımız",
+        description: "Beraber çekildiğimiz ilk kare, şimdi en güzel anılarımızdan biri.",
         photoSrc: "/demo-assets/arda-ceren-walk.png",
         photoAlt: "Ceren ve Arda birlikte ilk kare",
         placeholder: "from-purple-200 via-pink-200 to-rose-300",
       },
       {
         date: "27 Ağustos 2022",
-        title: "Birlikteyken her yer daha güzel",
-        description:
-          "O gün yaptığımız şeylerden çok, aynı anda aynı yerde olmamız güzeldi. Çünkü en güzel detay hep sendin.",
+        title: "İlk date nightımız",
+        description: "Süslenip birbirimize yeniden aşık olduğumuz o gece.",
         photoSrc: "/demo-assets/arda-ceren-hug.png",
         photoAlt: "Ceren ve Arda birlikte gün batımı",
         placeholder: "from-rose-200 via-orange-100 to-pink-300",
+      },
+      {
+        date: "24 Aralık 2022",
+        title: "İlk tatilimiz",
+        description: "Beraber kaçtığımız ilk küçük macera, hâlâ aklımda.",
+        photoSrc: "/demo-assets/arda-ceren-closeup.png",
+        photoAlt: "Ceren ve Arda ilk tatil anısı",
+        placeholder: "from-fuchsia-100 via-pink-200 to-rose-300",
       },
     ],
   },
@@ -255,11 +254,11 @@ const demoStoryData = {
     stats: [
       {
         label: "%100 aşk",
-        description: "Başka türlüsünü düşünemem bilee",
+        description: "Başka türlüsünü düşünemem bile",
       },
       {
         label: "%87 gülme krizi",
-        description: "Birlikteyken sakinn kalamayız ki",
+        description: "Birlikteyken sakin kalamayız ki",
       },
       {
         label: "%64 tatlı trip",
@@ -267,7 +266,7 @@ const demoStoryData = {
       },
       {
         label: "%999 bir-birimizi özleme",
-        description: "Bunu hesaplamaya matematiğim yetmedi",
+        description: "Bunu hesaplamaya matematiğim yetmedi :)",
       },
     ],
   },
@@ -285,7 +284,7 @@ const demoStoryData = {
   letter: {
     letterTitle: "Kalbimden sana birkaç satır",
     letterBody:
-      "Bazen seni ne kadar sevdiğimi anlatmak için doğru kelimeleri bulamıyorum.\n\nAma bildiğim bir şey var: Sen geldikten sonra hayatımın rengi değişti.\n\nEn sıradan günler bile seninle daha özel, daha hafif ve daha güzel hissettiriyor. Gülüşünü görmek, sesini duymak, aynı anının içinde seninle bulunmak bile başlı başına bir mutluluk.\n\nBu küçük site belki hissettiklerimin hepsini anlatmaya yetmez ama yine de içinde sana ait çok şey var.\n\nÇünkü burada da, kalbimde de, en güzel yer hep senin.",
+      "Bazen sana baktığımda, anlatmak istediğim her şey kelimelerin biraz ötesinde kalıyor. Gülüşün, sesin, yanımda oluşun… Hepsi kalbimde çok özel bir yere sahip. Seninle geçen her an, en sıradan günü bile güzel bir anıya dönüştürüyor. İyi ki varsın, iyi ki benimlesin. Seni düşündüğüm her yerde, kalbim biraz daha yumuşuyor.",
     signaturePrefix: "Sonsuza dek",
     letterSidePhoto: {
       src: "/demo-assets/arda-ceren-closeup.png",
@@ -759,7 +758,7 @@ function StoryDemo() {
         <div className="grid gap-5 sm:gap-6 md:grid-cols-3">
           {story.memories.items.map((memory, i) => (
             <figure
-              key={`${memory.title}-${memory.date}`}
+              key={`${memory.title}-${i}`}
               className="group mx-auto w-full max-w-[17.5rem] rounded-[1.5rem] border border-white/80 bg-[color:var(--sou-card)] p-3 shadow-2xl shadow-rose-200/45 backdrop-blur transition hover:-translate-y-1 hover:shadow-rose-300/60 sm:max-w-none sm:rounded-[1.75rem] sm:p-4"
               style={{ transform: `rotate(${i === 0 ? "-1.2deg" : i === 2 ? "1.2deg" : "0deg"})` }}
             >
@@ -771,11 +770,6 @@ function StoryDemo() {
                 >
                   {memory.title}
                 </p>
-                {memory.date && (
-                  <p className="mt-2 text-[10px] font-medium uppercase tracking-widest text-[color:var(--sou-primary)]/60">
-                    {memory.date}
-                  </p>
-                )}
                 <p className="mt-2 text-sm leading-relaxed text-[color:var(--sou-muted)]">
                   {memory.caption}
                 </p>
@@ -801,7 +795,10 @@ function StoryDemo() {
               <div className="grid gap-3 sm:grid-cols-[1fr_150px] sm:items-center sm:gap-4 md:grid-cols-[1fr_180px]">
                 <div className="flex gap-3 sm:gap-4">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[color:var(--sou-primary)] to-[color:var(--sou-secondary)] text-sm font-bold text-white shadow-lg shadow-rose-300/40 sm:h-11 sm:w-11">
-                    {i + 1}
+                    <Star
+                      className="h-4 w-4 fill-white/25 text-white sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                    />
                   </span>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--sou-primary)]">
@@ -1021,7 +1018,7 @@ function StoryDemo() {
               className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-[color:var(--sou-card)] px-4 py-4 shadow-sm shadow-rose-100/40 backdrop-blur"
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-semibold text-[color:var(--sou-primary)]">
-                {i + 1}
+                <Sparkles className="h-4 w-4 text-[color:var(--sou-primary)]" aria-hidden="true" />
               </span>
               <span className="text-sm leading-relaxed text-[color:var(--sou-text)]">{reason}</span>
             </div>
@@ -1142,7 +1139,6 @@ function StoryDemo() {
               >
                 <span className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-rose-100/70 blur-sm transition group-hover:scale-125" />
                 <span className="relative mb-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-rose-100 to-pink-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[color:var(--sou-primary)]">
-                  #{i + 1}
                   <Heart className="h-3.5 w-3.5 fill-rose-300/70" />
                 </span>
                 <p className="relative text-2xl font-black tracking-normal text-[color:var(--sou-primary)] sm:text-3xl md:text-4xl">
@@ -1157,8 +1153,8 @@ function StoryDemo() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto max-w-5xl px-4 pb-14 sm:px-6 sm:pb-16">
-        <div className="grid gap-7 rounded-[1.5rem] border border-rose-200 bg-[linear-gradient(180deg,#fffafc,#fff1f5)] p-4 shadow-xl shadow-rose-200/40 sm:rounded-[2rem] sm:p-6 md:grid-cols-[0.8fr_1.2fr] md:items-center md:p-10">
+      <section className="relative z-10 mx-auto max-w-5xl px-4 pb-14 sm:px-6 sm:pb-16 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="grid gap-7 rounded-[1.5rem] border border-rose-200/75 bg-[linear-gradient(180deg,#fffafc,#fff1f6_58%,#fff7fb)] p-4 shadow-xl shadow-rose-200/35 transition duration-700 ease-out hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-rose-200/45 sm:rounded-[2rem] sm:p-6 md:grid-cols-[0.8fr_1.2fr] md:items-center md:p-10">
           <div className="mx-auto w-full max-w-[17rem] sm:max-w-xs">
             <div className="rotate-[-10deg] rounded-[1.5rem] border border-white/80 bg-white/80 p-2.5 shadow-2xl shadow-rose-200/50 sm:p-3">
               <PhotoFrame photo={story.letter.letterSidePhoto} aspect="aspect-[4/5]" large />
@@ -1170,13 +1166,13 @@ function StoryDemo() {
               </p>
             </div>
           </div>
-          <div className="relative">
+          <div className="relative rounded-[1.4rem] border border-white/75 bg-white/55 px-4 py-5 shadow-inner shadow-rose-100/50 sm:rounded-[1.8rem] sm:px-6 sm:py-7">
             <Heart className="absolute -left-8 -top-10 h-10 w-10 fill-rose-300/30 text-rose-400/50 sm:-left-10 sm:-top-12" />
             <p className="text-xs uppercase tracking-[0.28em] text-[color:var(--sou-primary)] sm:tracking-[0.4em]">
               {story.letter.letterTitle}
             </p>
             <p
-              className="mt-4 whitespace-pre-line text-base leading-relaxed text-[color:var(--sou-text)] sm:text-lg md:text-xl"
+              className="mt-5 text-[1rem] leading-8 text-[color:var(--sou-text)]/90 sm:text-lg sm:leading-9 md:text-xl md:leading-10"
               style={{ fontFamily: "var(--sou-font-accent)", fontStyle: "italic" }}
             >
               {story.letter.letterBody}
@@ -1289,7 +1285,7 @@ function StoryDemo() {
                 />
               ))}
             </div>
-            <Sparkles className="relative mx-auto mb-5 h-8 w-8 text-white/80 animate-in fade-in zoom-in duration-700" />
+            <Heart className="relative mx-auto mb-5 h-8 w-8 text-white/80 animate-in fade-in zoom-in duration-700" />
             <p className="relative text-xs uppercase tracking-[0.28em] text-white/80 sm:tracking-[0.4em]">
               {story.finalSurprise.finalLabel}
             </p>
