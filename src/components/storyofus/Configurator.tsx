@@ -730,14 +730,14 @@ function OrderFormModal(props: FormProps) {
           </Field>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Spotify şarkı adı" helper="Örn: Ahu">
+            <Field label="Spotify şarkı adı" helper="Örn: Şarkımız">
               <input
                 value={spotifySongTitle}
                 onChange={(e) => setSpotifySongTitle(e.target.value)}
                 className={inputCls}
               />
             </Field>
-            <Field label="Sanatçı adı" helper="Örn: Mabel Matiz">
+            <Field label="Sanatçı adı" helper="Örn: Bize özel">
               <input
                 value={spotifyArtist}
                 onChange={(e) => setSpotifyArtist(e.target.value)}
