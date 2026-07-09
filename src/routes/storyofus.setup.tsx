@@ -5,6 +5,7 @@ import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
   type StoryOfUsContactCoupleData,
+  type StoryOfUsLetterItem,
   type StoryOfUsMusicData,
   type StoryOfUsPhotoDraftItem,
   type StoryOfUsPuzzleData,
@@ -356,6 +357,92 @@ function StoryOfUsSetupRoute() {
     });
   }
 
+  function addLoveLetter() {
+    setFormData((current) => {
+      if (current.letters.some((letter) => letter.type === "love_letter")) {
+        return current;
+      }
+
+      return {
+        ...current,
+        letters: [
+          ...current.letters,
+          {
+            id: createLetterItemId(),
+            type: "love_letter",
+            title: "Aşk mektubum",
+            body: "",
+            sortOrder: current.letters.length,
+          },
+        ],
+      };
+    });
+  }
+
+  function addOpenWhenLetter() {
+    setFormData((current) => ({
+      ...current,
+      letters: [
+        ...current.letters,
+        {
+          id: createLetterItemId(),
+          type: "open_when",
+          title: "",
+          body: "",
+          sortOrder: current.letters.length,
+        },
+      ],
+    }));
+  }
+
+  function updateLetterItem(
+    letterId: string,
+    field: keyof Pick<StoryOfUsLetterItem, "title" | "body">,
+    value: string,
+  ) {
+    setFormData((current) => ({
+      ...current,
+      letters: current.letters.map((letter) =>
+        letter.id === letterId ? { ...letter, [field]: value } : letter,
+      ),
+    }));
+  }
+
+  function removeLetterItem(letterId: string) {
+    setFormData((current) => ({
+      ...current,
+      letters: current.letters
+        .filter((letter) => letter.id !== letterId)
+        .map((letter, index) => ({ ...letter, sortOrder: index })),
+    }));
+  }
+
+  function moveLetterItem(letterId: string, direction: "up" | "down") {
+    setFormData((current) => {
+      const orderedLetters = [...current.letters].sort((a, b) => a.sortOrder - b.sortOrder);
+      const currentIndex = orderedLetters.findIndex((letter) => letter.id === letterId);
+
+      if (currentIndex === -1) {
+        return current;
+      }
+
+      const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= orderedLetters.length) {
+        return current;
+      }
+
+      const nextLetters = [...orderedLetters];
+      const [movedLetter] = nextLetters.splice(currentIndex, 1);
+      nextLetters.splice(targetIndex, 0, movedLetter);
+
+      return {
+        ...current,
+        letters: nextLetters.map((letter, index) => ({ ...letter, sortOrder: index })),
+      };
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-6 text-[#3d2323] sm:px-6 sm:py-10">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
@@ -491,6 +578,15 @@ function StoryOfUsSetupRoute() {
                   onRemoveItem={removeTimelineItem}
                   onMoveItem={moveTimelineItem}
                 />
+              ) : currentStep.id === "letters" ? (
+                <LettersStep
+                  letters={formData.letters}
+                  onAddLoveLetter={addLoveLetter}
+                  onAddOpenWhenLetter={addOpenWhenLetter}
+                  onUpdateLetter={updateLetterItem}
+                  onRemoveLetter={removeLetterItem}
+                  onMoveLetter={moveLetterItem}
+                />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {getStepPlaceholderCards(currentStep.id).map((card) => (
@@ -618,8 +714,26 @@ function createTimelineItemId() {
   return `timeline-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function createLetterItemId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `letter-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function formatFileSizeMb(sizeBytes: number) {
   return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function getOpenWhenTitlePlaceholder(index: number) {
+  const placeholders = [
+    "Beni özlediğinde aç",
+    "Kötü hissettiğinde aç",
+    "Gülümsemeye ihtiyacın olduğunda aç",
+  ];
+
+  return placeholders[index % placeholders.length];
 }
 
 function PhotosPuzzleStep({
@@ -1141,6 +1255,186 @@ function TimelineStep({
                 </div>
               </article>
             ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function LettersStep({
+  letters,
+  onAddLoveLetter,
+  onAddOpenWhenLetter,
+  onUpdateLetter,
+  onRemoveLetter,
+  onMoveLetter,
+}: {
+  letters: StoryOfUsLetterItem[];
+  onAddLoveLetter: () => void;
+  onAddOpenWhenLetter: () => void;
+  onUpdateLetter: (
+    letterId: string,
+    field: keyof Pick<StoryOfUsLetterItem, "title" | "body">,
+    value: string,
+  ) => void;
+  onRemoveLetter: (letterId: string) => void;
+  onMoveLetter: (letterId: string, direction: "up" | "down") => void;
+}) {
+  const orderedLetters = [...letters].sort((a, b) => a.sortOrder - b.sortOrder);
+  const hasLoveLetter = orderedLetters.some((letter) => letter.type === "love_letter");
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h4 className="text-base font-semibold text-rose-950">
+              Sevgilinize özel mektuplar ekleyin.
+            </h4>
+            <p className="mt-1 text-sm leading-6 text-rose-950/60">
+              Aşk mektubu ana romantik mesajınız olacak. Open-when mektupları ise farklı anlarda
+              açılacak küçük sürpriz notlar gibi düşünebilirsiniz.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+            <button
+              type="button"
+              onClick={onAddLoveLetter}
+              disabled={hasLoveLetter}
+              className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Aşk mektubu ekle
+            </button>
+            <button
+              type="button"
+              onClick={onAddOpenWhenLetter}
+              className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+            >
+              Open-when mektubu ekle
+            </button>
+          </div>
+        </div>
+        {hasLoveLetter && (
+          <p className="mt-3 text-xs leading-5 text-rose-950/45">
+            Ana aşk mektubu eklendiği için ikinci bir aşk mektubu eklenemez.
+          </p>
+        )}
+      </section>
+
+      {orderedLetters.length === 0 ? (
+        <section className="rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center shadow-sm shadow-rose-100/40">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
+          <h4 className="text-base font-semibold text-rose-950">Henüz mektup eklenmedi.</h4>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
+            Bu bölüm daha sonra doğrulama ve atlama sistemiyle isteğe bağlı hale getirilebilir.
+            Şimdilik ana mektubunuzu veya open-when notlarınızı eklemek için yukarıdaki butonları
+            kullanabilirsiniz.
+          </p>
+        </section>
+      ) : (
+        <section className="grid gap-4">
+          {orderedLetters.map((letter, index) => {
+            const isFirstLetter = index === 0;
+            const isLastLetter = index === orderedLetters.length - 1;
+            const isLoveLetter = letter.type === "love_letter";
+
+            return (
+              <article
+                key={letter.id}
+                className="rounded-3xl border border-rose-100 bg-white p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+              >
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">
+                      {isLoveLetter ? "Aşk mektubu" : "Open when"}
+                    </span>
+                    <h5 className="text-base font-semibold text-rose-950">
+                      {letter.title || "Başlıksız mektup"}
+                    </h5>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onMoveLetter(letter.id, "up")}
+                      disabled={isFirstLetter}
+                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Yukarı taşı
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onMoveLetter(letter.id, "down")}
+                      disabled={isLastLetter}
+                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Aşağı taşı
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveLetter(letter.id)}
+                      className="rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    >
+                      Mektubu kaldır
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <SetupTextField
+                    label="Mektup başlığı"
+                    value={letter.title}
+                    onChange={(nextValue) => onUpdateLetter(letter.id, "title", nextValue)}
+                    placeholder={
+                      isLoveLetter ? "Aşk mektubum" : getOpenWhenTitlePlaceholder(index)
+                    }
+                  />
+                  <SetupTextArea
+                    label="Mektup içeriği"
+                    value={letter.body}
+                    onChange={(nextValue) => onUpdateLetter(letter.id, "body", nextValue)}
+                    placeholder="Buraya mektubunuzu yazın…"
+                  />
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {orderedLetters.length > 0 && (
+        <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+              Önizleme
+            </p>
+            <h4 className="mt-1 text-base font-semibold text-rose-950">Mektup önizlemesi</h4>
+          </div>
+          <div className="grid gap-3">
+            {orderedLetters.map((letter) => {
+              const isLoveLetter = letter.type === "love_letter";
+
+              return (
+                <article
+                  key={`preview-${letter.id}`}
+                  className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
+                >
+                  <span className="inline-flex rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">
+                    {isLoveLetter ? "Aşk mektubu" : "Open when"}
+                  </span>
+                  <h5 className="mt-3 text-sm font-semibold text-rose-950">
+                    {letter.title || "Başlıksız mektup"}
+                  </h5>
+                  {letter.body ? (
+                    <p className="mt-2 text-sm leading-6 text-rose-950/60">{letter.body}</p>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-rose-950/45">
+                      Mektup içeriği yazıldığında burada romantik bir önizleme olarak görünecek.
+                    </p>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </section>
       )}
