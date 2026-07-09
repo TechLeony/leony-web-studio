@@ -16,6 +16,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
@@ -59,6 +60,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
+  id: '/storyofus/setup',
+  path: '/storyofus/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
   id: '/storyofus/demo',
   path: '/storyofus/demo',
@@ -90,9 +96,9 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
-  id: '/storyofus/setup/demo',
-  path: '/storyofus/setup/demo',
-  getParentRoute: () => rootRouteImport,
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => StoryofusSetupRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/demo'
+    | '/storyofus/setup'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/demo'
+    | '/storyofus/setup'
     | '/admin'
     | '/storyofus'
     | '/storyofus/setup/demo'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/demo'
+    | '/storyofus/setup'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
@@ -202,8 +214,8 @@ export interface RootRouteChildren {
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
+  StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusIndexRoute: typeof StoryofusIndexRoute
-  StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
 }
 
@@ -258,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/storyofus/setup': {
+      id: '/storyofus/setup'
+      path: '/storyofus/setup'
+      fullPath: '/storyofus/setup'
+      preLoaderRoute: typeof StoryofusSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/storyofus/demo': {
       id: '/storyofus/demo'
       path: '/storyofus/demo'
@@ -302,10 +321,10 @@ declare module '@tanstack/react-router' {
     }
     '/storyofus/setup/demo': {
       id: '/storyofus/setup/demo'
-      path: '/storyofus/setup/demo'
+      path: '/demo'
       fullPath: '/storyofus/setup/demo'
       preLoaderRoute: typeof StoryofusSetupDemoRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof StoryofusSetupRoute
     }
   }
 }
@@ -324,6 +343,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface StoryofusSetupRouteChildren {
+  StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
+}
+
+const StoryofusSetupRouteChildren: StoryofusSetupRouteChildren = {
+  StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
+}
+
+const StoryofusSetupRouteWithChildren = StoryofusSetupRoute._addFileChildren(
+  StoryofusSetupRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -333,8 +364,8 @@ const rootRouteChildren: RootRouteChildren = {
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
+  StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusIndexRoute: StoryofusIndexRoute,
-  StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
 }
 export const routeTree = rootRouteImport
