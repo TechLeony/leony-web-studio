@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
+  type StoryOfUsContactCoupleData,
   type StoryOfUsSetupStepId,
 } from "../lib/storyofus/setupTypes";
 
@@ -18,7 +19,7 @@ type PlaceholderCard = {
 
 function StoryOfUsSetupRoute() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [formData] = useState(() => createEmptyStoryOfUsSetupFormData());
+  const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
 
   const totalSteps = STORYOFUS_SETUP_STEPS.length;
   const currentStep = STORYOFUS_SETUP_STEPS[currentStepIndex];
@@ -32,6 +33,16 @@ function StoryOfUsSetupRoute() {
 
   function goToNextStep() {
     setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
+  }
+
+  function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
+    setFormData((current) => ({
+      ...current,
+      contactCouple: {
+        ...current.contactCouple,
+        [field]: value,
+      },
+    }));
   }
 
   return (
@@ -134,15 +145,22 @@ function StoryOfUsSetupRoute() {
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                {getStepPlaceholderCards(currentStep.id).map((card) => (
-                  <StepPlaceholder
-                    key={`${currentStep.id}-${card.title}`}
-                    title={card.title}
-                    description={card.description}
-                  />
-                ))}
-              </div>
+              {currentStep.id === "contactCouple" ? (
+                <ContactCoupleStep
+                  value={formData.contactCouple}
+                  onChange={updateContactCoupleField}
+                />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {getStepPlaceholderCards(currentStep.id).map((card) => (
+                    <StepPlaceholder
+                      key={`${currentStep.id}-${card.title}`}
+                      title={card.title}
+                      description={card.description}
+                    />
+                  ))}
+                </div>
+              )}
 
               <pre className="sr-only" aria-hidden="true">
                 {JSON.stringify(formData, null, 2)}
@@ -241,6 +259,164 @@ function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[
         { title: "Gönderim beklemede", description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor." },
       ];
   }
+}
+
+function ContactCoupleStep({
+  value,
+  onChange,
+}: {
+  value: StoryOfUsContactCoupleData;
+  onChange: (field: keyof StoryOfUsContactCoupleData, value: string) => void;
+}) {
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Size ulaşabileceğimiz bilgiler</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Siparişinizle ilgili iletişim için bu bilgileri kullanacağız.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SetupTextField
+            label="Adınız"
+            value={value.customerName}
+            onChange={(nextValue) => onChange("customerName", nextValue)}
+            placeholder="Örn: Cavanşir"
+          />
+          <SetupTextField
+            label="E-posta adresiniz"
+            type="email"
+            value={value.customerEmail}
+            onChange={(nextValue) => onChange("customerEmail", nextValue)}
+            placeholder="ornek@mail.com"
+          />
+          <SetupTextField
+            label="Telefon numaranız"
+            type="tel"
+            value={value.contactPhone}
+            onChange={(nextValue) => onChange("contactPhone", nextValue)}
+            placeholder="05xx xxx xx xx"
+            className="sm:col-span-2"
+          />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Çift detayları</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Demo sayfanın romantik metinlerinde kullanılacak temel bilgileri hazırlıyoruz.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SetupTextField
+            label="Partnerinizin adı"
+            value={value.partnerName}
+            onChange={(nextValue) => onChange("partnerName", nextValue)}
+            placeholder="Örn: Derya"
+          />
+          <SetupTextField
+            label="Sitede nasıl görünsün?"
+            value={value.coupleDisplayName}
+            onChange={(nextValue) => onChange("coupleDisplayName", nextValue)}
+            placeholder="Derya & Cavanşir"
+            helperText="Örn: Derya & Cavanşir"
+          />
+          <SetupTextField
+            label="İlişki başlangıç tarihiniz"
+            type="date"
+            value={value.relationshipStartDate}
+            onChange={(nextValue) => onChange("relationshipStartDate", nextValue)}
+          />
+          <SetupTextField
+            label="Bu tarihe ne diyelim?"
+            value={value.specialDateLabel}
+            onChange={(nextValue) => onChange("specialDateLabel", nextValue)}
+            placeholder="Tanıştığımız gün"
+            helperText="Örn: Tanıştığımız gün, ilk buluşmamız, yıl dönümümüz"
+          />
+          <SetupTextField
+            label="Partnerinize hitap şekliniz"
+            value={value.recipientNickname}
+            onChange={(nextValue) => onChange("recipientNickname", nextValue)}
+            placeholder="Aşkım, sevgilim, bitanem..."
+            className="sm:col-span-2"
+          />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <SetupTextArea
+          label="Kısaca hikayeniz"
+          value={value.relationshipStory}
+          onChange={(nextValue) => onChange("relationshipStory", nextValue)}
+          placeholder="Nasıl tanıştınız, ilişkinizi özel yapan küçük detaylar neler?"
+          helperText="Birkaç cümle yeterli; bunu romantik metinlerde referans olarak kullanacağız."
+        />
+      </section>
+    </div>
+  );
+}
+
+function SetupTextField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  helperText,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "email" | "tel" | "date";
+  placeholder?: string;
+  helperText?: string;
+  className?: string;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="text-sm font-semibold text-rose-950">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-2 w-full rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+      />
+      {helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>}
+    </label>
+  );
+}
+
+function SetupTextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+  helperText,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  helperText?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-semibold text-rose-950">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        rows={5}
+        className="mt-2 w-full resize-y rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm leading-6 text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+      />
+      {helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>}
+    </label>
+  );
 }
 
 function StepPlaceholder({ title, description }: PlaceholderCard) {
