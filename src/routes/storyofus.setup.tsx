@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   STORYOFUS_SETUP_STEPS,
@@ -11,6 +11,7 @@ import {
   type StoryOfUsPuzzleData,
   type StoryOfUsSkipState,
   type StoryOfUsSetupStepId,
+  type StoryOfUsSetupFormData,
   type StoryOfUsTimelineItem,
   type StoryOfUsVoiceNoteData,
 } from "../lib/storyofus/setupTypes";
@@ -51,6 +52,14 @@ function StoryOfUsSetupRoute() {
 
   function goToNextStep() {
     setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
+  }
+
+  function goToStepById(stepId: StoryOfUsSetupStepId) {
+    const nextStepIndex = STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === stepId);
+
+    if (nextStepIndex !== -1) {
+      setCurrentStepIndex(nextStepIndex);
+    }
   }
 
   function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
@@ -587,6 +596,8 @@ function StoryOfUsSetupRoute() {
                   onRemoveLetter={removeLetterItem}
                   onMoveLetter={moveLetterItem}
                 />
+              ) : currentStep.id === "review" ? (
+                <ReviewSubmitStep formData={formData} onEditStep={goToStepById} />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {getStepPlaceholderCards(currentStep.id).map((card) => (
@@ -724,6 +735,38 @@ function createLetterItemId() {
 
 function formatFileSizeMb(sizeBytes: number) {
   return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatFileSize(sizeBytes: number) {
+  return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function getOrderedTimelineItems(items: StoryOfUsTimelineItem[]) {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function getOrderedLetters(letters: StoryOfUsLetterItem[]) {
+  return [...letters].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function getSelectedPuzzlePhoto(photos: StoryOfUsPhotoDraftItem[], selectedPhotoId: string | null) {
+  if (!selectedPhotoId) {
+    return undefined;
+  }
+
+  return photos.find((photo) => photo.id === selectedPhotoId);
+}
+
+function displayValue(value: string | number | null | undefined, fallback = "Belirtilmedi") {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : fallback;
+  }
+
+  return value.trim() ? value : fallback;
 }
 
 function getOpenWhenTitlePlaceholder(index: number) {
@@ -1438,6 +1481,332 @@ function LettersStep({
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function ReviewSubmitStep({
+  formData,
+  onEditStep,
+}: {
+  formData: StoryOfUsSetupFormData;
+  onEditStep: (stepId: StoryOfUsSetupStepId) => void;
+}) {
+  const selectedPuzzlePhoto = getSelectedPuzzlePhoto(
+    formData.media.photos,
+    formData.media.puzzle.selectedPhotoId,
+  );
+  const orderedTimelineItems = getOrderedTimelineItems(formData.timeline);
+  const orderedLetters = getOrderedLetters(formData.letters);
+  const voiceNoteSkip = formData.confirmedSkips.voiceNote;
+
+  return (
+    <div className="grid gap-5">
+      <ReviewSection
+        title="İletişim & çift bilgileri"
+        description="Sipariş ve romantik metinler için temel bilgiler."
+        onEdit={() => onEditStep("contactCouple")}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ReviewField label="Adınız" value={displayValue(formData.contactCouple.customerName)} />
+          <ReviewField
+            label="E-posta adresiniz"
+            value={displayValue(formData.contactCouple.customerEmail)}
+          />
+          <ReviewField
+            label="Telefon numaranız"
+            value={displayValue(formData.contactCouple.contactPhone)}
+          />
+          <ReviewField
+            label="Partnerinizin adı"
+            value={displayValue(formData.contactCouple.partnerName)}
+          />
+          <ReviewField
+            label="Sitede nasıl görünsün?"
+            value={displayValue(formData.contactCouple.coupleDisplayName)}
+          />
+          <ReviewField
+            label="İlişki başlangıç tarihiniz"
+            value={displayValue(formData.contactCouple.relationshipStartDate)}
+          />
+          <ReviewField
+            label="Bu tarihe ne diyelim?"
+            value={displayValue(formData.contactCouple.specialDateLabel)}
+          />
+          <ReviewField
+            label="Partnerinize hitap şekliniz"
+            value={displayValue(formData.contactCouple.recipientNickname)}
+          />
+          <ReviewField
+            label="Kısaca hikayeniz"
+            value={displayValue(formData.contactCouple.relationshipStory)}
+            className="sm:col-span-2"
+          />
+        </div>
+      </ReviewSection>
+
+      <ReviewSection
+        title="Fotoğraflar & puzzle"
+        description="Galeri görselleri ve mini puzzle için seçilen fotoğraf."
+        onEdit={() => onEditStep("photosPuzzle")}
+      >
+        <div className="grid gap-4">
+          <ReviewField
+            label="Toplam fotoğraf"
+            value={`${formData.media.photos.length} fotoğraf`}
+          />
+          {formData.media.photos.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {formData.media.photos.map((photo, index) => (
+                <article
+                  key={photo.id}
+                  className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm shadow-rose-100/40"
+                >
+                  <img
+                    src={photo.previewUrl}
+                    alt={`Fotoğraf önizlemesi ${index + 1}`}
+                    className="aspect-[4/3] w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
+                      Fotoğraf {index + 1}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-rose-950/60">
+                      {photo.caption || "Fotoğraf notu eklenmedi."}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <ReviewSoftHint>Henüz galeri fotoğrafı eklenmedi.</ReviewSoftHint>
+          )}
+
+          {selectedPuzzlePhoto ? (
+            <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                Seçilen puzzle fotoğrafı
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
+                <img
+                  src={selectedPuzzlePhoto.previewUrl}
+                  alt="Seçilen puzzle fotoğrafı"
+                  className="aspect-[4/3] w-full rounded-2xl object-cover shadow-sm shadow-rose-100 sm:w-[120px]"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <p className="text-sm leading-6 text-rose-950/60">
+                  {selectedPuzzlePhoto.caption || "Bu fotoğraf puzzle için seçildi."}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <ReviewSoftHint>Puzzle için henüz bir fotoğraf seçilmedi.</ReviewSoftHint>
+          )}
+        </div>
+      </ReviewSection>
+
+      <ReviewSection
+        title="Müzik & ses notu"
+        description="Spotify şarkısı ve isteğe bağlı ses notu özeti."
+        onEdit={() => onEditStep("musicVoice")}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ReviewField
+            label="Spotify şarkı linki"
+            value={displayValue(formData.musicVoice.music.spotifyUrl)}
+            className="sm:col-span-2"
+          />
+          <ReviewField
+            label="Şarkı adı"
+            value={displayValue(formData.musicVoice.music.songTitle)}
+          />
+          <ReviewField
+            label="Sanatçı"
+            value={displayValue(formData.musicVoice.music.artistName)}
+          />
+          <ReviewField
+            label="Başlangıç saniyesi"
+            value={
+              formData.musicVoice.music.startAtSeconds
+                ? `${formData.musicVoice.music.startAtSeconds} saniye`
+                : "Baştan başlasın"
+            }
+          />
+          {formData.musicVoice.voiceNote ? (
+            <ReviewField
+              label="Ses notu"
+              value={`${formData.musicVoice.voiceNote.originalFilename} · ${formatFileSize(
+                formData.musicVoice.voiceNote.sizeBytes,
+              )}`}
+            />
+          ) : voiceNoteSkip?.confirmed ? (
+            <ReviewField
+              label="Ses notu"
+              value="Ses notu bölümü isteğiniz üzerine kaldırılacak."
+            />
+          ) : (
+            <ReviewField label="Ses notu" value="Henüz ses notu eklenmedi." />
+          )}
+        </div>
+      </ReviewSection>
+
+      <ReviewSection
+        title="Zaman çizelgesi"
+        description="İlişkinizin özel anları sıralı şekilde görünecek."
+        onEdit={() => onEditStep("timeline")}
+      >
+        {orderedTimelineItems.length > 0 ? (
+          <div className="grid gap-3">
+            {orderedTimelineItems.map((item, index) => (
+              <article
+                key={item.id}
+                className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
+              >
+                <div className="flex gap-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <h5 className="text-sm font-semibold text-rose-950">
+                      {item.title || "Başlıksız anı"}
+                    </h5>
+                    {item.eventDate && (
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
+                        {item.eventDate}
+                      </p>
+                    )}
+                    {item.description && (
+                      <p className="mt-2 text-sm leading-6 text-rose-950/60">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <ReviewSoftHint>Henüz zaman çizelgesi anısı eklenmedi.</ReviewSoftHint>
+        )}
+      </ReviewSection>
+
+      <ReviewSection
+        title="Mektuplar"
+        description="Aşk mektubu ve open-when sürpriz notları."
+        onEdit={() => onEditStep("letters")}
+      >
+        {orderedLetters.length > 0 ? (
+          <div className="grid gap-3">
+            {orderedLetters.map((letter) => {
+              const isLoveLetter = letter.type === "love_letter";
+
+              return (
+                <article
+                  key={letter.id}
+                  className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
+                >
+                  <span className="inline-flex rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-600">
+                    {isLoveLetter ? "Aşk mektubu" : "Open when"}
+                  </span>
+                  <h5 className="mt-3 text-sm font-semibold text-rose-950">
+                    {letter.title || "Başlıksız mektup"}
+                  </h5>
+                  {letter.body ? (
+                    <p className="mt-2 text-sm leading-6 text-rose-950/60">{letter.body}</p>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-rose-950/45">
+                      Mektup içeriği henüz yazılmadı.
+                    </p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <ReviewSoftHint>Henüz mektup eklenmedi.</ReviewSoftHint>
+        )}
+      </ReviewSection>
+
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 p-5 text-center shadow-sm shadow-rose-100/50">
+        <h4 className="text-xl font-bold text-rose-950">Her şey hazır mı?</h4>
+        <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-rose-950/60">
+          Bir sonraki adımda bu bilgiler güvenli şekilde gönderilecek. Şu an bu buton sadece
+          görsel hazırlık olarak duruyor.
+        </p>
+        <p className="mx-auto mt-3 max-w-2xl text-xs leading-5 text-rose-950/50">
+          Eksik bıraktığınız alanlar varsa bir sonraki validation adımında size nazikçe
+          hatırlatacağız.
+        </p>
+        <button
+          type="button"
+          disabled
+          className="mt-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          Bilgileri gönder
+        </button>
+        <p className="mt-2 text-xs text-rose-950/45">
+          Gönderim bağlantısı sonraki adımda eklenecek.
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function ReviewSection({
+  title,
+  description,
+  onEdit,
+  children,
+}: {
+  title: string;
+  description: string;
+  onEdit: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-rose-100 bg-white/90 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h4 className="text-base font-semibold text-rose-950">{title}</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">{description}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+        >
+          Düzenle
+        </button>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ReviewField({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 ${className}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{label}</p>
+      <p className="mt-1 break-words text-sm leading-6 text-rose-950/70">{value}</p>
+    </div>
+  );
+}
+
+function ReviewSoftHint({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/55">
+      {children}
     </div>
   );
 }
