@@ -43,7 +43,7 @@ const demoStoryData = {
     relationshipStartDate: "2022-03-12T00:00:00",
     relationshipStartLabel: "12 Mart 2022’den beri",
     heroEyebrow: "Bizim sonsuz aşk hikâyemiz",
-    heroMessage: "Bizim tatlış yolculuğumuz 💖",
+    heroMessage: "Bizim aşk dolu yolculuğumuz 💖",
     heroLeftPhoto: {
       src: "/demo-assets/ceren-hero-right.png",
       alt: "Ceren solo portresi",
