@@ -25,11 +25,32 @@ type PlaceholderCard = {
   description: string;
 };
 
+const STORYOFUS_SETUP_DRAFT_STORAGE_KEY = "storyofus.setup.draft.v1";
+
+type StoryOfUsSetupDraft = Pick<
+  StoryOfUsSetupFormData,
+  "orderReference" | "status" | "contactCouple" | "confirmedSkips" | "timeline" | "letters"
+> & {
+  media: {
+    puzzle: {
+      selectedPhotoId: null;
+      confirmedNoPuzzle: boolean;
+    };
+  };
+  musicVoice: {
+    music: StoryOfUsMusicData;
+    voiceNote: null;
+  };
+};
+
 function StoryOfUsSetupRoute() {
+  const [initialSetupState] = useState(() => createInitialSetupState());
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
+  const [formData, setFormData] = useState(initialSetupState.formData);
+  const [wasDraftRestored, setWasDraftRestored] = useState(initialSetupState.wasDraftRestored);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
+  const skipNextDraftSaveRef = useRef(false);
 
   const totalSteps = STORYOFUS_SETUP_STEPS.length;
   const currentStep = STORYOFUS_SETUP_STEPS[currentStepIndex];
@@ -37,14 +58,28 @@ function StoryOfUsSetupRoute() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === totalSteps - 1;
 
+  function revokeCurrentPreviewUrls() {
+    photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    photoPreviewUrlsRef.current.clear();
+    voiceNotePreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    voiceNotePreviewUrlsRef.current.clear();
+  }
+
   useEffect(() => {
     return () => {
-      photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
-      photoPreviewUrlsRef.current.clear();
-      voiceNotePreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
-      voiceNotePreviewUrlsRef.current.clear();
+      revokeCurrentPreviewUrls();
     };
   }, []);
+
+  useEffect(() => {
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      clearSetupDraft();
+      return;
+    }
+
+    saveSetupDraft(formData);
+  }, [formData]);
 
   function goToPreviousStep() {
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
@@ -60,6 +95,15 @@ function StoryOfUsSetupRoute() {
     if (nextStepIndex !== -1) {
       setCurrentStepIndex(nextStepIndex);
     }
+  }
+
+  function handleClearDraft() {
+    clearSetupDraft();
+    revokeCurrentPreviewUrls();
+    skipNextDraftSaveRef.current = true;
+    setFormData(createEmptyStoryOfUsSetupFormData());
+    setCurrentStepIndex(0);
+    setWasDraftRestored(false);
   }
 
   function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
@@ -496,6 +540,18 @@ function StoryOfUsSetupRoute() {
             />
           </div>
 
+          <div className="mb-6 rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8">
+            <p className="font-semibold text-rose-700">
+              Taslak bu cihazda otomatik kaydediliyor.
+            </p>
+            {wasDraftRestored && (
+              <p className="mt-1 text-rose-950/65">Kaydedilmiş taslağınız yüklendi.</p>
+            )}
+            <p className="mt-1">
+              Güvenlik nedeniyle fotoğraf ve ses dosyalarını tekrar seçmeniz gerekebilir.
+            </p>
+          </div>
+
           <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-[1.5rem] border border-rose-100 bg-[#fffaf8] p-3 shadow-sm shadow-rose-100/50">
               <nav className="grid gap-2" aria-label="StoryOfUs setup adımları">
@@ -614,23 +670,34 @@ function StoryOfUsSetupRoute() {
                 {JSON.stringify(formData, null, 2)}
               </pre>
 
-              <div className="mt-8 flex flex-col-reverse gap-3 border-t border-rose-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="button"
-                  onClick={goToPreviousStep}
-                  disabled={isFirstStep}
-                  className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Geri
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNextStep}
-                  disabled={isLastStep}
-                  className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Devam et
-                </button>
+              <div className="mt-8 border-t border-rose-100 pt-5">
+                <div className="mb-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleClearDraft}
+                    className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                  >
+                    Taslağı temizle
+                  </button>
+                </div>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={goToPreviousStep}
+                    disabled={isFirstStep}
+                    className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Geri
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToNextStep}
+                    disabled={isLastStep}
+                    className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Devam et
+                  </button>
+                </div>
               </div>
             </section>
           </div>
@@ -707,6 +774,129 @@ function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[
         { title: "Gönderim beklemede", description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor." },
       ];
   }
+}
+
+function createInitialSetupState() {
+  const restoredDraft = restoreSetupDraft();
+
+  return {
+    formData: restoredDraft ?? createEmptyStoryOfUsSetupFormData(),
+    wasDraftRestored: Boolean(restoredDraft),
+  };
+}
+
+function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDraft {
+  return {
+    orderReference: formData.orderReference,
+    status: formData.status,
+    contactCouple: formData.contactCouple,
+    media: {
+      puzzle: {
+        selectedPhotoId: null,
+        confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
+      },
+    },
+    musicVoice: {
+      music: formData.musicVoice.music,
+      voiceNote: null,
+    },
+    confirmedSkips: formData.confirmedSkips,
+    timeline: getOrderedTimelineItems(formData.timeline).map((item, index) => ({
+      ...item,
+      sortOrder: index,
+    })),
+    letters: getOrderedLetters(formData.letters).map((letter, index) => ({
+      ...letter,
+      sortOrder: index,
+    })),
+  };
+}
+
+function saveSetupDraft(formData: StoryOfUsSetupFormData) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    STORYOFUS_SETUP_DRAFT_STORAGE_KEY,
+    JSON.stringify(serializeSetupDraft(formData)),
+  );
+}
+
+function restoreSetupDraft(): StoryOfUsSetupFormData | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawDraft = window.localStorage.getItem(STORYOFUS_SETUP_DRAFT_STORAGE_KEY);
+
+  if (!rawDraft) {
+    return null;
+  }
+
+  try {
+    const parsedDraft = JSON.parse(rawDraft) as Partial<StoryOfUsSetupDraft>;
+    const emptyFormData = createEmptyStoryOfUsSetupFormData();
+    const restoredTimeline = Array.isArray(parsedDraft.timeline)
+      ? parsedDraft.timeline.map((item, index) => ({
+          id: typeof item.id === "string" ? item.id : createTimelineItemId(),
+          title: typeof item.title === "string" ? item.title : "",
+          eventDate: typeof item.eventDate === "string" ? item.eventDate : "",
+          description: typeof item.description === "string" ? item.description : "",
+          sortOrder: index,
+        }))
+      : [];
+    const restoredLetters = Array.isArray(parsedDraft.letters)
+      ? parsedDraft.letters.map((letter, index) => ({
+          id: typeof letter.id === "string" ? letter.id : createLetterItemId(),
+          type: letter.type === "love_letter" ? "love_letter" : "open_when",
+          title: typeof letter.title === "string" ? letter.title : "",
+          body: typeof letter.body === "string" ? letter.body : "",
+          sortOrder: index,
+        }))
+      : [];
+
+    return {
+      ...emptyFormData,
+      orderReference:
+        typeof parsedDraft.orderReference === "string"
+          ? parsedDraft.orderReference
+          : emptyFormData.orderReference,
+      status: parsedDraft.status ?? emptyFormData.status,
+      contactCouple: {
+        ...emptyFormData.contactCouple,
+        ...(parsedDraft.contactCouple ?? {}),
+      },
+      media: {
+        photos: [],
+        puzzle: {
+          selectedPhotoId: null,
+          confirmedNoPuzzle: Boolean(parsedDraft.media?.puzzle?.confirmedNoPuzzle),
+        },
+      },
+      musicVoice: {
+        music: {
+          ...emptyFormData.musicVoice.music,
+          ...(parsedDraft.musicVoice?.music ?? {}),
+        },
+        voiceNote: null,
+      },
+      confirmedSkips: parsedDraft.confirmedSkips ?? emptyFormData.confirmedSkips,
+      timeline: restoredTimeline,
+      letters: restoredLetters,
+    };
+  } catch {
+    clearSetupDraft();
+    return null;
+  }
+}
+
+function clearSetupDraft() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(STORYOFUS_SETUP_DRAFT_STORAGE_KEY);
 }
 
 function createPhotoDraftId() {
