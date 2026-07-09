@@ -45,13 +45,13 @@ const demoStoryData = {
     heroEyebrow: "Bizim sonsuz aşk hikâyemiz",
     heroMessage: "Bizim aşk dolu yolculuğumuz 💖",
     heroLeftPhoto: {
-      src: "/demo-assets/ceren-hero-right.png",
+      src: "/demo-assets/ceren-hero-right.webp",
       alt: "Ceren solo portresi",
       caption: "",
       placeholder: "from-rose-200 via-pink-200 to-fuchsia-300",
     },
     heroRightPhoto: {
-      src: "/demo-assets/arda-hero-left.png",
+      src: "/demo-assets/arda-hero-left.webp",
       alt: "Arda solo portresi",
       caption: "",
       placeholder: "from-amber-100 via-rose-200 to-pink-300",
@@ -82,35 +82,35 @@ const demoStoryData = {
       {
         title: "En tatlış fotiğin",
         caption: "Çok tatlı bir bebeksin",
-        photoSrc: "/demo-assets/ceren-tatli-fotograf.png",
+        photoSrc: "/demo-assets/ceren-tatli-fotograf.webp",
         photoAlt: "Ceren tatlı fotoğraf",
         placeholder: "from-rose-200 via-pink-200 to-fuchsia-300",
       },
       {
         title: "En komik halin",
         caption: "Minik ve komik bitanemsin",
-        photoSrc: "/demo-assets/ceren-komik-fotograf.png",
+        photoSrc: "/demo-assets/ceren-komik-fotograf.webp",
         photoAlt: "Ceren komik fotoğraf",
         placeholder: "from-fuchsia-200 via-rose-200 to-pink-300",
       },
       {
         title: "En çekici sen",
         caption: "Güzelliğin adeta beni benden alıyor",
-        photoSrc: "/demo-assets/ceren-cekici-fotograf.png",
+        photoSrc: "/demo-assets/ceren-cekici-fotograf.webp",
         photoAlt: "Ceren cekici fotoğraf",
         placeholder: "from-amber-100 via-rose-200 to-red-200",
       },
       {
         title: "En bebek halin",
         caption: "Minik kız çoçuğusun",
-        photoSrc: "/demo-assets/ceren-bebek-fotograf.png",
+        photoSrc: "/demo-assets/ceren-bebek-fotograf.webp",
         photoAlt: "Ceren bebek hali",
         placeholder: "from-rose-200 via-orange-100 to-pink-300",
       },
       {
         title: "En güzel gülüşün",
         caption: "Gülüşünün olduğu her yer biraz daha güzel.",
-        photoSrc: "/demo-assets/ceren-gulus-fotograf.png",
+        photoSrc: "/demo-assets/ceren-gulus-fotograf.webp",
         photoAlt: "Ceren güzel gülüşü",
         placeholder: "from-fuchsia-100 via-pink-200 to-rose-300",
       },
@@ -123,7 +123,7 @@ const demoStoryData = {
         date: "12 Mart 2022",
         title: "İlk tanışmamız",
         description: "Her şeyin başladığı o tatlı an… İyi ki yollarımız kesişmiş.",
-        photoSrc: "/demo-assets/arda-ceren-cafe.png",
+        photoSrc: "/demo-assets/arda-ceren-cafe.webp",
         photoAlt: "Ceren ve Arda ilk tanışma anısı",
         placeholder: "from-rose-100 via-pink-200 to-fuchsia-200",
       },
@@ -131,7 +131,7 @@ const demoStoryData = {
         date: "2 Nisan 2022",
         title: "İlk buluşmamız",
         description: "Biraz heyecan, biraz utangaçlık, bolca güzel his.",
-        photoSrc: "/demo-assets/arda-ceren-mirror.png",
+        photoSrc: "/demo-assets/arda-ceren-mirror.webp",
         photoAlt: "Ceren ve Arda birlikte geçen uzun sohbet",
         placeholder: "from-amber-100 via-rose-200 to-pink-300",
       },
@@ -139,7 +139,7 @@ const demoStoryData = {
         date: "18 Haziran 2022",
         title: "İlk fotoğrafımız",
         description: "Beraber çekildiğimiz ilk kare, şimdi en güzel anılarımızdan biri.",
-        photoSrc: "/demo-assets/arda-ceren-walk.png",
+        photoSrc: "/demo-assets/arda-ceren-walk.webp",
         photoAlt: "Ceren ve Arda birlikte ilk kare",
         placeholder: "from-purple-200 via-pink-200 to-rose-300",
       },
@@ -147,7 +147,7 @@ const demoStoryData = {
         date: "27 Ağustos 2022",
         title: "İlk date nightımız",
         description: "Süslenip birbirimize yeniden aşık olduğumuz o gece.",
-        photoSrc: "/demo-assets/arda-ceren-hug.png",
+        photoSrc: "/demo-assets/arda-ceren-hug.webp",
         photoAlt: "Ceren ve Arda birlikte gün batımı",
         placeholder: "from-rose-200 via-orange-100 to-pink-300",
       },
@@ -155,7 +155,7 @@ const demoStoryData = {
         date: "24 Aralık 2022",
         title: "İlk tatilimiz",
         description: "Beraber kaçtığımız ilk küçük macera, hâlâ aklımda.",
-        photoSrc: "/demo-assets/arda-ceren-closeup.png",
+        photoSrc: "/demo-assets/arda-ceren-closeup.webp",
         photoAlt: "Ceren ve Arda ilk tatil anısı",
         placeholder: "from-fuchsia-100 via-pink-200 to-rose-300",
       },
@@ -175,7 +175,7 @@ const demoStoryData = {
     subtitle:
       "Her parçada bize ait bir anı saklı. Fotoğrafı tamamla ve hikâyemizi yeniden birleştir",
     buttonText: "Hadi başlayalım 💖",
-    imageUrl: "/demo-assets/arda-ceren-puzzle.png",
+    imageUrl: "/demo-assets/arda-ceren-puzzle.webp",
     completionTitle: "Harikasın bebeğim! 💖",
     completionMessage: "Biz tamamlandıkça, bu hikâye daha da güzelleşti sanırım 💗",
   },
@@ -287,7 +287,7 @@ const demoStoryData = {
       "Bazen sana baktığımda, anlatmak istediğim her şey kelimelerin biraz ötesinde kalıyor. Gülüşün, sesin, yanımda oluşun… Hepsi kalbimde çok özel bir yere sahip. Seninle geçen her an, en sıradan günü bile güzel bir anıya dönüştürüyor. İyi ki varsın, iyi ki benimlesin. Seni düşündüğüm her yerde, kalbim biraz daha yumuşuyor.",
     signaturePrefix: "Sonsuza dek",
     letterSidePhoto: {
-      src: "/demo-assets/arda-ceren-closeup.png",
+      src: "/demo-assets/arda-ceren-closeup.webp",
       alt: "Ceren ve Arda romantik yakın an",
       caption: "Kalbimin en güzel yeri",
       placeholder: "from-rose-200 via-pink-100 to-fuchsia-200",
@@ -2054,6 +2054,7 @@ function HeroPhotoCard({
           photo={{ photoSrc: photo.src, photoAlt: photo.alt, placeholder: photo.placeholder }}
           aspect="aspect-[4/5]"
           compact
+          loading="eager"
         />
       </div>
     </div>
@@ -2065,11 +2066,13 @@ function PhotoFrame({
   aspect,
   large = false,
   compact = false,
+  loading = "lazy",
 }: {
   photo: { photoSrc?: string; src?: string; photoAlt?: string; alt?: string; placeholder: string };
   aspect: string;
   large?: boolean;
   compact?: boolean;
+  loading?: "eager" | "lazy";
 }) {
   const src = photo.photoSrc ?? photo.src;
   const alt = photo.photoAlt ?? photo.alt ?? "";
@@ -2079,7 +2082,15 @@ function PhotoFrame({
       className={`relative overflow-hidden rounded-[1.1rem] ${aspect} ${src ? "bg-rose-100" : `bg-gradient-to-br ${photo.placeholder}`}`}
     >
       {src ? (
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={alt}
+          width={1000}
+          height={1250}
+          loading={loading}
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       ) : (
         <>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.78),transparent_35%),radial-gradient(circle_at_75%_80%,rgba(255,255,255,0.45),transparent_32%)]" />
