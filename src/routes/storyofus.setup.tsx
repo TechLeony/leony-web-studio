@@ -5,9 +5,12 @@ import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
   type StoryOfUsContactCoupleData,
+  type StoryOfUsMusicData,
   type StoryOfUsPhotoDraftItem,
   type StoryOfUsPuzzleData,
+  type StoryOfUsSkipState,
   type StoryOfUsSetupStepId,
+  type StoryOfUsVoiceNoteData,
 } from "../lib/storyofus/setupTypes";
 
 export const Route = createFileRoute("/storyofus/setup")({
@@ -23,6 +26,7 @@ function StoryOfUsSetupRoute() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
+  const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
 
   const totalSteps = STORYOFUS_SETUP_STEPS.length;
   const currentStep = STORYOFUS_SETUP_STEPS[currentStepIndex];
@@ -34,6 +38,8 @@ function StoryOfUsSetupRoute() {
     return () => {
       photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
       photoPreviewUrlsRef.current.clear();
+      voiceNotePreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+      voiceNotePreviewUrlsRef.current.clear();
     };
   }, []);
 
@@ -158,6 +164,133 @@ function StoryOfUsSetupRoute() {
     }));
   }
 
+  function updateMusicField(field: keyof StoryOfUsMusicData, value: string) {
+    setFormData((current) => {
+      if (field === "startAtSeconds") {
+        return {
+          ...current,
+          musicVoice: {
+            ...current.musicVoice,
+            music: {
+              ...current.musicVoice.music,
+              startAtSeconds: value.trim() === "" ? 0 : Number(value),
+            },
+          },
+        };
+      }
+
+      return {
+        ...current,
+        musicVoice: {
+          ...current.musicVoice,
+          music: {
+            ...current.musicVoice.music,
+            [field]: value,
+          },
+        },
+      };
+    });
+  }
+
+  function addVoiceNoteFile(file: File) {
+    if (!file.type.startsWith("audio/")) {
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    voiceNotePreviewUrlsRef.current.add(previewUrl);
+
+    setFormData((current) => {
+      if (current.musicVoice.voiceNote) {
+        URL.revokeObjectURL(current.musicVoice.voiceNote.previewUrl);
+        voiceNotePreviewUrlsRef.current.delete(current.musicVoice.voiceNote.previewUrl);
+      }
+
+      const { voiceNote, ...remainingSkips } = current.confirmedSkips;
+
+      return {
+        ...current,
+        musicVoice: {
+          ...current.musicVoice,
+          voiceNote: {
+            previewUrl,
+            originalFilename: file.name,
+            mimeType: file.type,
+            sizeBytes: file.size,
+            file,
+          },
+        },
+        confirmedSkips: remainingSkips,
+      };
+    });
+  }
+
+  function removeVoiceNote() {
+    setFormData((current) => {
+      if (current.musicVoice.voiceNote) {
+        URL.revokeObjectURL(current.musicVoice.voiceNote.previewUrl);
+        voiceNotePreviewUrlsRef.current.delete(current.musicVoice.voiceNote.previewUrl);
+      }
+
+      return {
+        ...current,
+        musicVoice: {
+          ...current.musicVoice,
+          voiceNote: null,
+        },
+      };
+    });
+  }
+
+  function requestVoiceNoteSkip() {
+    setFormData((current) => ({
+      ...current,
+      confirmedSkips: {
+        ...current.confirmedSkips,
+        voiceNote: {
+          warned: true,
+          confirmed: false,
+        },
+      },
+    }));
+  }
+
+  function confirmVoiceNoteSkip() {
+    setFormData((current) => {
+      if (current.musicVoice.voiceNote) {
+        URL.revokeObjectURL(current.musicVoice.voiceNote.previewUrl);
+        voiceNotePreviewUrlsRef.current.delete(current.musicVoice.voiceNote.previewUrl);
+      }
+
+      return {
+        ...current,
+        musicVoice: {
+          ...current.musicVoice,
+          voiceNote: null,
+        },
+        confirmedSkips: {
+          ...current.confirmedSkips,
+          voiceNote: {
+            warned: true,
+            confirmed: true,
+            confirmedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  }
+
+  function undoVoiceNoteSkip() {
+    setFormData((current) => {
+      const { voiceNote, ...remainingSkips } = current.confirmedSkips;
+
+      return {
+        ...current,
+        confirmedSkips: remainingSkips,
+      };
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-6 text-[#3d2323] sm:px-6 sm:py-10">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
@@ -272,6 +405,18 @@ function StoryOfUsSetupRoute() {
                   onRemovePhoto={removePhoto}
                   onSelectPuzzlePhoto={selectPuzzlePhoto}
                   onClearPuzzleSelection={clearPuzzleSelection}
+                />
+              ) : currentStep.id === "musicVoice" ? (
+                <MusicVoiceStep
+                  music={formData.musicVoice.music}
+                  voiceNote={formData.musicVoice.voiceNote}
+                  voiceNoteSkip={formData.confirmedSkips.voiceNote}
+                  onUpdateMusicField={updateMusicField}
+                  onAddVoiceNoteFile={addVoiceNoteFile}
+                  onRemoveVoiceNote={removeVoiceNote}
+                  onRequestVoiceNoteSkip={requestVoiceNoteSkip}
+                  onConfirmVoiceNoteSkip={confirmVoiceNoteSkip}
+                  onUndoVoiceNoteSkip={undoVoiceNoteSkip}
                 />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -390,6 +535,10 @@ function createPhotoDraftId() {
   }
 
   return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function formatFileSizeMb(sizeBytes: number) {
+  return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
 function PhotosPuzzleStep({
@@ -553,6 +702,189 @@ function PhotosPuzzleStep({
   );
 }
 
+function MusicVoiceStep({
+  music,
+  voiceNote,
+  voiceNoteSkip,
+  onUpdateMusicField,
+  onAddVoiceNoteFile,
+  onRemoveVoiceNote,
+  onRequestVoiceNoteSkip,
+  onConfirmVoiceNoteSkip,
+  onUndoVoiceNoteSkip,
+}: {
+  music: StoryOfUsMusicData;
+  voiceNote: StoryOfUsVoiceNoteData | null;
+  voiceNoteSkip?: StoryOfUsSkipState;
+  onUpdateMusicField: (field: keyof StoryOfUsMusicData, value: string) => void;
+  onAddVoiceNoteFile: (file: File) => void;
+  onRemoveVoiceNote: () => void;
+  onRequestVoiceNoteSkip: () => void;
+  onConfirmVoiceNoteSkip: () => void;
+  onUndoVoiceNoteSkip: () => void;
+}) {
+  const isVoiceNoteSkipWarningVisible = !voiceNote && voiceNoteSkip?.warned && !voiceNoteSkip.confirmed;
+  const isVoiceNoteSkipped = !voiceNote && voiceNoteSkip?.confirmed;
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Şarkınızı ekleyin</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Spotify bölümünde görünecek şarkı bilgilerini burada hazırlıyoruz. Şimdilik linki
+            otomatik okumuyoruz; başlık ve sanatçıyı siz yazabilirsiniz.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SetupTextField
+            label="Spotify şarkı linki"
+            value={music.spotifyUrl}
+            onChange={(nextValue) => onUpdateMusicField("spotifyUrl", nextValue)}
+            placeholder="https://open.spotify.com/track/..."
+            helperText="Şarkı linkini Spotify’dan kopyalayıp buraya yapıştırabilirsiniz."
+            className="sm:col-span-2"
+          />
+          <SetupTextField
+            label="Şarkı adı"
+            value={music.songTitle}
+            onChange={(nextValue) => onUpdateMusicField("songTitle", nextValue)}
+            placeholder="Örn: Şarkımız"
+          />
+          <SetupTextField
+            label="Sanatçı"
+            value={music.artistName}
+            onChange={(nextValue) => onUpdateMusicField("artistName", nextValue)}
+            placeholder="Örn: Bize özel"
+          />
+          <SetupTextField
+            label="Başlangıç saniyesi"
+            type="number"
+            value={music.startAtSeconds ? String(music.startAtSeconds) : ""}
+            onChange={(nextValue) => onUpdateMusicField("startAtSeconds", nextValue)}
+            placeholder="0"
+            helperText="Şarkının özel bir yerden başlamasını isterseniz saniye olarak yazın. Boş bırakırsanız baştan başlar."
+            className="sm:col-span-2"
+          />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Ses notu</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            İsterseniz sevgilinize özel kısa bir ses notu ekleyebilirsiniz. Dosya sadece bu ekranda
+            yerel önizleme için tutulur.
+          </p>
+        </div>
+
+        {voiceNote ? (
+          <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/40">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+                  Seçilen ses notu
+                </p>
+                <h5 className="mt-1 text-base font-semibold text-rose-950">
+                  {voiceNote.originalFilename}
+                </h5>
+                <p className="mt-1 text-sm text-rose-950/55">
+                  {formatFileSizeMb(voiceNote.sizeBytes)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onRemoveVoiceNote}
+                className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              >
+                Ses notunu kaldır
+              </button>
+            </div>
+            <audio
+              src={voiceNote.previewUrl}
+              controls
+              className="w-full rounded-2xl"
+            >
+              Tarayıcınız ses önizlemeyi desteklemiyor.
+            </audio>
+          </div>
+        ) : isVoiceNoteSkipped ? (
+          <div className="rounded-3xl border border-rose-100 bg-rose-50/80 p-4 shadow-sm shadow-rose-100/40">
+            <p className="text-sm font-semibold text-rose-800">
+              Ses notu bölümü isteğiniz üzerine kaldırılacak.
+            </p>
+            <button
+              type="button"
+              onClick={onUndoVoiceNoteSkip}
+              className="mt-4 rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+            >
+              Vazgeç, ses notu ekleyeceğim
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center transition hover:border-rose-300 hover:bg-rose-50/60">
+              <span className="text-base font-semibold text-rose-950">Ses notunuzu seçin</span>
+              <span className="mt-2 max-w-md text-sm leading-6 text-rose-950/60">
+                MP3, MP4, WAV, WebM veya OGG formatında tek bir ses dosyası ekleyebilirsiniz.
+              </span>
+              <span className="mt-4 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200">
+                Ses dosyası seç
+              </span>
+              <input
+                type="file"
+                accept="audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+
+                  if (file) {
+                    onAddVoiceNoteFile(file);
+                    event.target.value = "";
+                  }
+                }}
+              />
+            </label>
+
+            {isVoiceNoteSkipWarningVisible ? (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 shadow-sm shadow-amber-100/50">
+                <p className="text-sm leading-6 text-amber-950/80">
+                  Ses notu eklemezseniz size özel hazırlanan web sitesinde ses notu bölümü
+                  görünmeyecek. Emin misiniz?
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={onConfirmVoiceNoteSkip}
+                    className="rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:bg-rose-600"
+                  >
+                    Evet, ses notu istemiyorum
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onUndoVoiceNoteSkip}
+                    className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                  >
+                    Vazgeç, ses notu ekleyeceğim
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onRequestVoiceNoteSkip}
+                className="justify-self-start rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              >
+                Ses notu eklemek istemiyorum
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function ContactCoupleStep({
   value,
   onChange,
@@ -663,7 +995,7 @@ function SetupTextField({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: "text" | "email" | "tel" | "date";
+  type?: "text" | "email" | "tel" | "date" | "number";
   placeholder?: string;
   helperText?: string;
   className?: string;
