@@ -10,6 +10,7 @@ import {
   type StoryOfUsPuzzleData,
   type StoryOfUsSkipState,
   type StoryOfUsSetupStepId,
+  type StoryOfUsTimelineItem,
   type StoryOfUsVoiceNoteData,
 } from "../lib/storyofus/setupTypes";
 
@@ -291,6 +292,70 @@ function StoryOfUsSetupRoute() {
     });
   }
 
+  function addTimelineItem() {
+    setFormData((current) => ({
+      ...current,
+      timeline: [
+        ...current.timeline,
+        {
+          id: createTimelineItemId(),
+          title: "",
+          eventDate: "",
+          description: "",
+          sortOrder: current.timeline.length,
+        },
+      ],
+    }));
+  }
+
+  function updateTimelineItem(
+    itemId: string,
+    field: keyof Pick<StoryOfUsTimelineItem, "title" | "eventDate" | "description">,
+    value: string,
+  ) {
+    setFormData((current) => ({
+      ...current,
+      timeline: current.timeline.map((item) =>
+        item.id === itemId ? { ...item, [field]: value } : item,
+      ),
+    }));
+  }
+
+  function removeTimelineItem(itemId: string) {
+    setFormData((current) => ({
+      ...current,
+      timeline: current.timeline
+        .filter((item) => item.id !== itemId)
+        .map((item, index) => ({ ...item, sortOrder: index })),
+    }));
+  }
+
+  function moveTimelineItem(itemId: string, direction: "up" | "down") {
+    setFormData((current) => {
+      const orderedItems = [...current.timeline].sort((a, b) => a.sortOrder - b.sortOrder);
+      const currentIndex = orderedItems.findIndex((item) => item.id === itemId);
+
+      if (currentIndex === -1) {
+        return current;
+      }
+
+      const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= orderedItems.length) {
+        return current;
+      }
+
+      const nextItems = [...orderedItems];
+      const [movedItem] = nextItems.splice(currentIndex, 1);
+      nextItems.splice(targetIndex, 0, movedItem);
+
+      return {
+        ...current,
+        timeline: nextItems.map((item, index) => ({ ...item, sortOrder: index })),
+      };
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-6 text-[#3d2323] sm:px-6 sm:py-10">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
@@ -418,6 +483,14 @@ function StoryOfUsSetupRoute() {
                   onConfirmVoiceNoteSkip={confirmVoiceNoteSkip}
                   onUndoVoiceNoteSkip={undoVoiceNoteSkip}
                 />
+              ) : currentStep.id === "timeline" ? (
+                <TimelineStep
+                  items={formData.timeline}
+                  onAddItem={addTimelineItem}
+                  onUpdateItem={updateTimelineItem}
+                  onRemoveItem={removeTimelineItem}
+                  onMoveItem={moveTimelineItem}
+                />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {getStepPlaceholderCards(currentStep.id).map((card) => (
@@ -535,6 +608,14 @@ function createPhotoDraftId() {
   }
 
   return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createTimelineItemId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `timeline-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function formatFileSizeMb(sizeBytes: number) {
@@ -881,6 +962,188 @@ function MusicVoiceStep({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function TimelineStep({
+  items,
+  onAddItem,
+  onUpdateItem,
+  onRemoveItem,
+  onMoveItem,
+}: {
+  items: StoryOfUsTimelineItem[];
+  onAddItem: () => void;
+  onUpdateItem: (
+    itemId: string,
+    field: keyof Pick<StoryOfUsTimelineItem, "title" | "eventDate" | "description">,
+    value: string,
+  ) => void;
+  onRemoveItem: (itemId: string) => void;
+  onMoveItem: (itemId: string, direction: "up" | "down") => void;
+}) {
+  const orderedItems = [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <h4 className="text-base font-semibold text-rose-950">
+              İlişkinizdeki özel anları sırayla ekleyin.
+            </h4>
+            <p className="mt-1 text-sm leading-6 text-rose-950/60">
+              İlk tanışma, ilk buluşma, yıl dönümü, birlikte gidilen özel bir yer gibi anılar
+              olabilir.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+          >
+            Yeni anı ekle
+          </button>
+        </div>
+      </section>
+
+      {orderedItems.length === 0 ? (
+        <section className="rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center shadow-sm shadow-rose-100/40">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
+          <h4 className="text-base font-semibold text-rose-950">
+            Henüz zaman çizelgesi anısı eklenmedi.
+          </h4>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
+            Bu bölüm daha sonra doğrulama ve atlama sistemiyle isteğe bağlı hale getirilebilir.
+            Şimdilik anılarınızı eklemek için yukarıdaki butonu kullanabilirsiniz.
+          </p>
+        </section>
+      ) : (
+        <section className="grid gap-4">
+          {orderedItems.map((item, index) => {
+            const isFirstItem = index === 0;
+            const isLastItem = index === orderedItems.length - 1;
+
+            return (
+              <article
+                key={item.id}
+                className="rounded-3xl border border-rose-100 bg-white p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+              >
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                        Zaman çizelgesi anısı
+                      </p>
+                      <h5 className="mt-1 text-base font-semibold text-rose-950">
+                        {item.title || "Başlıksız anı"}
+                      </h5>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onMoveItem(item.id, "up")}
+                      disabled={isFirstItem}
+                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Yukarı taşı
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onMoveItem(item.id, "down")}
+                      disabled={isLastItem}
+                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Aşağı taşı
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveItem(item.id)}
+                      className="rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    >
+                      Anıyı kaldır
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <SetupTextField
+                    label="Anı başlığı"
+                    value={item.title}
+                    onChange={(nextValue) => onUpdateItem(item.id, "title", nextValue)}
+                    placeholder="İlk tanıştığımız gün"
+                  />
+                  <SetupTextField
+                    label="Tarih"
+                    type="date"
+                    value={item.eventDate}
+                    onChange={(nextValue) => onUpdateItem(item.id, "eventDate", nextValue)}
+                    placeholder="2024-06-12"
+                  />
+                  <div className="sm:col-span-2">
+                    <SetupTextArea
+                      label="Bu anıyı kısaca anlatın"
+                      value={item.description}
+                      onChange={(nextValue) => onUpdateItem(item.id, "description", nextValue)}
+                      placeholder="O gün ne olmuştu, neden özeldi?"
+                    />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {orderedItems.length > 0 && (
+        <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+              Önizleme
+            </p>
+            <h4 className="mt-1 text-base font-semibold text-rose-950">
+              Zaman çizelgesi önizlemesi
+            </h4>
+          </div>
+          <div className="grid gap-3">
+            {orderedItems.map((item, index) => (
+              <article
+                key={`preview-${item.id}`}
+                className="relative rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
+              >
+                <div className="flex gap-3">
+                  <span className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-rose-400 shadow-sm shadow-rose-200" />
+                  <div>
+                    <h5 className="text-sm font-semibold text-rose-950">
+                      {item.title || "Başlıksız anı"}
+                    </h5>
+                    {item.eventDate && (
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
+                        {item.eventDate}
+                      </p>
+                    )}
+                    {item.description && (
+                      <p className="mt-2 text-sm leading-6 text-rose-950/60">
+                        {item.description}
+                      </p>
+                    )}
+                    {!item.eventDate && !item.description && (
+                      <p className="mt-2 text-sm leading-6 text-rose-950/45">
+                        {index + 1}. anı için detaylar eklendikçe burada görünecek.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
