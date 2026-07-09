@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
   type StoryOfUsContactCoupleData,
+  type StoryOfUsPhotoDraftItem,
+  type StoryOfUsPuzzleData,
   type StoryOfUsSetupStepId,
 } from "../lib/storyofus/setupTypes";
 
@@ -20,12 +22,20 @@ type PlaceholderCard = {
 function StoryOfUsSetupRoute() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
+  const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
 
   const totalSteps = STORYOFUS_SETUP_STEPS.length;
   const currentStep = STORYOFUS_SETUP_STEPS[currentStepIndex];
   const progressPercent = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === totalSteps - 1;
+
+  useEffect(() => {
+    return () => {
+      photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+      photoPreviewUrlsRef.current.clear();
+    };
+  }, []);
 
   function goToPreviousStep() {
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
@@ -41,6 +51,109 @@ function StoryOfUsSetupRoute() {
       contactCouple: {
         ...current.contactCouple,
         [field]: value,
+      },
+    }));
+  }
+
+  function addPhotoFiles(files: FileList | File[]) {
+    const selectedFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    const photoDrafts = selectedFiles.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      photoPreviewUrlsRef.current.add(previewUrl);
+
+      return {
+        id: createPhotoDraftId(),
+        previewUrl,
+        caption: "",
+        sortOrder: 0,
+        file,
+      };
+    });
+
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        photos: [
+          ...current.media.photos,
+          ...photoDrafts.map((photo, index) => ({
+            ...photo,
+            sortOrder: current.media.photos.length + index,
+          })),
+        ],
+      },
+    }));
+  }
+
+  function updatePhotoCaption(photoId: string, caption: string) {
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        photos: current.media.photos.map((photo) =>
+          photo.id === photoId ? { ...photo, caption } : photo,
+        ),
+      },
+    }));
+  }
+
+  function removePhoto(photoId: string) {
+    setFormData((current) => {
+      const photoToRemove = current.media.photos.find((photo) => photo.id === photoId);
+
+      if (photoToRemove) {
+        URL.revokeObjectURL(photoToRemove.previewUrl);
+        photoPreviewUrlsRef.current.delete(photoToRemove.previewUrl);
+      }
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          photos: current.media.photos
+            .filter((photo) => photo.id !== photoId)
+            .map((photo, index) => ({ ...photo, sortOrder: index })),
+          puzzle: {
+            ...current.media.puzzle,
+            selectedPhotoId:
+              current.media.puzzle.selectedPhotoId === photoId
+                ? null
+                : current.media.puzzle.selectedPhotoId,
+          },
+        },
+      };
+    });
+  }
+
+  function selectPuzzlePhoto(photoId: string) {
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        puzzle: {
+          ...current.media.puzzle,
+          selectedPhotoId: photoId,
+          confirmedNoPuzzle: false,
+        },
+      },
+    }));
+  }
+
+  function clearPuzzleSelection() {
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        puzzle: {
+          ...current.media.puzzle,
+          selectedPhotoId: null,
+          confirmedNoPuzzle: false,
+        },
       },
     }));
   }
@@ -149,6 +262,16 @@ function StoryOfUsSetupRoute() {
                 <ContactCoupleStep
                   value={formData.contactCouple}
                   onChange={updateContactCoupleField}
+                />
+              ) : currentStep.id === "photosPuzzle" ? (
+                <PhotosPuzzleStep
+                  photos={formData.media.photos}
+                  puzzle={formData.media.puzzle}
+                  onAddPhotoFiles={addPhotoFiles}
+                  onUpdatePhotoCaption={updatePhotoCaption}
+                  onRemovePhoto={removePhoto}
+                  onSelectPuzzlePhoto={selectPuzzlePhoto}
+                  onClearPuzzleSelection={clearPuzzleSelection}
                 />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -259,6 +382,175 @@ function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[
         { title: "Gönderim beklemede", description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor." },
       ];
   }
+}
+
+function createPhotoDraftId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function PhotosPuzzleStep({
+  photos,
+  puzzle,
+  onAddPhotoFiles,
+  onUpdatePhotoCaption,
+  onRemovePhoto,
+  onSelectPuzzlePhoto,
+  onClearPuzzleSelection,
+}: {
+  photos: StoryOfUsPhotoDraftItem[];
+  puzzle: StoryOfUsPuzzleData;
+  onAddPhotoFiles: (files: FileList | File[]) => void;
+  onUpdatePhotoCaption: (photoId: string, caption: string) => void;
+  onRemovePhoto: (photoId: string) => void;
+  onSelectPuzzlePhoto: (photoId: string) => void;
+  onClearPuzzleSelection: () => void;
+}) {
+  const selectedPuzzlePhoto = photos.find((photo) => photo.id === puzzle.selectedPhotoId);
+
+  return (
+    <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <h4 className="text-base font-semibold text-rose-950">Fotoğraflarınızı ekleyin</h4>
+            <p className="mt-1 text-sm leading-6 text-rose-950/60">
+              Birden fazla fotoğraf seçebilirsiniz. Bu görseller galeri alanında kullanılacak,
+              içlerinden birini de puzzle için seçebileceksiniz.
+            </p>
+          </div>
+          <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300">
+            Fotoğraf seç
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              multiple
+              className="sr-only"
+              onChange={(event) => {
+                if (event.target.files) {
+                  onAddPhotoFiles(event.target.files);
+                  event.target.value = "";
+                }
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      {photos.length === 0 ? (
+        <section className="rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center shadow-sm shadow-rose-100/40">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
+          <h4 className="text-base font-semibold text-rose-950">Henüz fotoğraf eklenmedi.</h4>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
+            Eklediğiniz fotoğraflar romantik galeri için hazırlanacak. Bir tanesini de mini puzzle
+            deneyimi için özel olarak seçebilirsiniz.
+          </p>
+        </section>
+      ) : (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {photos.map((photo, index) => {
+            const isSelectedForPuzzle = photo.id === puzzle.selectedPhotoId;
+
+            return (
+              <article
+                key={photo.id}
+                className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition duration-200 ${
+                  isSelectedForPuzzle
+                    ? "border-rose-300 shadow-rose-200 ring-4 ring-rose-100"
+                    : "border-rose-100 shadow-rose-100/50 hover:border-rose-200"
+                }`}
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-rose-50">
+                  <img
+                    src={photo.previewUrl}
+                    alt={`Fotoğraf önizlemesi ${index + 1}`}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  {isSelectedForPuzzle && (
+                    <span className="absolute left-3 top-3 rounded-full border border-white/70 bg-white/90 px-3 py-1 text-xs font-semibold text-rose-600 shadow-sm shadow-rose-200">
+                      Puzzle fotoğrafı
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-3 p-4">
+                  <SetupTextField
+                    label="Fotoğraf notu"
+                    value={photo.caption}
+                    onChange={(caption) => onUpdatePhotoCaption(photo.id, caption)}
+                    placeholder="Bu anı birkaç kelimeyle anlatın"
+                  />
+                  <div className="grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onSelectPuzzlePhoto(photo.id)}
+                      className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
+                        isSelectedForPuzzle
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-rose-500 text-white shadow-md shadow-rose-200 hover:bg-rose-600"
+                      }`}
+                    >
+                      {isSelectedForPuzzle ? "Puzzle fotoğrafı seçildi" : "Bu fotoğrafı puzzle yap"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemovePhoto(photo.id)}
+                      className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                    >
+                      Bu fotoğrafı kaldır
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {selectedPuzzlePhoto ? (
+        <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-[140px_1fr_auto] sm:items-center">
+            <img
+              src={selectedPuzzlePhoto.previewUrl}
+              alt="Seçilen puzzle fotoğrafı"
+              className="aspect-[4/3] w-full rounded-2xl object-cover shadow-md shadow-rose-100 sm:w-[140px]"
+              loading="lazy"
+              decoding="async"
+            />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+                Puzzle fotoğrafı
+              </p>
+              <h4 className="mt-1 text-base font-semibold text-rose-950">
+                Bu fotoğraf puzzle deneyimi için seçildi.
+              </h4>
+              {selectedPuzzlePhoto.caption && (
+                <p className="mt-1 text-sm leading-6 text-rose-950/60">
+                  {selectedPuzzlePhoto.caption}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClearPuzzleSelection}
+              className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+            >
+              Puzzle seçimini temizle
+            </button>
+          </div>
+        </section>
+      ) : photos.length > 0 ? (
+        <section className="rounded-3xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/60">
+          Puzzle için bir fotoğraf seçmediğiniz sürece puzzle alanı boş kalacak. İsterseniz
+          yukarıdaki kartlardan birini seçebilirsiniz.
+        </section>
+      ) : null}
+    </div>
+  );
 }
 
 function ContactCoupleStep({
