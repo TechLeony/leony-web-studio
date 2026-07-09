@@ -15,7 +15,6 @@ import { Route as KvkkRouteImport } from './routes/kvkk'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
-import { Route as StoryofusOldIndexRouteImport } from './routes/storyofus-old.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
@@ -53,11 +52,6 @@ const IndexRoute = IndexRouteImport.update({
 const StoryofusIndexRoute = StoryofusIndexRouteImport.update({
   id: '/storyofus/',
   path: '/storyofus/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoryofusOldIndexRoute = StoryofusOldIndexRouteImport.update({
-  id: '/storyofus-old/',
-  path: '/storyofus-old/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -113,7 +107,6 @@ export interface FileRoutesByFullPath {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin/': typeof AdminIndexRoute
-  '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -129,7 +122,6 @@ export interface FileRoutesByTo {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin': typeof AdminIndexRoute
-  '/storyofus-old': typeof StoryofusOldIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -147,7 +139,6 @@ export interface FileRoutesById {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/admin/': typeof AdminIndexRoute
-  '/storyofus-old/': typeof StoryofusOldIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -166,7 +157,6 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/demo'
     | '/admin/'
-    | '/storyofus-old/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
@@ -182,7 +172,6 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/demo'
     | '/admin'
-    | '/storyofus-old'
     | '/storyofus'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
@@ -199,7 +188,6 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/demo'
     | '/admin/'
-    | '/storyofus-old/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
@@ -214,7 +202,6 @@ export interface RootRouteChildren {
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
-  StoryofusOldIndexRoute: typeof StoryofusOldIndexRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
   StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
@@ -262,13 +249,6 @@ declare module '@tanstack/react-router' {
       path: '/storyofus'
       fullPath: '/storyofus/'
       preLoaderRoute: typeof StoryofusIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storyofus-old/': {
-      id: '/storyofus-old/'
-      path: '/storyofus-old'
-      fullPath: '/storyofus-old/'
-      preLoaderRoute: typeof StoryofusOldIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -353,7 +333,6 @@ const rootRouteChildren: RootRouteChildren = {
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
-  StoryofusOldIndexRoute: StoryofusOldIndexRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
   StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
