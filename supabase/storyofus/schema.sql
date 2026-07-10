@@ -28,6 +28,7 @@ create table if not exists public.storyofus_submissions (
     check (status in ('draft', 'submitted', 'in_review', 'published', 'archived')),
 
   confirmed_skips jsonb not null default '{}'::jsonb,
+  legal_consents jsonb not null default '{}'::jsonb,
 
   submission_snapshot jsonb not null default '{}'::jsonb,
 

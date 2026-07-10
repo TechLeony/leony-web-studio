@@ -99,6 +99,17 @@ export type StoryOfUsLetterItem = {
   sortOrder: number;
 };
 
+export type StoryOfUsLegalConsentState = {
+  accepted: boolean;
+  acceptedAt?: string;
+};
+
+export type StoryOfUsLegalConsents = {
+  privacyNoticeAccepted: StoryOfUsLegalConsentState;
+  explicitConsentAccepted: StoryOfUsLegalConsentState;
+  contentResponsibilityAccepted: StoryOfUsLegalConsentState;
+};
+
 export type StoryOfUsSetupFormData = {
   orderReference: string;
   status: StoryOfUsSubmissionStatus;
@@ -110,6 +121,7 @@ export type StoryOfUsSetupFormData = {
   letters: StoryOfUsLetterItem[];
 
   confirmedSkips: StoryOfUsConfirmedSkips;
+  legalConsents: StoryOfUsLegalConsents;
 };
 
 export type StoryOfUsSerializablePhotoDraftItem = Omit<StoryOfUsPhotoDraftItem, "file">;
@@ -216,4 +228,16 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
   letters: [],
 
   confirmedSkips: {},
+
+  legalConsents: {
+    privacyNoticeAccepted: {
+      accepted: false,
+    },
+    explicitConsentAccepted: {
+      accepted: false,
+    },
+    contentResponsibilityAccepted: {
+      accepted: false,
+    },
+  },
 });

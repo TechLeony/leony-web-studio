@@ -8,6 +8,7 @@ import {
   createEmptyStoryOfUsSetupFormData,
   type StoryOfUsContactCoupleData,
   type StoryOfUsLetterItem,
+  type StoryOfUsLegalConsents,
   type StoryOfUsMusicData,
   type StoryOfUsPhotoDraftItem,
   type StoryOfUsPuzzleData,
@@ -32,7 +33,13 @@ const STORYOFUS_SETUP_DRAFT_STORAGE_KEY = "storyofus.setup.draft.v1";
 
 type StoryOfUsSetupDraft = Pick<
   StoryOfUsSetupFormData,
-  "orderReference" | "status" | "contactCouple" | "confirmedSkips" | "timeline" | "letters"
+  | "orderReference"
+  | "status"
+  | "contactCouple"
+  | "confirmedSkips"
+  | "timeline"
+  | "letters"
+  | "legalConsents"
 > & {
   media: {
     puzzle: {
@@ -60,6 +67,7 @@ type StepValidationNotice = {
 };
 
 type ContactCoupleFieldErrors = Partial<Record<keyof StoryOfUsContactCoupleData, string>>;
+type LegalConsentKey = keyof StoryOfUsLegalConsents;
 
 type StoryOfUsSubmissionResult = {
   submissionId: string;
@@ -74,6 +82,7 @@ function StoryOfUsSetupRoute() {
   const [formData, setFormData] = useState(initialSetupState.formData);
   const [wasDraftRestored, setWasDraftRestored] = useState(initialSetupState.wasDraftRestored);
   const [validationNotice, setValidationNotice] = useState<StepValidationNotice | null>(null);
+  const [legalConsentErrors, setLegalConsentErrors] = useState<string[]>([]);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
@@ -157,6 +166,7 @@ function StoryOfUsSetupRoute() {
     setFormData(createEmptyStoryOfUsSetupFormData());
     setCurrentStepIndex(0);
     setValidationNotice(null);
+    setLegalConsentErrors([]);
     setWasDraftRestored(false);
   }
 
@@ -167,6 +177,7 @@ function StoryOfUsSetupRoute() {
     setFormData(createEmptyStoryOfUsSetupFormData());
     setCurrentStepIndex(0);
     setValidationNotice(null);
+    setLegalConsentErrors([]);
     setSubmitError(null);
     setSubmissionResult(null);
     setWasDraftRestored(false);
@@ -185,8 +196,17 @@ function StoryOfUsSetupRoute() {
       return;
     }
 
+    const nextLegalConsentErrors = validateLegalConsents(formData.legalConsents);
+
+    if (nextLegalConsentErrors.length > 0) {
+      setLegalConsentErrors(nextLegalConsentErrors);
+      setSubmitError("Gönderim için onaylarınızı tamamlamamız gerekiyor.");
+      return;
+    }
+
     setIsSubmittingSetup(true);
     setSubmitError(null);
+    setLegalConsentErrors([]);
     setSubmissionResult(null);
 
     try {
@@ -270,6 +290,25 @@ function StoryOfUsSetupRoute() {
       contactCouple: {
         ...current.contactCouple,
         [field]: value,
+      },
+    }));
+  }
+
+  function updateLegalConsent(consentKey: LegalConsentKey, accepted: boolean) {
+    setSubmitError(null);
+    setLegalConsentErrors([]);
+    setFormData((current) => ({
+      ...current,
+      legalConsents: {
+        ...current.legalConsents,
+        [consentKey]: accepted
+          ? {
+              accepted: true,
+              acceptedAt: new Date().toISOString(),
+            }
+          : {
+              accepted: false,
+            },
       },
     }));
   }
@@ -846,6 +885,8 @@ function StoryOfUsSetupRoute() {
                   onSubmit={handleSubmitSetup}
                   isSubmitting={isSubmittingSetup}
                   submitError={submitError}
+                  legalConsentErrors={legalConsentErrors}
+                  onUpdateLegalConsent={updateLegalConsent}
                 />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1141,6 +1182,24 @@ function normalizeTurkeyMobilePhone(value: string) {
   return null;
 }
 
+function validateLegalConsents(legalConsents: StoryOfUsLegalConsents) {
+  const errors: string[] = [];
+
+  if (!legalConsents.privacyNoticeAccepted.accepted) {
+    errors.push("Aydınlatma metni onayı zorunlu.");
+  }
+
+  if (!legalConsents.explicitConsentAccepted.accepted) {
+    errors.push("İçeriklerin işlenmesine yönelik açık rıza zorunlu.");
+  }
+
+  if (!legalConsents.contentResponsibilityAccepted.accepted) {
+    errors.push("Yüklenen içeriklerin sorumluluğu kabulü zorunlu.");
+  }
+
+  return errors;
+}
+
 function isSectionConfirmedSkipped(
   sectionId: StoryOfUsOptionalSectionId,
   formData: StoryOfUsSetupFormData,
@@ -1256,6 +1315,7 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
       voiceNote: null,
     },
     confirmedSkips: formData.confirmedSkips,
+    legalConsents: formData.legalConsents,
     timeline: getOrderedTimelineItems(formData.timeline).map((item, index) => ({
       ...item,
       sortOrder: index,
@@ -1303,6 +1363,7 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
           : null,
     },
     confirmedSkips: formData.confirmedSkips,
+    legalConsents: formData.legalConsents,
     timeline: getOrderedTimelineItems(formData.timeline),
     letters: getOrderedLetters(formData.letters),
   };
@@ -1396,6 +1457,7 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
         voiceNote: null,
       },
       confirmedSkips: parsedDraft.confirmedSkips ?? emptyFormData.confirmedSkips,
+      legalConsents: restoreLegalConsents(parsedDraft.legalConsents, emptyFormData.legalConsents),
       timeline: restoredTimeline,
       letters: restoredLetters,
     };
@@ -1403,6 +1465,47 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
     clearSetupDraft();
     return null;
   }
+}
+
+function restoreLegalConsents(
+  legalConsents: Partial<StoryOfUsLegalConsents> | undefined,
+  fallback: StoryOfUsLegalConsents,
+): StoryOfUsLegalConsents {
+  return {
+    privacyNoticeAccepted: restoreLegalConsentState(
+      legalConsents?.privacyNoticeAccepted,
+      fallback.privacyNoticeAccepted,
+    ),
+    explicitConsentAccepted: restoreLegalConsentState(
+      legalConsents?.explicitConsentAccepted,
+      fallback.explicitConsentAccepted,
+    ),
+    contentResponsibilityAccepted: restoreLegalConsentState(
+      legalConsents?.contentResponsibilityAccepted,
+      fallback.contentResponsibilityAccepted,
+    ),
+  };
+}
+
+function restoreLegalConsentState(
+  consentState: Partial<StoryOfUsLegalConsents[LegalConsentKey]> | undefined,
+  fallback: StoryOfUsLegalConsents[LegalConsentKey],
+) {
+  if (!consentState || typeof consentState.accepted !== "boolean") {
+    return fallback;
+  }
+
+  return consentState.accepted
+    ? {
+        accepted: true,
+        acceptedAt:
+          typeof consentState.acceptedAt === "string"
+            ? consentState.acceptedAt
+            : new Date().toISOString(),
+      }
+    : {
+        accepted: false,
+      };
 }
 
 function clearSetupDraft() {
@@ -2379,13 +2482,18 @@ function ReviewSubmitStep({
   onSubmit,
   isSubmitting,
   submitError,
+  legalConsentErrors,
+  onUpdateLegalConsent,
 }: {
   formData: StoryOfUsSetupFormData;
   onEditStep: (stepId: StoryOfUsSetupStepId) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
   submitError: string | null;
+  legalConsentErrors: string[];
+  onUpdateLegalConsent: (consentKey: LegalConsentKey, accepted: boolean) => void;
 }) {
+  const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false);
   const selectedPuzzlePhoto = getSelectedPuzzlePhoto(
     formData.media.photos,
     formData.media.puzzle.selectedPhotoId,
@@ -2398,6 +2506,7 @@ function ReviewSubmitStep({
   const isMusicSkipped = isSectionConfirmedSkipped("music", formData);
   const isTimelineSkipped = isSectionConfirmedSkipped("timeline", formData);
   const isLettersSkipped = isSectionConfirmedSkipped("letters", formData);
+  const areLegalConsentsComplete = validateLegalConsents(formData.legalConsents).length === 0;
 
   return (
     <div className="grid gap-5">
@@ -2649,6 +2758,66 @@ function ReviewSubmitStep({
         )}
       </ReviewSection>
 
+      <ReviewSection
+        title="Onaylar"
+        description="StoryOfUs web sitenizi hazırlayabilmemiz için paylaştığınız içerikleri yalnızca bu hizmet kapsamında kullanacağız."
+        onEdit={() => setIsPrivacyNoticeOpen((isOpen) => !isOpen)}
+        editLabel={isPrivacyNoticeOpen ? "Aydınlatma metnini gizle" : "Aydınlatma metnini görüntüle"}
+      >
+        <div className="grid gap-4">
+          {legalConsentErrors.length > 0 && (
+            <div className="rounded-3xl border border-red-200 bg-red-50/80 p-4 text-left shadow-sm shadow-red-100/60">
+              <h5 className="text-sm font-semibold text-red-900">
+                Gönderim için onaylarınızı tamamlamamız gerekiyor.
+              </h5>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-6 text-red-900/80">
+                {legalConsentErrors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="text-sm leading-6 text-rose-950/60">
+            Bu alanlar gönderimden önce zorunludur.
+          </p>
+
+          {isPrivacyNoticeOpen && (
+            <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/45">
+              Bu metin taslak bilgilendirme amaçlıdır. StoryOfUs kapsamında paylaştığınız bilgiler,
+              web sitenizin hazırlanması, sizinle iletişim kurulması ve sipariş sürecinin
+              yönetilmesi amacıyla işlenir.
+            </div>
+          )}
+
+          <div className="grid gap-3">
+            <ConsentCheckbox
+              checked={formData.legalConsents.privacyNoticeAccepted.accepted}
+              onChange={(accepted) => onUpdateLegalConsent("privacyNoticeAccepted", accepted)}
+              label="Aydınlatma metnini okudum ve anladım."
+            />
+            <ConsentCheckbox
+              checked={formData.legalConsents.explicitConsentAccepted.accepted}
+              onChange={(accepted) => onUpdateLegalConsent("explicitConsentAccepted", accepted)}
+              label="StoryOfUs web sitesinin hazırlanması için paylaştığım fotoğraf, ses kaydı, isim, anı, mektup ve benzeri içeriklerin işlenmesine onay veriyorum."
+            />
+            <ConsentCheckbox
+              checked={formData.legalConsents.contentResponsibilityAccepted.accepted}
+              onChange={(accepted) =>
+                onUpdateLegalConsent("contentResponsibilityAccepted", accepted)
+              }
+              label="Yüklediğim içerikleri paylaşma hakkına sahip olduğumu; içeriklerde yer alan kişilerin gerekli izinlerini aldığımı ve bu içeriklerin doğruluğundan/sorumluluğundan benim sorumlu olduğumu kabul ediyorum."
+            />
+          </div>
+
+          {areLegalConsentsComplete && (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-900">
+              Onaylar tamamlandı.
+            </div>
+          )}
+        </div>
+      </ReviewSection>
+
       <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 p-5 text-center shadow-sm shadow-rose-100/50">
         <h4 className="text-xl font-bold text-rose-950">Her şey hazır mı?</h4>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-rose-950/60">
@@ -2681,11 +2850,13 @@ function ReviewSection({
   title,
   description,
   onEdit,
+  editLabel = "Düzenle",
   children,
 }: {
   title: string;
   description: string;
   onEdit: () => void;
+  editLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -2700,11 +2871,39 @@ function ReviewSection({
           onClick={onEdit}
           className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
         >
-          Düzenle
+          {editLabel}
         </button>
       </div>
       {children}
     </section>
+  );
+}
+
+function ConsentCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer gap-3 rounded-2xl border p-4 text-left text-sm leading-6 shadow-sm transition ${
+        checked
+          ? "border-rose-200 bg-rose-50/80 text-rose-950 shadow-rose-100/60"
+          : "border-rose-100 bg-white/85 text-rose-950/70 shadow-rose-100/40 hover:border-rose-200"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 shrink-0 rounded border-rose-300 text-rose-500 focus:ring-rose-200"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 

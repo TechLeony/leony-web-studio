@@ -60,6 +60,20 @@ type SubmitPayload = {
     voiceNote: SubmitVoiceNoteMetadata | null;
   };
   confirmedSkips: ConfirmedSkips;
+  legalConsents: {
+    privacyNoticeAccepted: {
+      accepted: boolean;
+      acceptedAt?: string;
+    };
+    explicitConsentAccepted: {
+      accepted: boolean;
+      acceptedAt?: string;
+    };
+    contentResponsibilityAccepted: {
+      accepted: boolean;
+      acceptedAt?: string;
+    };
+  };
   timeline: Array<{
     id: string;
     title: string;
@@ -111,6 +125,7 @@ async function submitStoryOfUsSetupData(
       contact_phone: emptyToNull(payload.contactCouple.contactPhone),
       status: "submitted",
       confirmed_skips: payload.confirmedSkips,
+      legal_consents: payload.legalConsents,
       submission_snapshot: submissionSnapshot,
       submitted_at: submittedAt,
     })
@@ -336,6 +351,7 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
       voiceNote: payload.musicVoice.voiceNote,
     },
     confirmedSkips: payload.confirmedSkips,
+    legalConsents: payload.legalConsents,
     timeline: payload.timeline,
     letters: payload.letters,
   };
