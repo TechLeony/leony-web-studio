@@ -9,6 +9,7 @@ import {
   type StoryOfUsMusicData,
   type StoryOfUsPhotoDraftItem,
   type StoryOfUsPuzzleData,
+  type StoryOfUsOptionalSectionId,
   type StoryOfUsSkipState,
   type StoryOfUsSetupStepId,
   type StoryOfUsSetupFormData,
@@ -43,11 +44,24 @@ type StoryOfUsSetupDraft = Pick<
   };
 };
 
+type OptionalSectionWarning = {
+  sectionId: StoryOfUsOptionalSectionId;
+  message: string;
+  confirmLabel: string;
+  cancelLabel: string;
+};
+
+type StepValidationNotice = {
+  blockingErrors: string[];
+  warning: OptionalSectionWarning | null;
+};
+
 function StoryOfUsSetupRoute() {
   const [initialSetupState] = useState(() => createInitialSetupState());
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(initialSetupState.formData);
   const [wasDraftRestored, setWasDraftRestored] = useState(initialSetupState.wasDraftRestored);
+  const [validationNotice, setValidationNotice] = useState<StepValidationNotice | null>(null);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
@@ -83,10 +97,30 @@ function StoryOfUsSetupRoute() {
 
   function goToPreviousStep() {
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
+    setValidationNotice(null);
+  }
+
+  function proceedToNextStep() {
+    setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
+    setValidationNotice(null);
   }
 
   function goToNextStep() {
-    setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
+    const nextValidationNotice = validateCurrentStep(currentStep.id, formData);
+
+    if (nextValidationNotice.blockingErrors.length > 0 || nextValidationNotice.warning) {
+      if (
+        nextValidationNotice.warning &&
+        nextValidationNotice.warning.sectionId !== "voiceNote"
+      ) {
+        requestSectionSkip(nextValidationNotice.warning.sectionId, false);
+      }
+
+      setValidationNotice(nextValidationNotice);
+      return;
+    }
+
+    proceedToNextStep();
   }
 
   function goToStepById(stepId: StoryOfUsSetupStepId) {
@@ -103,7 +137,62 @@ function StoryOfUsSetupRoute() {
     skipNextDraftSaveRef.current = true;
     setFormData(createEmptyStoryOfUsSetupFormData());
     setCurrentStepIndex(0);
+    setValidationNotice(null);
     setWasDraftRestored(false);
+  }
+
+  function requestSectionSkip(sectionId: StoryOfUsOptionalSectionId, showNotice = true) {
+    setFormData((current) => ({
+      ...current,
+      confirmedSkips: {
+        ...current.confirmedSkips,
+        [sectionId]: {
+          warned: true,
+          confirmed: false,
+        },
+      },
+    }));
+
+    if (showNotice) {
+      setValidationNotice({
+        blockingErrors: [],
+        warning: getOptionalSectionWarning(sectionId),
+      });
+    }
+  }
+
+  function confirmSectionSkip(sectionId: StoryOfUsOptionalSectionId, shouldProceed = true) {
+    setFormData((current) => ({
+      ...current,
+      confirmedSkips: {
+        ...current.confirmedSkips,
+        [sectionId]: {
+          warned: true,
+          confirmed: true,
+          confirmedAt: new Date().toISOString(),
+        },
+      },
+    }));
+    setValidationNotice(null);
+
+    if (shouldProceed) {
+      proceedToNextStep();
+    }
+  }
+
+  function undoSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
+    setFormData((current) => ({
+      ...current,
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, sectionId),
+    }));
+    setValidationNotice(null);
+  }
+
+  function clearSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
+    setFormData((current) => ({
+      ...current,
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, sectionId),
+    }));
   }
 
   function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
@@ -148,7 +237,9 @@ function StoryOfUsSetupRoute() {
           })),
         ],
       },
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "photos"),
     }));
+    setValidationNotice(null);
   }
 
   function updatePhotoCaption(photoId: string, caption: string) {
@@ -202,7 +293,9 @@ function StoryOfUsSetupRoute() {
           confirmedNoPuzzle: false,
         },
       },
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "puzzle"),
     }));
+    setValidationNotice(null);
   }
 
   function clearPuzzleSelection() {
@@ -221,16 +314,31 @@ function StoryOfUsSetupRoute() {
 
   function updateMusicField(field: keyof StoryOfUsMusicData, value: string) {
     setFormData((current) => {
+      const nextMusic =
+        field === "startAtSeconds"
+          ? {
+              ...current.musicVoice.music,
+              startAtSeconds: value.trim() === "" ? 0 : Number(value),
+            }
+          : {
+              ...current.musicVoice.music,
+              [field]: value,
+            };
+      const hasMusicContent =
+        nextMusic.spotifyUrl.trim() !== "" ||
+        nextMusic.songTitle.trim() !== "" ||
+        nextMusic.artistName.trim() !== "";
+
       if (field === "startAtSeconds") {
         return {
           ...current,
           musicVoice: {
             ...current.musicVoice,
-            music: {
-              ...current.musicVoice.music,
-              startAtSeconds: value.trim() === "" ? 0 : Number(value),
-            },
+            music: nextMusic,
           },
+          confirmedSkips: hasMusicContent
+            ? removeConfirmedSkip(current.confirmedSkips, "music")
+            : current.confirmedSkips,
         };
       }
 
@@ -238,13 +346,14 @@ function StoryOfUsSetupRoute() {
         ...current,
         musicVoice: {
           ...current.musicVoice,
-          music: {
-            ...current.musicVoice.music,
-            [field]: value,
-          },
+          music: nextMusic,
         },
+        confirmedSkips: hasMusicContent
+          ? removeConfirmedSkip(current.confirmedSkips, "music")
+          : current.confirmedSkips,
       };
     });
+    setValidationNotice(null);
   }
 
   function addVoiceNoteFile(file: File) {
@@ -278,6 +387,7 @@ function StoryOfUsSetupRoute() {
         confirmedSkips: remainingSkips,
       };
     });
+    setValidationNotice(null);
   }
 
   function removeVoiceNote() {
@@ -298,16 +408,7 @@ function StoryOfUsSetupRoute() {
   }
 
   function requestVoiceNoteSkip() {
-    setFormData((current) => ({
-      ...current,
-      confirmedSkips: {
-        ...current.confirmedSkips,
-        voiceNote: {
-          warned: true,
-          confirmed: false,
-        },
-      },
-    }));
+    requestSectionSkip("voiceNote", false);
   }
 
   function confirmVoiceNoteSkip() {
@@ -333,17 +434,11 @@ function StoryOfUsSetupRoute() {
         },
       };
     });
+    setValidationNotice(null);
   }
 
   function undoVoiceNoteSkip() {
-    setFormData((current) => {
-      const { voiceNote, ...remainingSkips } = current.confirmedSkips;
-
-      return {
-        ...current,
-        confirmedSkips: remainingSkips,
-      };
-    });
+    undoSectionSkip("voiceNote");
   }
 
   function addTimelineItem() {
@@ -359,7 +454,9 @@ function StoryOfUsSetupRoute() {
           sortOrder: current.timeline.length,
         },
       ],
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "timeline"),
     }));
+    setValidationNotice(null);
   }
 
   function updateTimelineItem(
@@ -428,8 +525,10 @@ function StoryOfUsSetupRoute() {
             sortOrder: current.letters.length,
           },
         ],
+        confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "letters"),
       };
     });
+    setValidationNotice(null);
   }
 
   function addOpenWhenLetter() {
@@ -445,7 +544,9 @@ function StoryOfUsSetupRoute() {
           sortOrder: current.letters.length,
         },
       ],
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "letters"),
     }));
+    setValidationNotice(null);
   }
 
   function updateLetterItem(
@@ -607,6 +708,18 @@ function StoryOfUsSetupRoute() {
                   {getStepIntro(currentStep.id)}
                 </p>
               </div>
+
+              <StepValidationPanel
+                notice={validationNotice}
+                onConfirmSkip={(sectionId) => confirmSectionSkip(sectionId)}
+                onCancelSkip={(sectionId) => undoSectionSkip(sectionId)}
+              />
+
+              <ConfirmedSkipNotices
+                sections={getStepOptionalSections(currentStep.id)}
+                formData={formData}
+                onUndoSkip={undoSectionSkip}
+              />
 
               {currentStep.id === "contactCouple" ? (
                 <ContactCoupleStep
@@ -774,6 +887,198 @@ function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[
         { title: "Gönderim beklemede", description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor." },
       ];
   }
+}
+
+function validateCurrentStep(
+  stepId: StoryOfUsSetupStepId,
+  formData: StoryOfUsSetupFormData,
+): StepValidationNotice {
+  const blockingErrors: string[] = [];
+
+  if (stepId === "contactCouple") {
+    if (!formData.contactCouple.customerName.trim()) {
+      blockingErrors.push("Adınız gerekli.");
+    }
+
+    if (!formData.contactCouple.customerEmail.trim()) {
+      blockingErrors.push("E-posta adresiniz gerekli.");
+    } else if (!formData.contactCouple.customerEmail.includes("@")) {
+      blockingErrors.push("E-posta adresiniz geçerli görünmüyor.");
+    }
+
+    if (!formData.contactCouple.partnerName.trim()) {
+      blockingErrors.push("Partnerinizin adı gerekli.");
+    }
+  }
+
+  if (blockingErrors.length > 0) {
+    return {
+      blockingErrors,
+      warning: null,
+    };
+  }
+
+  if (
+    stepId === "photosPuzzle" &&
+    formData.media.photos.length === 0 &&
+    !isSectionConfirmedSkipped("photos", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("photos"),
+    };
+  }
+
+  if (
+    stepId === "photosPuzzle" &&
+    formData.media.photos.length > 0 &&
+    !formData.media.puzzle.selectedPhotoId &&
+    !isSectionConfirmedSkipped("puzzle", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("puzzle"),
+    };
+  }
+
+  if (
+    stepId === "musicVoice" &&
+    isMusicSectionEmpty(formData.musicVoice.music) &&
+    !isSectionConfirmedSkipped("music", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("music"),
+    };
+  }
+
+  if (
+    stepId === "musicVoice" &&
+    !formData.musicVoice.voiceNote &&
+    !isSectionConfirmedSkipped("voiceNote", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("voiceNote"),
+    };
+  }
+
+  if (
+    stepId === "timeline" &&
+    formData.timeline.length === 0 &&
+    !isSectionConfirmedSkipped("timeline", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("timeline"),
+    };
+  }
+
+  if (
+    stepId === "letters" &&
+    formData.letters.length === 0 &&
+    !isSectionConfirmedSkipped("letters", formData)
+  ) {
+    return {
+      blockingErrors: [],
+      warning: getOptionalSectionWarning("letters"),
+    };
+  }
+
+  return {
+    blockingErrors: [],
+    warning: null,
+  };
+}
+
+function isSectionConfirmedSkipped(
+  sectionId: StoryOfUsOptionalSectionId,
+  formData: StoryOfUsSetupFormData,
+) {
+  return formData.confirmedSkips[sectionId]?.confirmed === true;
+}
+
+function getStepOptionalSections(stepId: StoryOfUsSetupStepId): StoryOfUsOptionalSectionId[] {
+  switch (stepId) {
+    case "photosPuzzle":
+      return ["photos", "puzzle"];
+    case "musicVoice":
+      return ["music", "voiceNote"];
+    case "timeline":
+      return ["timeline"];
+    case "letters":
+      return ["letters"];
+    case "review":
+      return ["photos", "puzzle", "music", "voiceNote", "timeline", "letters"];
+    case "contactCouple":
+      return [];
+  }
+}
+
+function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): OptionalSectionWarning {
+  switch (sectionId) {
+    case "photos":
+      return {
+        sectionId,
+        message:
+          "Fotoğraf eklemezseniz galeri bölümü hazırlanan web sitesinde görünmeyecek. Bunu bilerek mi boş bırakmak istiyorsunuz?",
+        confirmLabel: "Evet, fotoğraf istemiyorum",
+        cancelLabel: "Fotoğraf ekleyeceğim",
+      };
+    case "puzzle":
+      return {
+        sectionId,
+        message:
+          "Puzzle fotoğrafı seçmezseniz puzzle oyunu hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
+        confirmLabel: "Evet, puzzle istemiyorum",
+        cancelLabel: "Puzzle fotoğrafı seçeceğim",
+      };
+    case "music":
+      return {
+        sectionId,
+        message:
+          "Şarkı eklemezseniz müzik bölümü hazırlanan web sitesinde görünmeyebilir. Bunu bilerek mi boş bırakmak istiyorsunuz?",
+        confirmLabel: "Evet, müzik istemiyorum",
+        cancelLabel: "Müzik ekleyeceğim",
+      };
+    case "voiceNote":
+      return {
+        sectionId,
+        message:
+          "Ses notu eklemezseniz size özel hazırlanan web sitesinde ses notu bölümü görünmeyecek. Emin misiniz?",
+        confirmLabel: "Evet, ses notu istemiyorum",
+        cancelLabel: "Vazgeç, ses notu ekleyeceğim",
+      };
+    case "timeline":
+      return {
+        sectionId,
+        message:
+          "Zaman çizelgesi eklemezseniz ilişkinizin özel anları bölümü hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
+        confirmLabel: "Evet, zaman çizelgesi istemiyorum",
+        cancelLabel: "Anı ekleyeceğim",
+      };
+    case "letters":
+      return {
+        sectionId,
+        message:
+          "Mektup eklemezseniz aşk mektubu / open-when mektupları bölümü hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
+        confirmLabel: "Evet, mektup istemiyorum",
+        cancelLabel: "Mektup ekleyeceğim",
+      };
+  }
+}
+
+function isMusicSectionEmpty(music: StoryOfUsMusicData) {
+  return !music.spotifyUrl.trim() && !music.songTitle.trim() && !music.artistName.trim();
+}
+
+function removeConfirmedSkip(
+  confirmedSkips: StoryOfUsSetupFormData["confirmedSkips"],
+  sectionId: StoryOfUsOptionalSectionId,
+) {
+  const nextConfirmedSkips = { ...confirmedSkips };
+  delete nextConfirmedSkips[sectionId];
+  return nextConfirmedSkips;
 }
 
 function createInitialSetupState() {
@@ -967,6 +1272,122 @@ function getOpenWhenTitlePlaceholder(index: number) {
   ];
 
   return placeholders[index % placeholders.length];
+}
+
+function StepValidationPanel({
+  notice,
+  onConfirmSkip,
+  onCancelSkip,
+}: {
+  notice: StepValidationNotice | null;
+  onConfirmSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
+  onCancelSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
+}) {
+  if (!notice || (notice.blockingErrors.length === 0 && !notice.warning)) {
+    return null;
+  }
+
+  return (
+    <section className="mb-5 rounded-3xl border border-rose-200 bg-rose-50/80 p-4 shadow-sm shadow-rose-100/60">
+      {notice.blockingErrors.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-rose-900">
+            Devam etmeden önce birkaç temel bilgiyi tamamlamamız gerekiyor.
+          </h4>
+          <ul className="mt-3 grid gap-2 text-sm leading-6 text-rose-950/70">
+            {notice.blockingErrors.map((error) => (
+              <li key={error} className="rounded-2xl bg-white/75 px-3 py-2">
+                {error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notice.warning && (
+        <div>
+          <h4 className="text-sm font-semibold text-rose-900">Küçük bir hatırlatma</h4>
+          <p className="mt-2 text-sm leading-6 text-rose-950/70">{notice.warning.message}</p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => onConfirmSkip(notice.warning.sectionId)}
+              className="rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:bg-rose-600"
+            >
+              {notice.warning.confirmLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => onCancelSkip(notice.warning.sectionId)}
+              className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+            >
+              {notice.warning.cancelLabel}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ConfirmedSkipNotices({
+  sections,
+  formData,
+  onUndoSkip,
+}: {
+  sections: StoryOfUsOptionalSectionId[];
+  formData: StoryOfUsSetupFormData;
+  onUndoSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
+}) {
+  const skippedSections = sections.filter((sectionId) =>
+    isSectionConfirmedSkipped(sectionId, formData),
+  );
+
+  if (skippedSections.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-5 grid gap-2">
+      {skippedSections.map((sectionId) => (
+        <div
+          key={sectionId}
+          className="flex flex-col gap-3 rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 text-sm leading-6 text-rose-950/65 shadow-sm shadow-rose-100/45 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p>
+            <span className="font-semibold text-rose-700">
+              {getOptionalSectionTitle(sectionId)}:
+            </span>{" "}
+            Bu bölüm isteğiniz üzerine web sitesinde gösterilmeyecek.
+          </p>
+          <button
+            type="button"
+            onClick={() => onUndoSkip(sectionId)}
+            className="rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+          >
+            Geri al
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function getOptionalSectionTitle(sectionId: StoryOfUsOptionalSectionId) {
+  switch (sectionId) {
+    case "photos":
+      return "Fotoğraflar";
+    case "puzzle":
+      return "Puzzle";
+    case "music":
+      return "Müzik";
+    case "voiceNote":
+      return "Ses notu";
+    case "timeline":
+      return "Zaman çizelgesi";
+    case "letters":
+      return "Mektuplar";
+  }
 }
 
 function PhotosPuzzleStep({
@@ -1689,6 +2110,11 @@ function ReviewSubmitStep({
   const orderedTimelineItems = getOrderedTimelineItems(formData.timeline);
   const orderedLetters = getOrderedLetters(formData.letters);
   const voiceNoteSkip = formData.confirmedSkips.voiceNote;
+  const isPhotosSkipped = isSectionConfirmedSkipped("photos", formData);
+  const isPuzzleSkipped = isSectionConfirmedSkipped("puzzle", formData);
+  const isMusicSkipped = isSectionConfirmedSkipped("music", formData);
+  const isTimelineSkipped = isSectionConfirmedSkipped("timeline", formData);
+  const isLettersSkipped = isSectionConfirmedSkipped("letters", formData);
 
   return (
     <div className="grid gap-5">
@@ -1771,7 +2197,11 @@ function ReviewSubmitStep({
               ))}
             </div>
           ) : (
-            <ReviewSoftHint>Henüz galeri fotoğrafı eklenmedi.</ReviewSoftHint>
+            <ReviewSoftHint>
+              {isPhotosSkipped
+                ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+                : "Henüz galeri fotoğrafı eklenmedi."}
+            </ReviewSoftHint>
           )}
 
           {selectedPuzzlePhoto ? (
@@ -1793,7 +2223,11 @@ function ReviewSubmitStep({
               </div>
             </div>
           ) : (
-            <ReviewSoftHint>Puzzle için henüz bir fotoğraf seçilmedi.</ReviewSoftHint>
+            <ReviewSoftHint>
+              {isPuzzleSkipped
+                ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+                : "Puzzle için henüz bir fotoğraf seçilmedi."}
+            </ReviewSoftHint>
           )}
         </div>
       </ReviewSection>
@@ -1806,7 +2240,11 @@ function ReviewSubmitStep({
         <div className="grid gap-3 sm:grid-cols-2">
           <ReviewField
             label="Spotify şarkı linki"
-            value={displayValue(formData.musicVoice.music.spotifyUrl)}
+            value={
+              isMusicSkipped
+                ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+                : displayValue(formData.musicVoice.music.spotifyUrl)
+            }
             className="sm:col-span-2"
           />
           <ReviewField
@@ -1879,7 +2317,11 @@ function ReviewSubmitStep({
             ))}
           </div>
         ) : (
-          <ReviewSoftHint>Henüz zaman çizelgesi anısı eklenmedi.</ReviewSoftHint>
+          <ReviewSoftHint>
+            {isTimelineSkipped
+              ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+              : "Henüz zaman çizelgesi anısı eklenmedi."}
+          </ReviewSoftHint>
         )}
       </ReviewSection>
 
@@ -1916,7 +2358,11 @@ function ReviewSubmitStep({
             })}
           </div>
         ) : (
-          <ReviewSoftHint>Henüz mektup eklenmedi.</ReviewSoftHint>
+          <ReviewSoftHint>
+            {isLettersSkipped
+              ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+              : "Henüz mektup eklenmedi."}
+          </ReviewSoftHint>
         )}
       </ReviewSection>
 
