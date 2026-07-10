@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-react";
 
+import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
+
 export const Route = createFileRoute("/storyofus/demo")({
   head: () => ({
     meta: [
@@ -627,6 +629,8 @@ function StoryDemo() {
       className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.92),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(244,114,182,0.24),transparent_34%),linear-gradient(180deg,var(--sou-bg)_0%,#ffe4ec_50%,var(--sou-bg-end)_100%)] text-[color:var(--sou-text)]"
     >
       <FloatingDecor decor={story.decor} />
+
+      <DemoDisclaimerBanner />
 
       <section className="relative z-10 px-4 pb-12 pt-16 text-center sm:px-6 sm:pb-16 sm:pt-20">
         {story.decor.showHeroSparkles && (
@@ -1719,6 +1723,17 @@ function PuzzlePiece({ imageUrl, position }: { imageUrl: string; position: strin
         backgroundSize: "300% 200%",
       }}
     />
+  );
+}
+
+function DemoDisclaimerBanner() {
+  return (
+    <section className="relative z-10 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
+      <div className="rounded-[1.25rem] border border-white/70 bg-white/65 px-4 py-3 text-center text-xs leading-5 text-[color:var(--sou-text)]/70 shadow-lg shadow-rose-100/35 backdrop-blur sm:rounded-[1.5rem] sm:px-5 sm:py-4 sm:text-sm sm:leading-6">
+        <span className="font-semibold text-[color:var(--sou-primary)]">Demo notu: </span>
+        {storyOfUsDemoCtaConfig.disclaimerText}
+      </div>
+    </section>
   );
 }
 

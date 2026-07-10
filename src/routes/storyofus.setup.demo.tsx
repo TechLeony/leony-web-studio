@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Heart, Upload, X, Plus, CheckCircle2 } from "lucide-react";
 
+import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
+
 export const Route = createFileRoute("/storyofus/setup/demo")({
   head: () => ({
     meta: [
@@ -93,10 +95,10 @@ function SetupDemo() {
             özel linkin mailine düşecek.
           </p>
           <Link
-            to="/storyofus"
+            to={storyOfUsDemoCtaConfig.mainPath}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-rose-700 text-white px-6 py-3 hover:bg-rose-800 transition"
           >
-            <Heart className="h-4 w-4 fill-white" /> Ana sayfaya dön
+            <Heart className="h-4 w-4 fill-white" /> {storyOfUsDemoCtaConfig.backToStoryOfUsLabel}
           </Link>
         </div>
       </div>
@@ -106,7 +108,7 @@ function SetupDemo() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_100%)] text-rose-950">
       <header className="px-6 py-5 flex items-center justify-between max-w-4xl mx-auto">
-        <Link to="/storyofus" className="font-serif text-lg text-rose-700">
+        <Link to={storyOfUsDemoCtaConfig.mainPath} className="font-serif text-lg text-rose-700">
           Leony · StoryOfUs
         </Link>
         <span className="text-xs text-rose-950/60">Demo Setup</span>
