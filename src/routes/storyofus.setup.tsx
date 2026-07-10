@@ -837,7 +837,7 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
   try {
     const parsedDraft = JSON.parse(rawDraft) as Partial<StoryOfUsSetupDraft>;
     const emptyFormData = createEmptyStoryOfUsSetupFormData();
-    const restoredTimeline = Array.isArray(parsedDraft.timeline)
+    const restoredTimeline: StoryOfUsTimelineItem[] = Array.isArray(parsedDraft.timeline)
       ? parsedDraft.timeline.map((item, index) => ({
           id: typeof item.id === "string" ? item.id : createTimelineItemId(),
           title: typeof item.title === "string" ? item.title : "",
@@ -846,7 +846,7 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
           sortOrder: index,
         }))
       : [];
-    const restoredLetters = Array.isArray(parsedDraft.letters)
+    const restoredLetters: StoryOfUsLetterItem[] = Array.isArray(parsedDraft.letters)
       ? parsedDraft.letters.map((letter, index) => ({
           id: typeof letter.id === "string" ? letter.id : createLetterItemId(),
           type: letter.type === "love_letter" ? "love_letter" : "open_when",
