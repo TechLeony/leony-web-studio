@@ -99,6 +99,7 @@ type SubmissionResult = {
   submissionId: string;
   setupToken: string | null;
   status: "submitted";
+  editableUntil: string | null;
 };
 
 export const submitStoryOfUsSetup = createServerFn({ method: "POST" })
@@ -125,11 +126,12 @@ async function submitStoryOfUsSetupData(
   }
 
   const submittedAt = new Date().toISOString();
+  const now = new Date(submittedAt);
   const submissionSnapshot = createSubmissionSnapshot(payload);
 
   const { data: submission, error: submissionError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("id, setup_token, status, payment_status")
+    .select("id, setup_token, status, payment_status, submitted_at, editable_until")
     .eq("setup_token", setupToken)
     .maybeSingle();
 
@@ -145,13 +147,27 @@ async function submitStoryOfUsSetupData(
     throw new Error("StoryOfUs setup form is not active until payment is approved.");
   }
 
-  if (submission.status !== "draft") {
+  const isFirstSubmit = submission.status === "draft";
+  const effectiveEditableUntil = getEffectiveEditableUntil(
+    typeof submission.editable_until === "string" ? submission.editable_until : null,
+    typeof submission.submitted_at === "string" ? submission.submitted_at : null,
+  );
+  const isEditableResubmit =
+    submission.status === "submitted" &&
+    Boolean(effectiveEditableUntil) &&
+    new Date(effectiveEditableUntil as string).getTime() >= now.getTime();
+
+  if (!isFirstSubmit && !isEditableResubmit) {
     throw new Error("This setup form has already been submitted or is not editable.");
   }
 
   const submissionId = submission.id as string;
+  const nextEditableUntil = isFirstSubmit
+    ? new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString()
+    : effectiveEditableUntil;
 
-  await deleteExistingSubmissionDetails(submissionId);
+  await deleteExistingTextDetails(submissionId);
+  await prepareExistingMediaForSubmit(submissionId, payload, isFirstSubmit);
 
   const { data: updatedSubmission, error: updateError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
@@ -164,7 +180,9 @@ async function submitStoryOfUsSetupData(
       confirmed_skips: payload.confirmedSkips,
       legal_consents: payload.legalConsents,
       submission_snapshot: submissionSnapshot,
-      submitted_at: submittedAt,
+      submitted_at: isFirstSubmit ? submittedAt : submission.submitted_at,
+      editable_until: nextEditableUntil,
+      last_resubmitted_at: isFirstSubmit ? null : submittedAt,
     })
     .eq("id", submissionId)
     .select("id, setup_token, status")
@@ -185,14 +203,14 @@ async function submitStoryOfUsSetupData(
     submissionId,
     setupToken: (updatedSubmission.setup_token as string | null) ?? null,
     status: "submitted",
+    editableUntil: nextEditableUntil,
   };
 }
 
-async function deleteExistingSubmissionDetails(submissionId: string) {
+async function deleteExistingTextDetails(submissionId: string) {
   const tables = [
     "storyofus_couple_details",
     "storyofus_music",
-    "storyofus_media",
     "storyofus_timeline_items",
     "storyofus_letters",
   ];
@@ -205,6 +223,71 @@ async function deleteExistingSubmissionDetails(submissionId: string) {
 
     if (error) {
       throw new Error(`StoryOfUs existing ${table} rows could not be cleared: ${error.message}`);
+    }
+  }
+}
+
+async function prepareExistingMediaForSubmit(
+  submissionId: string,
+  payload: SubmitPayload,
+  isFirstSubmit: boolean,
+) {
+  if (isFirstSubmit) {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .delete()
+      .eq("submission_id", submissionId);
+
+    if (error) {
+      throw new Error(`StoryOfUs existing media rows could not be cleared: ${error.message}`);
+    }
+
+    return;
+  }
+
+  if (isConfirmedSkipped(payload.confirmedSkips, "photos")) {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .delete()
+      .eq("submission_id", submissionId)
+      .eq("section", "gallery");
+
+    if (error) {
+      throw new Error(`StoryOfUs existing gallery media rows could not be cleared: ${error.message}`);
+    }
+  }
+
+  if (isConfirmedSkipped(payload.confirmedSkips, "puzzle")) {
+    const { error: deleteError } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .delete()
+      .eq("submission_id", submissionId)
+      .eq("section", "puzzle");
+
+    if (deleteError) {
+      throw new Error(`StoryOfUs existing puzzle media rows could not be cleared: ${deleteError.message}`);
+    }
+
+    const { error: updateError } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .update({ is_puzzle_source: false })
+      .eq("submission_id", submissionId)
+      .eq("is_puzzle_source", true);
+
+    if (updateError) {
+      throw new Error(`StoryOfUs existing puzzle source could not be cleared: ${updateError.message}`);
+    }
+  }
+
+  if (isConfirmedSkipped(payload.confirmedSkips, "voiceNote")) {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .delete()
+      .eq("submission_id", submissionId)
+      .eq("section", "voice_note");
+
+    if (error) {
+      throw new Error(`StoryOfUs existing voice note media rows could not be cleared: ${error.message}`);
     }
   }
 }
@@ -494,6 +577,24 @@ function isConfirmedSkipped(confirmedSkips: ConfirmedSkips, sectionId: keyof Con
 
 function isMusicEmpty(music: SubmitPayload["musicVoice"]["music"]) {
   return !music.spotifyUrl.trim() && !music.songTitle.trim() && !music.artistName.trim();
+}
+
+function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: string | null) {
+  if (editableUntil) {
+    return editableUntil;
+  }
+
+  if (!submittedAt) {
+    return null;
+  }
+
+  const submittedAtTime = new Date(submittedAt).getTime();
+
+  if (!Number.isFinite(submittedAtTime)) {
+    return null;
+  }
+
+  return new Date(submittedAtTime + 3 * 60 * 60 * 1000).toISOString();
 }
 
 function emptyToNull(value: string | null | undefined) {

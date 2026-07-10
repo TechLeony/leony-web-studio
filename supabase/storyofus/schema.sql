@@ -40,6 +40,8 @@ create table if not exists public.storyofus_submissions (
   submission_snapshot jsonb not null default '{}'::jsonb,
 
   submitted_at timestamptz,
+  editable_until timestamptz,
+  last_resubmitted_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

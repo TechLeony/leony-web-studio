@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   getStoryOfUsSetupAccess,
+  type StoryOfUsSetupAccessExistingMediaItem,
   type StoryOfUsSetupAccessInitialData,
   type StoryOfUsSetupAccessResult,
 } from "../lib/storyofus/setupAccess.server";
@@ -83,6 +84,7 @@ type StoryOfUsSubmissionResult = {
   submissionId: string;
   setupToken: string | null;
   status: "submitted";
+  editableUntil: string | null;
 };
 
 type SetupAccessUiState =
@@ -106,6 +108,7 @@ function StoryOfUsSetupRoute() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
   const [wasDraftRestored, setWasDraftRestored] = useState(false);
+  const [existingMedia, setExistingMedia] = useState<StoryOfUsSetupAccessExistingMediaItem[]>([]);
   const [setupAccess, setSetupAccess] = useState<SetupAccessUiState>(() =>
     setupToken ? { status: "checking" } : { status: "missing_token" },
   );
@@ -155,6 +158,7 @@ function StoryOfUsSetupRoute() {
     if (!setupToken) {
       revokeCurrentPreviewUrls();
       setSetupAccess({ status: "missing_token" });
+      setExistingMedia([]);
       setWasDraftRestored(false);
       setCurrentStepIndex(0);
       setFormData(createEmptyStoryOfUsSetupFormData());
@@ -175,6 +179,7 @@ function StoryOfUsSetupRoute() {
 
         if ((accessResult as StoryOfUsSetupAccessResult).status !== "ready") {
           revokeCurrentPreviewUrls();
+          setExistingMedia([]);
           setWasDraftRestored(false);
           setCurrentStepIndex(0);
           setFormData(createEmptyStoryOfUsSetupFormData());
@@ -185,6 +190,7 @@ function StoryOfUsSetupRoute() {
         const restoredDraft = restoreSetupDraft(setupToken);
 
         revokeCurrentPreviewUrls();
+        setExistingMedia(readyAccess.initialData.existingMedia);
         setFormData(
           restoredDraft ?? createSetupFormDataFromAccessInitialData(readyAccess.initialData),
         );
@@ -203,6 +209,7 @@ function StoryOfUsSetupRoute() {
               ? error.message
               : "Kurulum bağlantısı kontrol edilirken beklenmeyen bir hata oluştu.",
         });
+        setExistingMedia([]);
       });
 
     return () => {
@@ -318,6 +325,13 @@ function StoryOfUsSetupRoute() {
       revokeCurrentPreviewUrls();
       setValidationNotice(null);
       setWasDraftRestored(false);
+      if (setupAccess.status === "ready") {
+        setSetupAccess({
+          ...setupAccess,
+          mode: "edit",
+          editableUntil: (result as StoryOfUsSubmissionResult).editableUntil,
+        });
+      }
       setSubmissionResult(result as StoryOfUsSubmissionResult);
     } catch (error) {
       setSubmitError(
@@ -941,7 +955,12 @@ function StoryOfUsSetupRoute() {
   }
 
   if (submissionResult) {
-    return <StoryOfUsSetupSuccessScreen />;
+    return (
+      <StoryOfUsSetupSuccessScreen
+        editableUntil={submissionResult.editableUntil}
+        onEditAgain={() => setSubmissionResult(null)}
+      />
+    );
   }
 
   if (setupAccess.status !== "ready") {
@@ -1003,6 +1022,20 @@ function StoryOfUsSetupRoute() {
               Güvenlik nedeniyle fotoğraf ve ses dosyalarını tekrar seçmeniz gerekebilir.
             </p>
           </div>
+
+          {setupAccess.mode === "edit" && (
+            <div className="mb-6 rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-4 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8">
+              <p className="font-semibold text-fuchsia-700">
+                Bilgilerinizi düzenleme modundasınız.
+              </p>
+              {setupAccess.editableUntil && (
+                <p className="mt-1">
+                  Bu formu {formatEditableUntil(setupAccess.editableUntil)} tarihine kadar
+                  düzenleyebilirsiniz. {getRemainingEditWindowText(setupAccess.editableUntil)}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-[1.5rem] border border-rose-100 bg-[#fffaf8] p-3 shadow-sm shadow-rose-100/50">
@@ -1123,6 +1156,7 @@ function StoryOfUsSetupRoute() {
               ) : currentStep.id === "review" ? (
                 <ReviewSubmitStep
                   formData={formData}
+                  existingMedia={existingMedia}
                   onEditStep={goToStepById}
                   onSubmit={handleSubmitSetup}
                   isSubmitting={isSubmittingSetup}
@@ -1537,14 +1571,32 @@ function createSetupFormDataFromAccessInitialData(
   return {
     ...formData,
     orderReference: initialData.orderReference,
-    status: "draft",
+    status: isStoryOfUsSubmissionStatus(initialData.status) ? initialData.status : "draft",
     contactCouple: {
       ...formData.contactCouple,
       customerName: initialData.customerName,
       customerEmail: initialData.customerEmail,
       contactPhone: initialData.contactPhone,
+      partnerName: initialData.contactCouple.partnerName,
+      coupleDisplayName: initialData.contactCouple.coupleDisplayName,
+      relationshipStartDate: initialData.contactCouple.relationshipStartDate,
+      specialDateLabel: initialData.contactCouple.specialDateLabel,
+      recipientNickname: initialData.contactCouple.recipientNickname,
+      relationshipStory: initialData.contactCouple.relationshipStory,
     },
+    musicVoice: {
+      ...formData.musicVoice,
+      music: initialData.music,
+    },
+    timeline: initialData.timeline.map((item, index) => ({ ...item, sortOrder: index })),
+    letters: initialData.letters.map((letter, index) => ({ ...letter, sortOrder: index })),
+    confirmedSkips: initialData.confirmedSkips,
+    legalConsents: initialData.legalConsents ?? formData.legalConsents,
   };
+}
+
+function isStoryOfUsSubmissionStatus(value: string): value is StoryOfUsSetupFormData["status"] {
+  return ["draft", "submitted", "in_review", "published", "archived"].includes(value);
 }
 
 function removeConfirmedSkip(
@@ -1860,6 +1912,48 @@ function formatFileSizeMb(sizeBytes: number) {
 
 function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatExistingMediaName(media: StoryOfUsSetupAccessExistingMediaItem) {
+  const filename = media.originalFilename || media.storagePath.split("/").pop() || "Yüklenmiş dosya";
+  const sizeText = media.sizeBytes > 0 ? ` · ${formatFileSize(media.sizeBytes)}` : "";
+  return `${filename}${sizeText}`;
+}
+
+function formatEditableUntil(value: string) {
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString("tr-TR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getRemainingEditWindowText(value: string) {
+  const editUntilTime = new Date(value).getTime();
+  const remainingMs = editUntilTime - Date.now();
+
+  if (!Number.isFinite(editUntilTime) || remainingMs <= 0) {
+    return "";
+  }
+
+  const remainingMinutes = Math.ceil(remainingMs / 60_000);
+  const hours = Math.floor(remainingMinutes / 60);
+  const minutes = remainingMinutes % 60;
+
+  if (hours > 0 && minutes > 0) {
+    return `Yaklaşık ${hours} saat ${minutes} dakika kaldı.`;
+  }
+
+  if (hours > 0) {
+    return `Yaklaşık ${hours} saat kaldı.`;
+  }
+
+  return `Yaklaşık ${minutes} dakika kaldı.`;
 }
 
 function getOrderedPhotos(photos: StoryOfUsPhotoDraftItem[]) {
@@ -2873,13 +2967,15 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
         body: "Kurulum formu, ödeme onaylandıktan sonra aktif hale gelir.",
         note: access.paymentStatus ? `Mevcut ödeme durumu: ${access.paymentStatus}` : undefined,
       };
-    case "already_submitted":
+    case "edit_locked":
       return {
         icon: "💌",
-        title: "Kurulum bilgileriniz zaten alınmış görünüyor.",
+        title: "Düzenleme süreniz doldu.",
         body:
-          "Bilgilerinizi düzenleme süresi ve düzenleme akışı bir sonraki adımda eklenecek.",
-        note: `Mevcut başvuru durumu: ${access.submissionStatus}`,
+          "Kurulum bilgileriniz alınmış görünüyor. Düzenleme süresi sona erdiği için form artık değiştirilemez.",
+        note: access.editableUntil
+          ? `Son düzenleme zamanı: ${formatEditableUntil(access.editableUntil)}. Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.`
+          : "Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.",
       };
     case "error":
       return {
@@ -2890,7 +2986,13 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
   }
 }
 
-function StoryOfUsSetupSuccessScreen() {
+function StoryOfUsSetupSuccessScreen({
+  editableUntil,
+  onEditAgain,
+}: {
+  editableUntil: string | null;
+  onEditAgain: () => void;
+}) {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
@@ -2914,14 +3016,32 @@ function StoryOfUsSetupSuccessScreen() {
                 bir detaya ihtiyaç olursa sizinle e-posta veya telefon üzerinden iletişime
                 geçeceğiz.
               </p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/60 sm:text-base">
+                Bu bağlantı üzerinden bilgilerinizi 3 saat içinde düzenleyebilirsiniz.
+              </p>
             </div>
 
             <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/50">
               Fotoğraf, müzik, zaman çizelgesi ve mektup detaylarınız güvenli şekilde kaydedildi.
+              {editableUntil && (
+                <span className="mt-2 block font-semibold text-rose-700">
+                  Son düzenleme zamanı: {formatEditableUntil(editableUntil)}
+                </span>
+              )}
             </div>
 
             <div className="mx-auto inline-flex rounded-full border border-rose-100 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600 shadow-sm shadow-rose-100/50">
               Başvuru durumunuz: Alındı
+            </div>
+
+            <div className="flex justify-center pt-1">
+              <button
+                type="button"
+                onClick={onEditAgain}
+                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+              >
+                Bilgileri düzenle
+              </button>
             </div>
 
           </div>
@@ -2933,6 +3053,7 @@ function StoryOfUsSetupSuccessScreen() {
 
 function ReviewSubmitStep({
   formData,
+  existingMedia,
   onEditStep,
   onSubmit,
   isSubmitting,
@@ -2941,6 +3062,7 @@ function ReviewSubmitStep({
   onUpdateLegalConsent,
 }: {
   formData: StoryOfUsSetupFormData;
+  existingMedia: StoryOfUsSetupAccessExistingMediaItem[];
   onEditStep: (stepId: StoryOfUsSetupStepId) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
@@ -2961,6 +3083,13 @@ function ReviewSubmitStep({
   const isMusicSkipped = isSectionConfirmedSkipped("music", formData);
   const isTimelineSkipped = isSectionConfirmedSkipped("timeline", formData);
   const isLettersSkipped = isSectionConfirmedSkipped("letters", formData);
+  const existingGalleryMedia = existingMedia.filter(
+    (media) => media.mediaType === "photo" && media.section === "gallery",
+  );
+  const existingPuzzleMedia = existingMedia.filter(
+    (media) => media.section === "puzzle" || media.isPuzzleSource,
+  );
+  const existingVoiceNoteMedia = existingMedia.filter((media) => media.section === "voice_note");
   const areLegalConsentsComplete = validateLegalConsents(formData.legalConsents).length === 0;
 
   return (
@@ -3051,6 +3180,13 @@ function ReviewSubmitStep({
             </ReviewSoftHint>
           )}
 
+          {existingGalleryMedia.length > 0 && !isPhotosSkipped && (
+            <ExistingMediaList
+              title="Mevcut galeri fotoğrafları korunacak"
+              items={existingGalleryMedia}
+            />
+          )}
+
           {formData.media.puzzle.sourceType === "gallery" && selectedGalleryPuzzlePhoto ? (
             <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
@@ -3107,6 +3243,10 @@ function ReviewSubmitStep({
                 : "Puzzle için henüz bir fotoğraf seçilmedi."}
             </ReviewSoftHint>
           )}
+
+          {existingPuzzleMedia.length > 0 && !isPuzzleSkipped && (
+            <ExistingMediaList title="Mevcut puzzle fotoğrafı korunacak" items={existingPuzzleMedia} />
+          )}
         </div>
       </ReviewSection>
 
@@ -3152,6 +3292,11 @@ function ReviewSubmitStep({
             <ReviewField
               label="Ses notu"
               value="Ses notu bölümü isteğiniz üzerine kaldırılacak."
+            />
+          ) : existingVoiceNoteMedia.length > 0 ? (
+            <ReviewField
+              label="Ses notu"
+              value={`Mevcut ses notu korunacak: ${formatExistingMediaName(existingVoiceNoteMedia[0])}`}
             />
           ) : (
             <ReviewField label="Ses notu" value="Henüz ses notu eklenmedi." />
@@ -3414,6 +3559,30 @@ function ReviewSoftHint({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/55">
       {children}
+    </div>
+  );
+}
+
+function ExistingMediaList({
+  title,
+  items,
+}: {
+  title: string;
+  items: StoryOfUsSetupAccessExistingMediaItem[];
+}) {
+  return (
+    <div className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/35">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{title}</p>
+      <div className="mt-3 grid gap-2">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-2xl border border-rose-50 bg-[#fffaf8] px-3 py-2 text-sm leading-6 text-rose-950/65"
+          >
+            {formatExistingMediaName(item)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
