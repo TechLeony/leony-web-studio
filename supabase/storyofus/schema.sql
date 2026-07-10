@@ -27,6 +27,13 @@ create table if not exists public.storyofus_submissions (
   status text not null default 'draft'
     check (status in ('draft', 'submitted', 'in_review', 'published', 'archived')),
 
+  payment_status text not null default 'pending'
+    check (payment_status in ('pending', 'paid', 'failed', 'refunded', 'cancelled')),
+  paid_at timestamptz,
+  payment_provider text,
+  payment_reference text,
+  setup_link_sent_at timestamptz,
+
   confirmed_skips jsonb not null default '{}'::jsonb,
   legal_consents jsonb not null default '{}'::jsonb,
 

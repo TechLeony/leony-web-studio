@@ -32,6 +32,7 @@ type SubmitVoiceNoteMetadata = {
 };
 
 type SubmitPayload = {
+  setupToken: string;
   orderReference: string;
   contactCouple: {
     customerName: string;
@@ -117,12 +118,44 @@ async function submitStoryOfUsSetupData(
   payload: SubmitPayload,
   formData: FormData,
 ): Promise<SubmissionResult> {
+  const setupToken = payload.setupToken?.trim();
+
+  if (!setupToken) {
+    throw new Error("StoryOfUs setup token is required.");
+  }
+
   const submittedAt = new Date().toISOString();
   const submissionSnapshot = createSubmissionSnapshot(payload);
 
   const { data: submission, error: submissionError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .insert({
+    .select("id, setup_token, status, payment_status")
+    .eq("setup_token", setupToken)
+    .maybeSingle();
+
+  if (submissionError) {
+    throw new Error(`StoryOfUs submission could not be loaded: ${submissionError.message}`);
+  }
+
+  if (!submission) {
+    throw new Error("StoryOfUs setup link is invalid or could not be found.");
+  }
+
+  if (submission.payment_status !== "paid") {
+    throw new Error("StoryOfUs setup form is not active until payment is approved.");
+  }
+
+  if (submission.status !== "draft") {
+    throw new Error("This setup form has already been submitted or is not editable.");
+  }
+
+  const submissionId = submission.id as string;
+
+  await deleteExistingSubmissionDetails(submissionId);
+
+  const { data: updatedSubmission, error: updateError } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .update({
       order_reference: emptyToNull(payload.orderReference),
       customer_email: emptyToNull(payload.contactCouple.customerEmail),
       customer_name: emptyToNull(payload.contactCouple.customerName),
@@ -133,14 +166,13 @@ async function submitStoryOfUsSetupData(
       submission_snapshot: submissionSnapshot,
       submitted_at: submittedAt,
     })
+    .eq("id", submissionId)
     .select("id, setup_token, status")
     .single();
 
-  if (submissionError || !submission) {
-    throw new Error(`StoryOfUs submission could not be created: ${submissionError?.message}`);
+  if (updateError || !updatedSubmission) {
+    throw new Error(`StoryOfUs submission could not be updated: ${updateError?.message}`);
   }
-
-  const submissionId = submission.id as string;
 
   await insertCoupleDetails(submissionId, payload);
   await insertMusicIfNeeded(submissionId, payload);
@@ -151,9 +183,30 @@ async function submitStoryOfUsSetupData(
 
   return {
     submissionId,
-    setupToken: (submission.setup_token as string | null) ?? null,
+    setupToken: (updatedSubmission.setup_token as string | null) ?? null,
     status: "submitted",
   };
+}
+
+async function deleteExistingSubmissionDetails(submissionId: string) {
+  const tables = [
+    "storyofus_couple_details",
+    "storyofus_music",
+    "storyofus_media",
+    "storyofus_timeline_items",
+    "storyofus_letters",
+  ];
+
+  for (const table of tables) {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from(table)
+      .delete()
+      .eq("submission_id", submissionId);
+
+    if (error) {
+      throw new Error(`StoryOfUs existing ${table} rows could not be cleared: ${error.message}`);
+    }
+  }
 }
 
 async function insertCoupleDetails(submissionId: string, payload: SubmitPayload) {

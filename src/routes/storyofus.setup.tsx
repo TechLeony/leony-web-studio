@@ -2,6 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import {
+  getStoryOfUsSetupAccess,
+  type StoryOfUsSetupAccessInitialData,
+  type StoryOfUsSetupAccessResult,
+} from "../lib/storyofus/setupAccess.server";
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
 import {
   STORYOFUS_SETUP_STEPS,
@@ -21,6 +26,9 @@ import {
 } from "../lib/storyofus/setupTypes";
 
 export const Route = createFileRoute("/storyofus/setup")({
+  validateSearch: (search) => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
   component: StoryOfUsSetupRoute,
 });
 
@@ -77,12 +85,30 @@ type StoryOfUsSubmissionResult = {
   status: "submitted";
 };
 
+type SetupAccessUiState =
+  | {
+      status: "missing_token";
+    }
+  | {
+      status: "checking";
+    }
+  | {
+      status: "error";
+      message: string;
+    }
+  | StoryOfUsSetupAccessResult;
+
 function StoryOfUsSetupRoute() {
+  const search = Route.useSearch();
+  const setupToken = typeof search.token === "string" ? search.token.trim() : "";
+  const checkSetupAccess = useServerFn(getStoryOfUsSetupAccess);
   const submitSetup = useServerFn(submitStoryOfUsSetup);
-  const [initialSetupState] = useState(() => createInitialSetupState());
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [formData, setFormData] = useState(initialSetupState.formData);
-  const [wasDraftRestored, setWasDraftRestored] = useState(initialSetupState.wasDraftRestored);
+  const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
+  const [wasDraftRestored, setWasDraftRestored] = useState(false);
+  const [setupAccess, setSetupAccess] = useState<SetupAccessUiState>(() =>
+    setupToken ? { status: "checking" } : { status: "missing_token" },
+  );
   const [validationNotice, setValidationNotice] = useState<StepValidationNotice | null>(null);
   const [legalConsentErrors, setLegalConsentErrors] = useState<string[]>([]);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
@@ -119,14 +145,84 @@ function StoryOfUsSetupRoute() {
   }, []);
 
   useEffect(() => {
-    if (skipNextDraftSaveRef.current) {
-      skipNextDraftSaveRef.current = false;
-      clearSetupDraft();
+    let isActive = true;
+
+    setValidationNotice(null);
+    setLegalConsentErrors([]);
+    setSubmitError(null);
+    setSubmissionResult(null);
+
+    if (!setupToken) {
+      revokeCurrentPreviewUrls();
+      setSetupAccess({ status: "missing_token" });
+      setWasDraftRestored(false);
+      setCurrentStepIndex(0);
+      setFormData(createEmptyStoryOfUsSetupFormData());
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setSetupAccess({ status: "checking" });
+
+    void checkSetupAccess({ data: { token: setupToken } })
+      .then((accessResult) => {
+        if (!isActive) {
+          return;
+        }
+
+        setSetupAccess(accessResult as StoryOfUsSetupAccessResult);
+
+        if ((accessResult as StoryOfUsSetupAccessResult).status !== "ready") {
+          revokeCurrentPreviewUrls();
+          setWasDraftRestored(false);
+          setCurrentStepIndex(0);
+          setFormData(createEmptyStoryOfUsSetupFormData());
+          return;
+        }
+
+        const readyAccess = accessResult as Extract<StoryOfUsSetupAccessResult, { status: "ready" }>;
+        const restoredDraft = restoreSetupDraft(setupToken);
+
+        revokeCurrentPreviewUrls();
+        setFormData(
+          restoredDraft ?? createSetupFormDataFromAccessInitialData(readyAccess.initialData),
+        );
+        setWasDraftRestored(Boolean(restoredDraft));
+        setCurrentStepIndex(0);
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return;
+        }
+
+        setSetupAccess({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Kurulum bağlantısı kontrol edilirken beklenmeyen bir hata oluştu.",
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [checkSetupAccess, setupToken]);
+
+  useEffect(() => {
+    if (setupAccess.status !== "ready" || !setupToken) {
       return;
     }
 
-    saveSetupDraft(formData);
-  }, [formData]);
+    if (skipNextDraftSaveRef.current) {
+      skipNextDraftSaveRef.current = false;
+      clearSetupDraft(setupToken);
+      return;
+    }
+
+    saveSetupDraft(formData, setupToken);
+  }, [formData, setupAccess.status, setupToken]);
 
   function goToPreviousStep() {
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
@@ -165,31 +261,31 @@ function StoryOfUsSetupRoute() {
   }
 
   function handleClearDraft() {
-    clearSetupDraft();
-    revokeCurrentPreviewUrls();
-    skipNextDraftSaveRef.current = true;
-    setFormData(createEmptyStoryOfUsSetupFormData());
-    setCurrentStepIndex(0);
-    setValidationNotice(null);
-    setLegalConsentErrors([]);
-    setWasDraftRestored(false);
-  }
+    if (!setupToken) {
+      return;
+    }
 
-  function handleStartNewSetup() {
-    clearSetupDraft();
+    clearSetupDraft(setupToken);
     revokeCurrentPreviewUrls();
     skipNextDraftSaveRef.current = true;
-    setFormData(createEmptyStoryOfUsSetupFormData());
+    setFormData(
+      setupAccess.status === "ready"
+        ? createSetupFormDataFromAccessInitialData(setupAccess.initialData)
+        : createEmptyStoryOfUsSetupFormData(),
+    );
     setCurrentStepIndex(0);
     setValidationNotice(null);
     setLegalConsentErrors([]);
-    setSubmitError(null);
-    setSubmissionResult(null);
     setWasDraftRestored(false);
   }
 
   async function handleSubmitSetup() {
     if (isSubmittingSetup) {
+      return;
+    }
+
+    if (setupAccess.status !== "ready" || !setupToken) {
+      setSubmitError("Kurulum formunu göndermek için geçerli ödeme bağlantısı gerekiyor.");
       return;
     }
 
@@ -216,9 +312,9 @@ function StoryOfUsSetupRoute() {
 
     try {
       const result = await submitSetup({
-        data: createStoryOfUsSubmissionFormData(formData),
+        data: createStoryOfUsSubmissionFormData(formData, setupToken),
       });
-      clearSetupDraft();
+      clearSetupDraft(setupToken);
       revokeCurrentPreviewUrls();
       setValidationNotice(null);
       setWasDraftRestored(false);
@@ -845,7 +941,11 @@ function StoryOfUsSetupRoute() {
   }
 
   if (submissionResult) {
-    return <StoryOfUsSetupSuccessScreen onStartNewSetup={handleStartNewSetup} />;
+    return <StoryOfUsSetupSuccessScreen />;
+  }
+
+  if (setupAccess.status !== "ready") {
+    return <StoryOfUsSetupAccessScreen access={setupAccess} />;
   }
 
   return (
@@ -1429,6 +1529,24 @@ function isMusicSectionEmpty(music: StoryOfUsMusicData) {
   return !music.spotifyUrl.trim() && !music.songTitle.trim() && !music.artistName.trim();
 }
 
+function createSetupFormDataFromAccessInitialData(
+  initialData: StoryOfUsSetupAccessInitialData,
+): StoryOfUsSetupFormData {
+  const formData = createEmptyStoryOfUsSetupFormData();
+
+  return {
+    ...formData,
+    orderReference: initialData.orderReference,
+    status: "draft",
+    contactCouple: {
+      ...formData.contactCouple,
+      customerName: initialData.customerName,
+      customerEmail: initialData.customerEmail,
+      contactPhone: initialData.contactPhone,
+    },
+  };
+}
+
 function removeConfirmedSkip(
   confirmedSkips: StoryOfUsSetupFormData["confirmedSkips"],
   sectionId: StoryOfUsOptionalSectionId,
@@ -1436,15 +1554,6 @@ function removeConfirmedSkip(
   const nextConfirmedSkips = { ...confirmedSkips };
   delete nextConfirmedSkips[sectionId];
   return nextConfirmedSkips;
-}
-
-function createInitialSetupState() {
-  const restoredDraft = restoreSetupDraft();
-
-  return {
-    formData: restoredDraft ?? createEmptyStoryOfUsSetupFormData(),
-    wasDraftRestored: Boolean(restoredDraft),
-  };
 }
 
 function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDraft {
@@ -1477,11 +1586,12 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
   };
 }
 
-function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
+function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, setupToken: string) {
   const submissionFormData = new FormData();
   const photos = getOrderedPhotos(formData.media.photos);
   const normalizedContactPhone = normalizeTurkeyMobilePhone(formData.contactCouple.contactPhone);
   const payload = {
+    setupToken,
     orderReference: formData.orderReference,
     contactCouple: {
       ...formData.contactCouple,
@@ -1561,23 +1671,35 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
   return submissionFormData;
 }
 
-function saveSetupDraft(formData: StoryOfUsSetupFormData) {
+function saveSetupDraft(formData: StoryOfUsSetupFormData, setupToken: string) {
   if (typeof window === "undefined") {
     return;
   }
 
+  const storageKey = getSetupDraftStorageKey(setupToken);
+
+  if (!storageKey) {
+    return;
+  }
+
   window.localStorage.setItem(
-    STORYOFUS_SETUP_DRAFT_STORAGE_KEY,
+    storageKey,
     JSON.stringify(serializeSetupDraft(formData)),
   );
 }
 
-function restoreSetupDraft(): StoryOfUsSetupFormData | null {
+function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const rawDraft = window.localStorage.getItem(STORYOFUS_SETUP_DRAFT_STORAGE_KEY);
+  const storageKey = getSetupDraftStorageKey(setupToken);
+
+  if (!storageKey) {
+    return null;
+  }
+
+  const rawDraft = window.localStorage.getItem(storageKey);
 
   if (!rawDraft) {
     return null;
@@ -1638,7 +1760,7 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
       letters: restoredLetters,
     };
   } catch {
-    clearSetupDraft();
+    clearSetupDraft(setupToken);
     return null;
   }
 }
@@ -1684,12 +1806,28 @@ function restoreLegalConsentState(
       };
 }
 
-function clearSetupDraft() {
+function clearSetupDraft(setupToken: string) {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.removeItem(STORYOFUS_SETUP_DRAFT_STORAGE_KEY);
+  const storageKey = getSetupDraftStorageKey(setupToken);
+
+  if (!storageKey) {
+    return;
+  }
+
+  window.localStorage.removeItem(storageKey);
+}
+
+function getSetupDraftStorageKey(setupToken: string) {
+  const normalizedToken = setupToken.trim();
+
+  if (!normalizedToken) {
+    return null;
+  }
+
+  return `${STORYOFUS_SETUP_DRAFT_STORAGE_KEY}.${normalizedToken}`;
 }
 
 function createPhotoDraftId() {
@@ -2667,11 +2805,92 @@ function LettersStep({
   );
 }
 
-function StoryOfUsSetupSuccessScreen({
-  onStartNewSetup,
-}: {
-  onStartNewSetup: () => void;
-}) {
+function StoryOfUsSetupAccessScreen({ access }: { access: SetupAccessUiState }) {
+  const content = getSetupAccessScreenContent(access);
+
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 p-6 text-center shadow-2xl shadow-rose-100/70 backdrop-blur sm:p-10">
+          <div className="absolute -left-16 top-10 h-36 w-36 rounded-full bg-rose-200/25 blur-3xl" />
+          <div className="absolute -right-12 bottom-8 h-40 w-40 rounded-full bg-pink-200/30 blur-3xl" />
+
+          <div className="relative mx-auto grid max-w-2xl gap-5">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-rose-100 bg-rose-50 text-2xl shadow-lg shadow-rose-100/70">
+              {content.icon}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500">
+                StoryOfUs Setup
+              </p>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-rose-950 sm:text-4xl">
+                {content.title}
+              </h1>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
+                {content.body}
+              </p>
+              {content.note && (
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/55">
+                  {content.note}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function getSetupAccessScreenContent(access: SetupAccessUiState) {
+  switch (access.status) {
+    case "missing_token":
+      return {
+        icon: "💌",
+        title: "Kurulum bağlantısı gerekiyor",
+        body:
+          "Kurulum formuna erişmek için ödeme sonrası size gönderilen özel bağlantıyı kullanmanız gerekiyor.",
+        note:
+          "Eğer ödeme yaptıysanız ve bağlantınızı bulamıyorsanız, lütfen e-posta kutunuzu ve spam klasörünüzü kontrol edin.",
+      };
+    case "checking":
+      return {
+        icon: "⏳",
+        title: "Kurulum bağlantınız kontrol ediliyor...",
+        body: "Sizin için özel kurulum bağlantısını nazikçe kontrol ediyoruz.",
+      };
+    case "not_found":
+      return {
+        icon: "💔",
+        title: "Bu kurulum bağlantısı bulunamadı veya geçersiz.",
+        body:
+          "Bağlantıyı e-postanızdan eksiksiz açtığınızdan emin olun. Sorun devam ederse bizimle iletişime geçebilirsiniz.",
+      };
+    case "not_paid":
+      return {
+        icon: "💳",
+        title: "Ödeme onayı bekleniyor.",
+        body: "Kurulum formu, ödeme onaylandıktan sonra aktif hale gelir.",
+        note: access.paymentStatus ? `Mevcut ödeme durumu: ${access.paymentStatus}` : undefined,
+      };
+    case "already_submitted":
+      return {
+        icon: "💌",
+        title: "Kurulum bilgileriniz zaten alınmış görünüyor.",
+        body:
+          "Bilgilerinizi düzenleme süresi ve düzenleme akışı bir sonraki adımda eklenecek.",
+        note: `Mevcut başvuru durumu: ${access.submissionStatus}`,
+      };
+    case "error":
+      return {
+        icon: "!",
+        title: "Kurulum bağlantısı kontrol edilemedi.",
+        body: access.message,
+      };
+  }
+}
+
+function StoryOfUsSetupSuccessScreen() {
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
@@ -2705,15 +2924,6 @@ function StoryOfUsSetupSuccessScreen({
               Başvuru durumunuz: Alındı
             </div>
 
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
-              <button
-                type="button"
-                onClick={onStartNewSetup}
-                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
-              >
-                Yeni kurulum formu doldur
-              </button>
-            </div>
           </div>
         </div>
       </section>
