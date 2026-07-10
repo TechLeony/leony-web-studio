@@ -153,6 +153,18 @@ function StoryOfUsSetupRoute() {
     setWasDraftRestored(false);
   }
 
+  function handleStartNewSetup() {
+    clearSetupDraft();
+    revokeCurrentPreviewUrls();
+    skipNextDraftSaveRef.current = true;
+    setFormData(createEmptyStoryOfUsSetupFormData());
+    setCurrentStepIndex(0);
+    setValidationNotice(null);
+    setSubmitError(null);
+    setSubmissionResult(null);
+    setWasDraftRestored(false);
+  }
+
   async function handleSubmitSetup() {
     if (isSubmittingSetup) {
       return;
@@ -174,6 +186,10 @@ function StoryOfUsSetupRoute() {
       const result = await submitSetup({
         data: createStoryOfUsSubmissionFormData(formData),
       });
+      clearSetupDraft();
+      revokeCurrentPreviewUrls();
+      setValidationNotice(null);
+      setWasDraftRestored(false);
       setSubmissionResult(result as StoryOfUsSubmissionResult);
     } catch (error) {
       setSubmitError(
@@ -642,6 +658,10 @@ function StoryOfUsSetupRoute() {
     });
   }
 
+  if (submissionResult) {
+    return <StoryOfUsSetupSuccessScreen onStartNewSetup={handleStartNewSetup} />;
+  }
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-6 text-[#3d2323] sm:px-6 sm:py-10">
       <section className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
@@ -817,7 +837,6 @@ function StoryOfUsSetupRoute() {
                   onSubmit={handleSubmitSetup}
                   isSubmitting={isSubmittingSetup}
                   submitError={submitError}
-                  submissionResult={submissionResult}
                 />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -2207,20 +2226,78 @@ function LettersStep({
   );
 }
 
+function StoryOfUsSetupSuccessScreen({
+  onStartNewSetup,
+}: {
+  onStartNewSetup: () => void;
+}) {
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 p-6 text-center shadow-2xl shadow-rose-100/70 backdrop-blur sm:p-10">
+          <div className="absolute -left-16 top-10 h-36 w-36 rounded-full bg-rose-200/25 blur-3xl" />
+          <div className="absolute -right-12 bottom-8 h-40 w-40 rounded-full bg-pink-200/30 blur-3xl" />
+
+          <div className="relative mx-auto grid max-w-2xl gap-6">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-rose-100 bg-rose-50 text-2xl shadow-lg shadow-rose-100/70">
+              💌
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500">
+                StoryOfUs Setup
+              </p>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-rose-950 sm:text-5xl">
+                Bilgileriniz başarıyla alındı 💌
+              </h1>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
+                StoryOfUs web sitenizi hazırlamak için ihtiyacımız olan bilgileri aldık. Eğer ek
+                bir detaya ihtiyaç olursa sizinle e-posta veya telefon üzerinden iletişime
+                geçeceğiz.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/50">
+              Fotoğraf, müzik, zaman çizelgesi ve mektup detaylarınız güvenli şekilde kaydedildi.
+            </div>
+
+            <div className="mx-auto inline-flex rounded-full border border-rose-100 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600 shadow-sm shadow-rose-100/50">
+              Başvuru durumunuz: Alındı
+            </div>
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={onStartNewSetup}
+                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+              >
+                Yeni kurulum formu doldur
+              </button>
+              <a
+                href="/storyofus"
+                className="rounded-full border border-rose-200 bg-white px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              >
+                StoryOfUs sayfasına dön
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function ReviewSubmitStep({
   formData,
   onEditStep,
   onSubmit,
   isSubmitting,
   submitError,
-  submissionResult,
 }: {
   formData: StoryOfUsSetupFormData;
   onEditStep: (stepId: StoryOfUsSetupStepId) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
   submitError: string | null;
-  submissionResult: StoryOfUsSubmissionResult | null;
 }) {
   const selectedPuzzlePhoto = getSelectedPuzzlePhoto(
     formData.media.photos,
@@ -2495,11 +2572,6 @@ function ReviewSubmitStep({
           Eksik bıraktığınız alanlar varsa bir sonraki validation adımında size nazikçe
           hatırlatacağız.
         </p>
-        {submissionResult && (
-          <div className="mx-auto mt-5 max-w-xl rounded-3xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm leading-6 text-emerald-900">
-            <p className="font-semibold">Bilgileriniz başarıyla alındı.</p>
-          </div>
-        )}
         {submitError && (
           <div className="mx-auto mt-5 max-w-xl rounded-3xl border border-rose-200 bg-white/85 p-4 text-sm leading-6 text-rose-700">
             {submitError}
