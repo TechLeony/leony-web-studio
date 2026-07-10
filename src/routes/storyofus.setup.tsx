@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
 import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
@@ -56,12 +58,22 @@ type StepValidationNotice = {
   warning: OptionalSectionWarning | null;
 };
 
+type StoryOfUsSubmissionResult = {
+  submissionId: string;
+  setupToken: string | null;
+  status: "submitted";
+};
+
 function StoryOfUsSetupRoute() {
+  const submitSetup = useServerFn(submitStoryOfUsSetup);
   const [initialSetupState] = useState(() => createInitialSetupState());
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(initialSetupState.formData);
   const [wasDraftRestored, setWasDraftRestored] = useState(initialSetupState.wasDraftRestored);
   const [validationNotice, setValidationNotice] = useState<StepValidationNotice | null>(null);
+  const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
@@ -139,6 +151,39 @@ function StoryOfUsSetupRoute() {
     setCurrentStepIndex(0);
     setValidationNotice(null);
     setWasDraftRestored(false);
+  }
+
+  async function handleSubmitSetup() {
+    if (isSubmittingSetup) {
+      return;
+    }
+
+    const contactValidation = validateCurrentStep("contactCouple", formData);
+
+    if (contactValidation.blockingErrors.length > 0) {
+      setValidationNotice(contactValidation);
+      setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
+      return;
+    }
+
+    setIsSubmittingSetup(true);
+    setSubmitError(null);
+    setSubmissionResult(null);
+
+    try {
+      const result = await submitSetup({
+        data: createStoryOfUsSubmissionFormData(formData),
+      });
+      setSubmissionResult(result as StoryOfUsSubmissionResult);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Bilgiler gönderilirken beklenmeyen bir hata oluştu.",
+      );
+    } finally {
+      setIsSubmittingSetup(false);
+    }
   }
 
   function requestSectionSkip(sectionId: StoryOfUsOptionalSectionId, showNotice = true) {
@@ -766,7 +811,14 @@ function StoryOfUsSetupRoute() {
                   onMoveLetter={moveLetterItem}
                 />
               ) : currentStep.id === "review" ? (
-                <ReviewSubmitStep formData={formData} onEditStep={goToStepById} />
+                <ReviewSubmitStep
+                  formData={formData}
+                  onEditStep={goToStepById}
+                  onSubmit={handleSubmitSetup}
+                  isSubmitting={isSubmittingSetup}
+                  submitError={submitError}
+                  submissionResult={submissionResult}
+                />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {getStepPlaceholderCards(currentStep.id).map((card) => (
@@ -1117,6 +1169,61 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
   };
 }
 
+function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
+  const submissionFormData = new FormData();
+  const photos = getOrderedPhotos(formData.media.photos);
+  const payload = {
+    orderReference: formData.orderReference,
+    contactCouple: formData.contactCouple,
+    media: {
+      photos: photos.map((photo) => ({
+        id: photo.id,
+        caption: photo.caption,
+        sortOrder: photo.sortOrder,
+        originalFilename: photo.file?.name ?? "",
+        mimeType: photo.file?.type ?? "",
+        sizeBytes: photo.file?.size ?? 0,
+      })),
+      puzzle: {
+        selectedPhotoId: formData.media.puzzle.selectedPhotoId,
+        confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
+      },
+    },
+    musicVoice: {
+      music: formData.musicVoice.music,
+      voiceNote:
+        formData.musicVoice.voiceNote && formData.musicVoice.voiceNote.file
+          ? {
+              originalFilename: formData.musicVoice.voiceNote.file.name,
+              mimeType: formData.musicVoice.voiceNote.file.type,
+              sizeBytes: formData.musicVoice.voiceNote.file.size,
+            }
+          : null,
+    },
+    confirmedSkips: formData.confirmedSkips,
+    timeline: getOrderedTimelineItems(formData.timeline),
+    letters: getOrderedLetters(formData.letters),
+  };
+
+  submissionFormData.append("payload", JSON.stringify(payload));
+
+  photos.forEach((photo) => {
+    if (photo.file) {
+      submissionFormData.append(`photoFile:${photo.id}`, photo.file, photo.file.name);
+    }
+  });
+
+  if (formData.musicVoice.voiceNote?.file) {
+    submissionFormData.append(
+      "voiceNoteFile",
+      formData.musicVoice.voiceNote.file,
+      formData.musicVoice.voiceNote.file.name,
+    );
+  }
+
+  return submissionFormData;
+}
+
 function saveSetupDraft(formData: StoryOfUsSetupFormData) {
   if (typeof window === "undefined") {
     return;
@@ -1234,6 +1341,10 @@ function formatFileSizeMb(sizeBytes: number) {
 
 function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function getOrderedPhotos(photos: StoryOfUsPhotoDraftItem[]) {
+  return [...photos].sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 function getOrderedTimelineItems(items: StoryOfUsTimelineItem[]) {
@@ -2099,9 +2210,17 @@ function LettersStep({
 function ReviewSubmitStep({
   formData,
   onEditStep,
+  onSubmit,
+  isSubmitting,
+  submitError,
+  submissionResult,
 }: {
   formData: StoryOfUsSetupFormData;
   onEditStep: (stepId: StoryOfUsSetupStepId) => void;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  submitError: string | null;
+  submissionResult: StoryOfUsSubmissionResult | null;
 }) {
   const selectedPuzzlePhoto = getSelectedPuzzlePhoto(
     formData.media.photos,
@@ -2369,23 +2488,31 @@ function ReviewSubmitStep({
       <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 p-5 text-center shadow-sm shadow-rose-100/50">
         <h4 className="text-xl font-bold text-rose-950">Her şey hazır mı?</h4>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-rose-950/60">
-          Bir sonraki adımda bu bilgiler güvenli şekilde gönderilecek. Şu an bu buton sadece
-          görsel hazırlık olarak duruyor.
+          Bilgilerinizi güvenli şekilde alacağız. Fotoğraf ve ses dosyaları yalnızca gönderim
+          sırasında sunucu tarafında yüklenecek.
         </p>
         <p className="mx-auto mt-3 max-w-2xl text-xs leading-5 text-rose-950/50">
           Eksik bıraktığınız alanlar varsa bir sonraki validation adımında size nazikçe
           hatırlatacağız.
         </p>
+        {submissionResult && (
+          <div className="mx-auto mt-5 max-w-xl rounded-3xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm leading-6 text-emerald-900">
+            <p className="font-semibold">Bilgileriniz başarıyla alındı.</p>
+          </div>
+        )}
+        {submitError && (
+          <div className="mx-auto mt-5 max-w-xl rounded-3xl border border-rose-200 bg-white/85 p-4 text-sm leading-6 text-rose-700">
+            {submitError}
+          </div>
+        )}
         <button
           type="button"
-          disabled
-          className="mt-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 disabled:cursor-not-allowed disabled:opacity-55"
+          onClick={onSubmit}
+          disabled={isSubmitting}
+          className="mt-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-55"
         >
-          Bilgileri gönder
+          {isSubmitting ? "Gönderiliyor..." : "Bilgileri gönder"}
         </button>
-        <p className="mt-2 text-xs text-rose-950/45">
-          Gönderim bağlantısı sonraki adımda eklenecek.
-        </p>
       </section>
     </div>
   );

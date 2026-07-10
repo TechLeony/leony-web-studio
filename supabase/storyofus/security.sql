@@ -42,3 +42,15 @@ set
   public = excluded.public,
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
+
+-- Service role grants for server-side StoryOfUs submissions.
+-- RLS stays enabled. No anon/public policies are added.
+
+grant usage on schema public to service_role;
+
+grant select, insert, update, delete on table public.storyofus_submissions to service_role;
+grant select, insert, update, delete on table public.storyofus_couple_details to service_role;
+grant select, insert, update, delete on table public.storyofus_music to service_role;
+grant select, insert, update, delete on table public.storyofus_media to service_role;
+grant select, insert, update, delete on table public.storyofus_timeline_items to service_role;
+grant select, insert, update, delete on table public.storyofus_letters to service_role;
