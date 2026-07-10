@@ -55,8 +55,11 @@ type OptionalSectionWarning = {
 
 type StepValidationNotice = {
   blockingErrors: string[];
+  contactFieldErrors?: ContactCoupleFieldErrors;
   warning: OptionalSectionWarning | null;
 };
+
+type ContactCoupleFieldErrors = Partial<Record<keyof StoryOfUsContactCoupleData, string>>;
 
 type StoryOfUsSubmissionResult = {
   submissionId: string;
@@ -83,6 +86,10 @@ function StoryOfUsSetupRoute() {
   const progressPercent = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === totalSteps - 1;
+  const displayedValidationNotice =
+    currentStep.id === "contactCouple" && validationNotice?.contactFieldErrors
+      ? getLiveContactValidationNotice(formData.contactCouple)
+      : validationNotice;
 
   function revokeCurrentPreviewUrls() {
     photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
@@ -257,6 +264,7 @@ function StoryOfUsSetupRoute() {
   }
 
   function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
+    setSubmitError(null);
     setFormData((current) => ({
       ...current,
       contactCouple: {
@@ -775,7 +783,7 @@ function StoryOfUsSetupRoute() {
               </div>
 
               <StepValidationPanel
-                notice={validationNotice}
+                notice={displayedValidationNotice}
                 onConfirmSkip={(sectionId) => confirmSectionSkip(sectionId)}
                 onCancelSkip={(sectionId) => undoSectionSkip(sectionId)}
               />
@@ -790,6 +798,7 @@ function StoryOfUsSetupRoute() {
                 <ContactCoupleStep
                   value={formData.contactCouple}
                   onChange={updateContactCoupleField}
+                  fieldErrors={displayedValidationNotice?.contactFieldErrors ?? {}}
                 />
               ) : currentStep.id === "photosPuzzle" ? (
                 <PhotosPuzzleStep
@@ -965,26 +974,18 @@ function validateCurrentStep(
   formData: StoryOfUsSetupFormData,
 ): StepValidationNotice {
   const blockingErrors: string[] = [];
+  let contactFieldErrors: ContactCoupleFieldErrors | undefined;
 
   if (stepId === "contactCouple") {
-    if (!formData.contactCouple.customerName.trim()) {
-      blockingErrors.push("Adınız gerekli.");
-    }
-
-    if (!formData.contactCouple.customerEmail.trim()) {
-      blockingErrors.push("E-posta adresiniz gerekli.");
-    } else if (!formData.contactCouple.customerEmail.includes("@")) {
-      blockingErrors.push("E-posta adresiniz geçerli görünmüyor.");
-    }
-
-    if (!formData.contactCouple.partnerName.trim()) {
-      blockingErrors.push("Partnerinizin adı gerekli.");
-    }
+    const contactValidation = validateContactCoupleData(formData.contactCouple);
+    blockingErrors.push(...contactValidation.blockingErrors);
+    contactFieldErrors = contactValidation.fieldErrors;
   }
 
   if (blockingErrors.length > 0) {
     return {
       blockingErrors,
+      contactFieldErrors,
       warning: null,
     };
   }
@@ -1060,6 +1061,84 @@ function validateCurrentStep(
     blockingErrors: [],
     warning: null,
   };
+}
+
+function validateContactCoupleData(contactCouple: StoryOfUsContactCoupleData) {
+  const blockingErrors: string[] = [];
+  const fieldErrors: ContactCoupleFieldErrors = {};
+  const customerName = contactCouple.customerName.trim();
+  const customerEmail = contactCouple.customerEmail.trim();
+  const contactPhone = contactCouple.contactPhone.trim();
+  const partnerName = contactCouple.partnerName.trim();
+
+  if (!customerName) {
+    fieldErrors.customerName = "Adınız zorunlu.";
+    blockingErrors.push(fieldErrors.customerName);
+  }
+
+  if (!customerEmail) {
+    fieldErrors.customerEmail = "E-posta adresiniz zorunlu.";
+    blockingErrors.push(fieldErrors.customerEmail);
+  } else if (!isValidEmailAddress(customerEmail)) {
+    fieldErrors.customerEmail = "Lütfen geçerli bir e-posta adresi girin.";
+    blockingErrors.push(fieldErrors.customerEmail);
+  }
+
+  if (!contactPhone) {
+    fieldErrors.contactPhone = "Telefon numaranız zorunlu.";
+    blockingErrors.push(fieldErrors.contactPhone);
+  } else if (!normalizeTurkeyMobilePhone(contactPhone)) {
+    fieldErrors.contactPhone = "Lütfen geçerli bir Türkiye cep telefonu numarası girin.";
+    blockingErrors.push(fieldErrors.contactPhone);
+  }
+
+  if (!partnerName) {
+    fieldErrors.partnerName = "Partnerinizin adı zorunlu.";
+    blockingErrors.push(fieldErrors.partnerName);
+  }
+
+  return {
+    blockingErrors,
+    fieldErrors,
+  };
+}
+
+function getLiveContactValidationNotice(
+  contactCouple: StoryOfUsContactCoupleData,
+): StepValidationNotice | null {
+  const contactValidation = validateContactCoupleData(contactCouple);
+
+  if (contactValidation.blockingErrors.length === 0) {
+    return null;
+  }
+
+  return {
+    blockingErrors: contactValidation.blockingErrors,
+    contactFieldErrors: contactValidation.fieldErrors,
+    warning: null,
+  };
+}
+
+function isValidEmailAddress(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+}
+
+function normalizeTurkeyMobilePhone(value: string) {
+  const compactValue = value.trim().replace(/[\s()-]/g, "");
+
+  if (/^\+905\d{9}$/.test(compactValue)) {
+    return compactValue;
+  }
+
+  if (/^05\d{9}$/.test(compactValue)) {
+    return `+9${compactValue}`;
+  }
+
+  if (/^5\d{9}$/.test(compactValue)) {
+    return `+90${compactValue}`;
+  }
+
+  return null;
 }
 
 function isSectionConfirmedSkipped(
@@ -1191,9 +1270,13 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
 function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
   const submissionFormData = new FormData();
   const photos = getOrderedPhotos(formData.media.photos);
+  const normalizedContactPhone = normalizeTurkeyMobilePhone(formData.contactCouple.contactPhone);
   const payload = {
     orderReference: formData.orderReference,
-    contactCouple: formData.contactCouple,
+    contactCouple: {
+      ...formData.contactCouple,
+      contactPhone: normalizedContactPhone ?? formData.contactCouple.contactPhone,
+    },
     media: {
       photos: photos.map((photo) => ({
         id: photo.id,
@@ -1417,18 +1500,28 @@ function StepValidationPanel({
     return null;
   }
 
+  const hasBlockingErrors = notice.blockingErrors.length > 0;
+
   return (
-    <section className="mb-5 rounded-3xl border border-rose-200 bg-rose-50/80 p-4 shadow-sm shadow-rose-100/60">
+    <section
+      className={`mb-5 rounded-3xl border p-4 shadow-sm ${
+        hasBlockingErrors
+          ? "border-red-200 bg-red-50/80 shadow-red-100/60"
+          : "border-rose-200 bg-rose-50/80 shadow-rose-100/60"
+      }`}
+    >
       {notice.blockingErrors.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-rose-900">
+          <h4 className="text-sm font-semibold text-red-900">
             Devam etmeden önce birkaç temel bilgiyi tamamlamamız gerekiyor.
           </h4>
-          <ul className="mt-3 grid gap-2 text-sm leading-6 text-rose-950/70">
+          <p className="mt-2 text-sm leading-6 text-red-900/70">
+            Size kurulum linkini ve gerekirse destek mesajlarını doğru şekilde ulaştırabilmemiz
+            için bu bilgileri net almamız gerekiyor.
+          </p>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-6 text-red-900/80">
             {notice.blockingErrors.map((error) => (
-              <li key={error} className="rounded-2xl bg-white/75 px-3 py-2">
-                {error}
-              </li>
+              <li key={error}>{error}</li>
             ))}
           </ul>
         </div>
@@ -2643,9 +2736,11 @@ function ReviewSoftHint({ children }: { children: ReactNode }) {
 function ContactCoupleStep({
   value,
   onChange,
+  fieldErrors,
 }: {
   value: StoryOfUsContactCoupleData;
   onChange: (field: keyof StoryOfUsContactCoupleData, value: string) => void;
+  fieldErrors: ContactCoupleFieldErrors;
 }) {
   return (
     <div className="grid gap-5">
@@ -2658,24 +2753,27 @@ function ContactCoupleStep({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <SetupTextField
-            label="Adınız"
+            label="Adınız *"
             value={value.customerName}
             onChange={(nextValue) => onChange("customerName", nextValue)}
             placeholder="Örn: Cavanşir"
+            errorText={fieldErrors.customerName}
           />
           <SetupTextField
-            label="E-posta adresiniz"
+            label="E-posta adresiniz *"
             type="email"
             value={value.customerEmail}
             onChange={(nextValue) => onChange("customerEmail", nextValue)}
             placeholder="ornek@mail.com"
+            errorText={fieldErrors.customerEmail}
           />
           <SetupTextField
-            label="Telefon numaranız"
+            label="Telefon numaranız *"
             type="tel"
             value={value.contactPhone}
             onChange={(nextValue) => onChange("contactPhone", nextValue)}
             placeholder="05xx xxx xx xx"
+            errorText={fieldErrors.contactPhone}
             className="sm:col-span-2"
           />
         </div>
@@ -2690,10 +2788,11 @@ function ContactCoupleStep({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <SetupTextField
-            label="Partnerinizin adı"
+            label="Partnerinizin adı *"
             value={value.partnerName}
             onChange={(nextValue) => onChange("partnerName", nextValue)}
             placeholder="Örn: Derya"
+            errorText={fieldErrors.partnerName}
           />
           <SetupTextField
             label="Sitede nasıl görünsün?"
@@ -2745,6 +2844,7 @@ function SetupTextField({
   type = "text",
   placeholder,
   helperText,
+  errorText,
   className = "",
 }: {
   label: string;
@@ -2753,6 +2853,7 @@ function SetupTextField({
   type?: "text" | "email" | "tel" | "date" | "number";
   placeholder?: string;
   helperText?: string;
+  errorText?: string;
   className?: string;
 }) {
   return (
@@ -2763,9 +2864,18 @@ function SetupTextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-2 w-full rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+        aria-invalid={errorText ? true : undefined}
+        className={`mt-2 w-full rounded-2xl border bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm outline-none transition placeholder:text-rose-950/35 focus:ring-4 ${
+          errorText
+            ? "border-red-300 shadow-red-100/40 focus:border-red-400 focus:ring-red-100"
+            : "border-rose-100 shadow-rose-100/40 focus:border-rose-300 focus:ring-rose-100"
+        }`}
       />
-      {helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>}
+      {errorText ? (
+        <span className="mt-1.5 block text-xs leading-5 text-red-600">{errorText}</span>
+      ) : (
+        helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>
+      )}
     </label>
   );
 }
