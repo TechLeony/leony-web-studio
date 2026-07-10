@@ -44,6 +44,8 @@ type StoryOfUsSetupDraft = Pick<
   media: {
     puzzle: {
       selectedPhotoId: null;
+      puzzlePhoto: null;
+      sourceType: null;
       confirmedNoPuzzle: boolean;
     };
   };
@@ -87,6 +89,7 @@ function StoryOfUsSetupRoute() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
+  const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
 
@@ -103,6 +106,8 @@ function StoryOfUsSetupRoute() {
   function revokeCurrentPreviewUrls() {
     photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
     photoPreviewUrlsRef.current.clear();
+    puzzlePhotoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    puzzlePhotoPreviewUrlsRef.current.clear();
     voiceNotePreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
     voiceNotePreviewUrlsRef.current.clear();
   }
@@ -252,6 +257,16 @@ function StoryOfUsSetupRoute() {
   function confirmSectionSkip(sectionId: StoryOfUsOptionalSectionId, shouldProceed = true) {
     setFormData((current) => ({
       ...current,
+      media:
+        sectionId === "puzzle"
+          ? {
+              ...current.media,
+              puzzle: {
+                ...current.media.puzzle,
+                confirmedNoPuzzle: true,
+              },
+            }
+          : current.media,
       confirmedSkips: {
         ...current.confirmedSkips,
         [sectionId]: {
@@ -264,6 +279,19 @@ function StoryOfUsSetupRoute() {
     setValidationNotice(null);
 
     if (shouldProceed) {
+      if (
+        currentStep.id === "photosPuzzle" &&
+        sectionId === "photos" &&
+        !hasPuzzleSource(formData.media.puzzle) &&
+        !isSectionConfirmedSkipped("puzzle", formData)
+      ) {
+        setValidationNotice({
+          blockingErrors: [],
+          warning: getOptionalSectionWarning("puzzle"),
+        });
+        return;
+      }
+
       proceedToNextStep();
     }
   }
@@ -271,6 +299,16 @@ function StoryOfUsSetupRoute() {
   function undoSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
     setFormData((current) => ({
       ...current,
+      media:
+        sectionId === "puzzle"
+          ? {
+              ...current.media,
+              puzzle: {
+                ...current.media.puzzle,
+                confirmedNoPuzzle: false,
+              },
+            }
+          : current.media,
       confirmedSkips: removeConfirmedSkip(current.confirmedSkips, sectionId),
     }));
     setValidationNotice(null);
@@ -384,40 +422,141 @@ function StoryOfUsSetupRoute() {
               current.media.puzzle.selectedPhotoId === photoId
                 ? null
                 : current.media.puzzle.selectedPhotoId,
+            sourceType:
+              current.media.puzzle.selectedPhotoId === photoId ? null : current.media.puzzle.sourceType,
           },
         },
       };
     });
   }
 
-  function selectPuzzlePhoto(photoId: string) {
-    setFormData((current) => ({
-      ...current,
-      media: {
-        ...current.media,
-        puzzle: {
-          ...current.media.puzzle,
-          selectedPhotoId: photoId,
-          confirmedNoPuzzle: false,
+  function selectGalleryPhotoForPuzzle(photoId: string) {
+    setFormData((current) => {
+      if (current.media.puzzle.puzzlePhoto) {
+        URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
+        puzzlePhotoPreviewUrlsRef.current.delete(current.media.puzzle.puzzlePhoto.previewUrl);
+      }
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          puzzle: {
+            ...current.media.puzzle,
+            selectedPhotoId: photoId,
+            puzzlePhoto: null,
+            sourceType: "gallery",
+            confirmedNoPuzzle: false,
+          },
         },
-      },
-      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "puzzle"),
-    }));
+        confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "puzzle"),
+      };
+    });
     setValidationNotice(null);
   }
 
-  function clearPuzzleSelection() {
+  function addSeparatePuzzlePhoto(file: File) {
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    puzzlePhotoPreviewUrlsRef.current.add(previewUrl);
+
+    const puzzlePhoto: StoryOfUsPhotoDraftItem = {
+      id: createPhotoDraftId(),
+      previewUrl,
+      caption: "",
+      sortOrder: 0,
+      file,
+    };
+
+    setFormData((current) => {
+      if (current.media.puzzle.puzzlePhoto) {
+        URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
+        puzzlePhotoPreviewUrlsRef.current.delete(current.media.puzzle.puzzlePhoto.previewUrl);
+      }
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          puzzle: {
+            ...current.media.puzzle,
+            selectedPhotoId: null,
+            puzzlePhoto,
+            sourceType: "separate",
+            confirmedNoPuzzle: false,
+          },
+        },
+        confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "puzzle"),
+      };
+    });
+    setValidationNotice(null);
+  }
+
+  function updatePuzzlePhotoCaption(caption: string) {
     setFormData((current) => ({
       ...current,
       media: {
         ...current.media,
         puzzle: {
           ...current.media.puzzle,
-          selectedPhotoId: null,
-          confirmedNoPuzzle: false,
+          puzzlePhoto: current.media.puzzle.puzzlePhoto
+            ? {
+                ...current.media.puzzle.puzzlePhoto,
+                caption,
+              }
+            : null,
         },
       },
     }));
+  }
+
+  function removeSeparatePuzzlePhoto() {
+    setFormData((current) => {
+      if (current.media.puzzle.puzzlePhoto) {
+        URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
+        puzzlePhotoPreviewUrlsRef.current.delete(current.media.puzzle.puzzlePhoto.previewUrl);
+      }
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          puzzle: {
+            ...current.media.puzzle,
+            selectedPhotoId: null,
+            puzzlePhoto: null,
+            sourceType: null,
+            confirmedNoPuzzle: false,
+          },
+        },
+      };
+    });
+  }
+
+  function clearPuzzleSelection() {
+    setFormData((current) => {
+      if (current.media.puzzle.puzzlePhoto) {
+        URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
+        puzzlePhotoPreviewUrlsRef.current.delete(current.media.puzzle.puzzlePhoto.previewUrl);
+      }
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          puzzle: {
+            ...current.media.puzzle,
+            selectedPhotoId: null,
+            puzzlePhoto: null,
+            sourceType: null,
+            confirmedNoPuzzle: false,
+          },
+        },
+      };
+    });
   }
 
   function updateMusicField(field: keyof StoryOfUsMusicData, value: string) {
@@ -846,7 +985,10 @@ function StoryOfUsSetupRoute() {
                   onAddPhotoFiles={addPhotoFiles}
                   onUpdatePhotoCaption={updatePhotoCaption}
                   onRemovePhoto={removePhoto}
-                  onSelectPuzzlePhoto={selectPuzzlePhoto}
+                  onSelectGalleryPhotoForPuzzle={selectGalleryPhotoForPuzzle}
+                  onAddSeparatePuzzlePhoto={addSeparatePuzzlePhoto}
+                  onUpdatePuzzlePhotoCaption={updatePuzzlePhotoCaption}
+                  onRemoveSeparatePuzzlePhoto={removeSeparatePuzzlePhoto}
                   onClearPuzzleSelection={clearPuzzleSelection}
                 />
               ) : currentStep.id === "musicVoice" ? (
@@ -1044,8 +1186,7 @@ function validateCurrentStep(
 
   if (
     stepId === "photosPuzzle" &&
-    formData.media.photos.length > 0 &&
-    !formData.media.puzzle.selectedPhotoId &&
+    !hasPuzzleSource(formData.media.puzzle) &&
     !isSectionConfirmedSkipped("puzzle", formData)
   ) {
     return {
@@ -1207,6 +1348,13 @@ function isSectionConfirmedSkipped(
   return formData.confirmedSkips[sectionId]?.confirmed === true;
 }
 
+function hasPuzzleSource(puzzle: StoryOfUsPuzzleData) {
+  return (
+    (puzzle.sourceType === "gallery" && Boolean(puzzle.selectedPhotoId)) ||
+    (puzzle.sourceType === "separate" && Boolean(puzzle.puzzlePhoto))
+  );
+}
+
 function getStepOptionalSections(stepId: StoryOfUsSetupStepId): StoryOfUsOptionalSectionId[] {
   switch (stepId) {
     case "photosPuzzle":
@@ -1307,6 +1455,8 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
     media: {
       puzzle: {
         selectedPhotoId: null,
+        puzzlePhoto: null,
+        sourceType: null,
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
     },
@@ -1348,6 +1498,19 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
       })),
       puzzle: {
         selectedPhotoId: formData.media.puzzle.selectedPhotoId,
+        puzzlePhoto:
+          formData.media.puzzle.sourceType === "separate" &&
+          formData.media.puzzle.puzzlePhoto?.file
+            ? {
+                id: formData.media.puzzle.puzzlePhoto.id,
+                caption: formData.media.puzzle.puzzlePhoto.caption,
+                sortOrder: 0,
+                originalFilename: formData.media.puzzle.puzzlePhoto.file.name,
+                mimeType: formData.media.puzzle.puzzlePhoto.file.type,
+                sizeBytes: formData.media.puzzle.puzzlePhoto.file.size,
+              }
+            : null,
+        sourceType: formData.media.puzzle.sourceType,
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
     },
@@ -1381,6 +1544,17 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData) {
       "voiceNoteFile",
       formData.musicVoice.voiceNote.file,
       formData.musicVoice.voiceNote.file.name,
+    );
+  }
+
+  if (
+    formData.media.puzzle.sourceType === "separate" &&
+    formData.media.puzzle.puzzlePhoto?.file
+  ) {
+    submissionFormData.append(
+      "puzzlePhotoFile",
+      formData.media.puzzle.puzzlePhoto.file,
+      formData.media.puzzle.puzzlePhoto.file.name,
     );
   }
 
@@ -1446,6 +1620,8 @@ function restoreSetupDraft(): StoryOfUsSetupFormData | null {
         photos: [],
         puzzle: {
           selectedPhotoId: null,
+          puzzlePhoto: null,
+          sourceType: null,
           confirmedNoPuzzle: Boolean(parsedDraft.media?.puzzle?.confirmedNoPuzzle),
         },
       },
@@ -1722,7 +1898,10 @@ function PhotosPuzzleStep({
   onAddPhotoFiles,
   onUpdatePhotoCaption,
   onRemovePhoto,
-  onSelectPuzzlePhoto,
+  onSelectGalleryPhotoForPuzzle,
+  onAddSeparatePuzzlePhoto,
+  onUpdatePuzzlePhotoCaption,
+  onRemoveSeparatePuzzlePhoto,
   onClearPuzzleSelection,
 }: {
   photos: StoryOfUsPhotoDraftItem[];
@@ -1730,24 +1909,26 @@ function PhotosPuzzleStep({
   onAddPhotoFiles: (files: FileList | File[]) => void;
   onUpdatePhotoCaption: (photoId: string, caption: string) => void;
   onRemovePhoto: (photoId: string) => void;
-  onSelectPuzzlePhoto: (photoId: string) => void;
+  onSelectGalleryPhotoForPuzzle: (photoId: string) => void;
+  onAddSeparatePuzzlePhoto: (file: File) => void;
+  onUpdatePuzzlePhotoCaption: (caption: string) => void;
+  onRemoveSeparatePuzzlePhoto: () => void;
   onClearPuzzleSelection: () => void;
 }) {
-  const selectedPuzzlePhoto = photos.find((photo) => photo.id === puzzle.selectedPhotoId);
+  const selectedGalleryPuzzlePhoto = photos.find((photo) => photo.id === puzzle.selectedPhotoId);
 
   return (
     <div className="grid gap-5">
       <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
-            <h4 className="text-base font-semibold text-rose-950">Fotoğraflarınızı ekleyin</h4>
+            <h4 className="text-base font-semibold text-rose-950">Galeri fotoğrafları</h4>
             <p className="mt-1 text-sm leading-6 text-rose-950/60">
-              Birden fazla fotoğraf seçebilirsiniz. Bu görseller galeri alanında kullanılacak,
-              içlerinden birini de puzzle için seçebileceksiniz.
+              Bu fotoğraflar hazırlanan web sitesindeki fotoğraf alanında kullanılacak.
             </p>
           </div>
           <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300">
-            Fotoğraf seç
+            Fotoğraflarınızı ekleyin
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
@@ -1769,14 +1950,15 @@ function PhotosPuzzleStep({
           <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
           <h4 className="text-base font-semibold text-rose-950">Henüz fotoğraf eklenmedi.</h4>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
-            Eklediğiniz fotoğraflar romantik galeri için hazırlanacak. Bir tanesini de mini puzzle
-            deneyimi için özel olarak seçebilirsiniz.
+            Eklediğiniz fotoğraflar romantik galeri için hazırlanacak. Galeriyi boş bırakıp
+            puzzle için ayrıca fotoğraf da yükleyebilirsiniz.
           </p>
         </section>
       ) : (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {photos.map((photo, index) => {
-            const isSelectedForPuzzle = photo.id === puzzle.selectedPhotoId;
+            const isSelectedForPuzzle =
+              puzzle.sourceType === "gallery" && photo.id === puzzle.selectedPhotoId;
 
             return (
               <article
@@ -1811,14 +1993,14 @@ function PhotosPuzzleStep({
                   <div className="grid gap-2">
                     <button
                       type="button"
-                      onClick={() => onSelectPuzzlePhoto(photo.id)}
+                      onClick={() => onSelectGalleryPhotoForPuzzle(photo.id)}
                       className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
                         isSelectedForPuzzle
                           ? "bg-rose-100 text-rose-700"
                           : "bg-rose-500 text-white shadow-md shadow-rose-200 hover:bg-rose-600"
                       }`}
                     >
-                      {isSelectedForPuzzle ? "Puzzle fotoğrafı seçildi" : "Bu fotoğrafı puzzle yap"}
+                      {isSelectedForPuzzle ? "Puzzle fotoğrafı seçildi" : "Puzzle için de kullan"}
                     </button>
                     <button
                       type="button"
@@ -1835,12 +2017,76 @@ function PhotosPuzzleStep({
         </section>
       )}
 
-      {selectedPuzzlePhoto ? (
-        <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
-          <div className="grid gap-4 sm:grid-cols-[140px_1fr_auto] sm:items-center">
+      <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <h4 className="text-base font-semibold text-rose-950">Puzzle fotoğrafı</h4>
+            <p className="mt-1 text-sm leading-6 text-rose-950/60">
+              Puzzle oyununda kullanılacak fotoğrafı ayrıca seçebilirsiniz. İsterseniz galeri
+              fotoğraflarından birini de puzzle için kullanabilirsiniz.
+            </p>
+          </div>
+          <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 shadow-sm shadow-rose-100 transition hover:bg-rose-50">
+            Puzzle için ayrı fotoğraf yükle
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+
+                if (file) {
+                  onAddSeparatePuzzlePhoto(file);
+                  event.target.value = "";
+                }
+              }}
+            />
+          </label>
+        </div>
+
+        {puzzle.sourceType === "separate" && puzzle.puzzlePhoto ? (
+          <div className="mt-5 grid gap-4 rounded-3xl border border-rose-100 bg-white p-4 shadow-sm shadow-rose-100/40 sm:grid-cols-[160px_1fr_auto] sm:items-center">
             <img
-              src={selectedPuzzlePhoto.previewUrl}
-              alt="Seçilen puzzle fotoğrafı"
+              src={puzzle.puzzlePhoto.previewUrl}
+              alt="Ayrı puzzle fotoğrafı önizlemesi"
+              className="aspect-[4/3] w-full rounded-2xl object-cover shadow-md shadow-rose-100 sm:w-[160px]"
+              loading="lazy"
+              decoding="async"
+            />
+            <div className="grid gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+                  Puzzle fotoğrafı
+                </p>
+                <h5 className="mt-1 text-base font-semibold text-rose-950">
+                  Ayrı puzzle fotoğrafı yüklendi.
+                </h5>
+                {puzzle.puzzlePhoto.file?.name && (
+                  <p className="mt-1 text-sm leading-6 text-rose-950/60">
+                    {puzzle.puzzlePhoto.file.name}
+                  </p>
+                )}
+              </div>
+              <SetupTextField
+                label="Puzzle fotoğraf notu"
+                value={puzzle.puzzlePhoto.caption}
+                onChange={onUpdatePuzzlePhotoCaption}
+                placeholder="Bu puzzle fotoğrafı için kısa bir not"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={onRemoveSeparatePuzzlePhoto}
+              className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+            >
+              Puzzle fotoğrafını kaldır
+            </button>
+          </div>
+        ) : puzzle.sourceType === "gallery" && selectedGalleryPuzzlePhoto ? (
+          <div className="mt-5 grid gap-4 rounded-3xl border border-rose-100 bg-white p-4 shadow-sm shadow-rose-100/40 sm:grid-cols-[140px_1fr_auto] sm:items-center">
+            <img
+              src={selectedGalleryPuzzlePhoto.previewUrl}
+              alt="Galeri içinden seçilen puzzle fotoğrafı"
               className="aspect-[4/3] w-full rounded-2xl object-cover shadow-md shadow-rose-100 sm:w-[140px]"
               loading="lazy"
               decoding="async"
@@ -1849,12 +2095,12 @@ function PhotosPuzzleStep({
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
                 Puzzle fotoğrafı
               </p>
-              <h4 className="mt-1 text-base font-semibold text-rose-950">
-                Bu fotoğraf puzzle deneyimi için seçildi.
-              </h4>
-              {selectedPuzzlePhoto.caption && (
+              <h5 className="mt-1 text-base font-semibold text-rose-950">
+                Puzzle için galeri fotoğrafı seçildi.
+              </h5>
+              {selectedGalleryPuzzlePhoto.caption && (
                 <p className="mt-1 text-sm leading-6 text-rose-950/60">
-                  {selectedPuzzlePhoto.caption}
+                  {selectedGalleryPuzzlePhoto.caption}
                 </p>
               )}
             </div>
@@ -1866,13 +2112,12 @@ function PhotosPuzzleStep({
               Puzzle seçimini temizle
             </button>
           </div>
-        </section>
-      ) : photos.length > 0 ? (
-        <section className="rounded-3xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/60">
-          Puzzle için bir fotoğraf seçmediğiniz sürece puzzle alanı boş kalacak. İsterseniz
-          yukarıdaki kartlardan birini seçebilirsiniz.
-        </section>
-      ) : null}
+        ) : (
+          <div className="mt-5 rounded-3xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/60">
+            Henüz puzzle fotoğrafı seçilmedi.
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -2494,7 +2739,7 @@ function ReviewSubmitStep({
   onUpdateLegalConsent: (consentKey: LegalConsentKey, accepted: boolean) => void;
 }) {
   const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false);
-  const selectedPuzzlePhoto = getSelectedPuzzlePhoto(
+  const selectedGalleryPuzzlePhoto = getSelectedPuzzlePhoto(
     formData.media.photos,
     formData.media.puzzle.selectedPhotoId,
   );
@@ -2591,33 +2836,64 @@ function ReviewSubmitStep({
           ) : (
             <ReviewSoftHint>
               {isPhotosSkipped
-                ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+                ? "Galeri fotoğrafları isteğiniz üzerine kaldırılacak."
                 : "Henüz galeri fotoğrafı eklenmedi."}
             </ReviewSoftHint>
           )}
 
-          {selectedPuzzlePhoto ? (
+          {formData.media.puzzle.sourceType === "gallery" && selectedGalleryPuzzlePhoto ? (
             <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
                 Seçilen puzzle fotoğrafı
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
                 <img
-                  src={selectedPuzzlePhoto.previewUrl}
+                  src={selectedGalleryPuzzlePhoto.previewUrl}
                   alt="Seçilen puzzle fotoğrafı"
                   className="aspect-[4/3] w-full rounded-2xl object-cover shadow-sm shadow-rose-100 sm:w-[120px]"
                   loading="lazy"
                   decoding="async"
                 />
-                <p className="text-sm leading-6 text-rose-950/60">
-                  {selectedPuzzlePhoto.caption || "Bu fotoğraf puzzle için seçildi."}
-                </p>
+                <div>
+                  <p className="text-sm font-semibold text-rose-950">
+                    Galeri fotoğrafı puzzle için kullanılacak.
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-rose-950/60">
+                    {selectedGalleryPuzzlePhoto.caption || "Bu fotoğraf puzzle için seçildi."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : formData.media.puzzle.sourceType === "separate" &&
+            formData.media.puzzle.puzzlePhoto ? (
+            <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                Seçilen puzzle fotoğrafı
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
+                <img
+                  src={formData.media.puzzle.puzzlePhoto.previewUrl}
+                  alt="Ayrı puzzle fotoğrafı"
+                  className="aspect-[4/3] w-full rounded-2xl object-cover shadow-sm shadow-rose-100 sm:w-[120px]"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-rose-950">
+                    Ayrı puzzle fotoğrafı yüklendi.
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-rose-950/60">
+                    {formData.media.puzzle.puzzlePhoto.caption ||
+                      formData.media.puzzle.puzzlePhoto.file?.name ||
+                      "Bu fotoğraf puzzle için seçildi."}
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
             <ReviewSoftHint>
               {isPuzzleSkipped
-                ? "Bu bölüm isteğiniz üzerine kaldırılacak."
+                ? "Puzzle bölümü isteğiniz üzerine kaldırılacak."
                 : "Puzzle için henüz bir fotoğraf seçilmedi."}
             </ReviewSoftHint>
           )}

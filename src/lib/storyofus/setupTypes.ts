@@ -45,8 +45,12 @@ export type StoryOfUsPhotoDraftItem = {
   file?: File;
 };
 
+export type StoryOfUsPuzzleSourceType = "gallery" | "separate";
+
 export type StoryOfUsPuzzleData = {
   selectedPhotoId: string | null;
+  puzzlePhoto: StoryOfUsPhotoDraftItem | null;
+  sourceType: StoryOfUsPuzzleSourceType | null;
   confirmedNoPuzzle: boolean;
 };
 
@@ -134,7 +138,9 @@ export type StoryOfUsSerializableSetupFormData = Omit<
 > & {
   media: {
     photos: StoryOfUsSerializablePhotoDraftItem[];
-    puzzle: StoryOfUsPuzzleData;
+    puzzle: Omit<StoryOfUsPuzzleData, "puzzlePhoto"> & {
+      puzzlePhoto: StoryOfUsSerializablePhotoDraftItem | null;
+    };
   };
   musicVoice: {
     music: StoryOfUsMusicData;
@@ -208,6 +214,8 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
     photos: [],
     puzzle: {
       selectedPhotoId: null,
+      puzzlePhoto: null,
+      sourceType: null,
       confirmedNoPuzzle: false,
     },
   },

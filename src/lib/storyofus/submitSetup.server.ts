@@ -23,6 +23,8 @@ type SubmitPhotoMetadata = {
   sizeBytes: number;
 };
 
+type SubmitPuzzleSourceType = "gallery" | "separate";
+
 type SubmitVoiceNoteMetadata = {
   originalFilename: string;
   mimeType: string;
@@ -46,6 +48,8 @@ type SubmitPayload = {
     photos: SubmitPhotoMetadata[];
     puzzle: {
       selectedPhotoId: string | null;
+      puzzlePhoto: SubmitPhotoMetadata | null;
+      sourceType: SubmitPuzzleSourceType | null;
       confirmedNoPuzzle: boolean;
     };
   };
@@ -191,43 +195,90 @@ async function insertMusicIfNeeded(submissionId: string, payload: SubmitPayload)
 }
 
 async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload, formData: FormData) {
-  if (isConfirmedSkipped(payload.confirmedSkips, "photos")) {
+  const shouldMarkPuzzle =
+    !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
+    payload.media.puzzle.sourceType === "gallery" &&
+    Boolean(payload.media.puzzle.selectedPhotoId);
+
+  if (!isConfirmedSkipped(payload.confirmedSkips, "photos")) {
+    for (const photo of payload.media.photos) {
+      const file = getFileFromFormData(formData, `photoFile:${photo.id}`);
+
+      if (!file) {
+        continue;
+      }
+
+      const storagePath = `submissions/${submissionId}/photos/${createSafeStorageFileName(
+        photo.originalFilename || file.name,
+      )}`;
+
+      await uploadFileToStorage(storagePath, file);
+
+      const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
+        submission_id: submissionId,
+        media_type: "photo",
+        section: "gallery",
+        storage_bucket: STORYOFUS_MEDIA_BUCKET,
+        storage_path: storagePath,
+        original_filename: emptyToNull(photo.originalFilename || file.name),
+        mime_type: emptyToNull(photo.mimeType || file.type),
+        size_bytes: photo.sizeBytes || file.size,
+        caption: emptyToNull(photo.caption),
+        sort_order: photo.sortOrder,
+        is_puzzle_source: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
+      });
+
+      if (error) {
+        throw new Error(`StoryOfUs photo metadata could not be saved: ${error.message}`);
+      }
+    }
+  }
+
+  await uploadSeparatePuzzlePhotoIfNeeded(submissionId, payload, formData);
+}
+
+async function uploadSeparatePuzzlePhotoIfNeeded(
+  submissionId: string,
+  payload: SubmitPayload,
+  formData: FormData,
+) {
+  if (
+    isConfirmedSkipped(payload.confirmedSkips, "puzzle") ||
+    payload.media.puzzle.sourceType !== "separate" ||
+    !payload.media.puzzle.puzzlePhoto
+  ) {
     return;
   }
 
-  const shouldMarkPuzzle =
-    !isConfirmedSkipped(payload.confirmedSkips, "puzzle") && Boolean(payload.media.puzzle.selectedPhotoId);
+  const file = getFileFromFormData(formData, "puzzlePhotoFile");
 
-  for (const photo of payload.media.photos) {
-    const file = getFileFromFormData(formData, `photoFile:${photo.id}`);
+  if (!file) {
+    return;
+  }
 
-    if (!file) {
-      continue;
-    }
+  const puzzlePhoto = payload.media.puzzle.puzzlePhoto;
+  const storagePath = `submissions/${submissionId}/puzzle/${createSafeStorageFileName(
+    puzzlePhoto.originalFilename || file.name,
+  )}`;
 
-    const storagePath = `submissions/${submissionId}/photos/${createSafeStorageFileName(
-      photo.originalFilename || file.name,
-    )}`;
+  await uploadFileToStorage(storagePath, file);
 
-    await uploadFileToStorage(storagePath, file);
+  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
+    submission_id: submissionId,
+    media_type: "puzzle_photo",
+    section: "puzzle",
+    storage_bucket: STORYOFUS_MEDIA_BUCKET,
+    storage_path: storagePath,
+    original_filename: emptyToNull(puzzlePhoto.originalFilename || file.name),
+    mime_type: emptyToNull(puzzlePhoto.mimeType || file.type),
+    size_bytes: puzzlePhoto.sizeBytes || file.size,
+    caption: emptyToNull(puzzlePhoto.caption),
+    sort_order: 0,
+    is_puzzle_source: true,
+  });
 
-    const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
-      submission_id: submissionId,
-      media_type: "photo",
-      section: "gallery",
-      storage_bucket: STORYOFUS_MEDIA_BUCKET,
-      storage_path: storagePath,
-      original_filename: emptyToNull(photo.originalFilename || file.name),
-      mime_type: emptyToNull(photo.mimeType || file.type),
-      size_bytes: photo.sizeBytes || file.size,
-      caption: emptyToNull(photo.caption),
-      sort_order: photo.sortOrder,
-      is_puzzle_source: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
-    });
-
-    if (error) {
-      throw new Error(`StoryOfUs photo metadata could not be saved: ${error.message}`);
-    }
+  if (error) {
+    throw new Error(`StoryOfUs puzzle photo metadata could not be saved: ${error.message}`);
   }
 }
 
