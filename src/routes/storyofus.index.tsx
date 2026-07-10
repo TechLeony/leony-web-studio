@@ -54,7 +54,7 @@ function StoryOfUsLanding() {
           />
         </Link>
         <a
-          href={storyOfUsDemoCtaConfig.setupPath}
+          href={storyOfUsDemoCtaConfig.checkoutPath}
           className="hidden sm:inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-rose-300/50 hover:bg-rose-700 transition"
         >
           <Heart className="h-4 w-4 fill-white" /> {storyOfUsDemoCtaConfig.primaryCtaLabel}
@@ -105,7 +105,7 @@ function StoryOfUsLanding() {
           <p className="text-xs text-rose-950/60">Tek seferlik ödeme · Süresiz link</p>
 
           <a
-            href={storyOfUsDemoCtaConfig.setupPath}
+            href={storyOfUsDemoCtaConfig.checkoutPath}
             className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-rose-400/40 transition-all hover:scale-[1.02] hover:shadow-rose-500/60 sm:w-auto sm:px-8 sm:py-4 sm:text-base"
           >
             <Heart className="h-5 w-5 fill-white" /> {storyOfUsDemoCtaConfig.primaryCtaLabel} 💌
@@ -464,7 +464,7 @@ function StoryOfUsLanding() {
             </div>
 
             <a
-              href={storyOfUsDemoCtaConfig.setupPath}
+              href={storyOfUsDemoCtaConfig.checkoutPath}
               className="mt-8 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-fuchsia-600 shadow-xl shadow-rose-900/15 transition-all hover:scale-[1.03] hover:shadow-2xl hover:shadow-rose-900/25 sm:w-auto sm:px-10 sm:py-4 sm:text-base"
             >
               <Heart className="h-5 w-5 fill-fuchsia-600 text-fuchsia-600" />{" "}

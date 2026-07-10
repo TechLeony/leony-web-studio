@@ -1730,8 +1730,16 @@ function DemoDisclaimerBanner() {
   return (
     <section className="relative z-10 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
       <div className="rounded-[1.25rem] border border-white/70 bg-white/65 px-4 py-3 text-center text-xs leading-5 text-[color:var(--sou-text)]/70 shadow-lg shadow-rose-100/35 backdrop-blur sm:rounded-[1.5rem] sm:px-5 sm:py-4 sm:text-sm sm:leading-6">
-        <span className="font-semibold text-[color:var(--sou-primary)]">Demo notu: </span>
-        {storyOfUsDemoCtaConfig.disclaimerText}
+        <p>
+          <span className="font-semibold text-[color:var(--sou-primary)]">Demo notu: </span>
+          {storyOfUsDemoCtaConfig.disclaimerText}
+        </p>
+        <a
+          href={storyOfUsDemoCtaConfig.checkoutPath}
+          className="mt-3 inline-flex items-center justify-center rounded-full bg-[color:var(--sou-primary)] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-200/50 transition hover:scale-[1.02] sm:text-sm"
+        >
+          {storyOfUsDemoCtaConfig.demoPaymentCtaLabel}
+        </a>
       </div>
     </section>
   );

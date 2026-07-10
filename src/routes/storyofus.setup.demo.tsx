@@ -94,12 +94,6 @@ function SetupDemo() {
             Gerçek sistemde web siten hazırlanıyor maili gönderilecek. Site hazır olduğunda
             özel linkin mailine düşecek.
           </p>
-          <Link
-            to={storyOfUsDemoCtaConfig.mainPath}
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-rose-700 text-white px-6 py-3 hover:bg-rose-800 transition"
-          >
-            <Heart className="h-4 w-4 fill-white" /> {storyOfUsDemoCtaConfig.backToStoryOfUsLabel}
-          </Link>
         </div>
       </div>
     );

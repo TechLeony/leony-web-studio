@@ -2272,12 +2272,6 @@ function StoryOfUsSetupSuccessScreen({
               >
                 Yeni kurulum formu doldur
               </button>
-              <a
-                href="/storyofus"
-                className="rounded-full border border-rose-200 bg-white px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-              >
-                StoryOfUs sayfasına dön
-              </a>
             </div>
           </div>
         </div>

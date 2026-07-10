@@ -18,6 +18,7 @@ import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
+import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
@@ -70,6 +71,11 @@ const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
   path: '/storyofus/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryofusCheckoutRoute = StoryofusCheckoutRouteImport.update({
+  id: '/storyofus/checkout',
+  path: '/storyofus/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SektorSlugRoute = SektorSlugRouteImport.update({
   id: '/sektor/$slug',
   path: '/sektor/$slug',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin/': typeof AdminIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin': typeof AdminIndexRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/admin/': typeof AdminIndexRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
     | '/admin/'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
     | '/admin'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
     | '/admin/'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
+  StoryofusCheckoutRoute: typeof StoryofusCheckoutRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusIndexRoute: typeof StoryofusIndexRoute
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/storyofus/demo'
       fullPath: '/storyofus/demo'
       preLoaderRoute: typeof StoryofusDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/checkout': {
+      id: '/storyofus/checkout'
+      path: '/storyofus/checkout'
+      fullPath: '/storyofus/checkout'
+      preLoaderRoute: typeof StoryofusCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sektor/$slug': {
@@ -363,6 +383,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
+  StoryofusCheckoutRoute: StoryofusCheckoutRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusIndexRoute: StoryofusIndexRoute,
