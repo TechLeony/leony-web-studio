@@ -36,6 +36,7 @@ create table if not exists public.storyofus_submissions (
 
   confirmed_skips jsonb not null default '{}'::jsonb,
   legal_consents jsonb not null default '{}'::jsonb,
+  checkout_consents jsonb not null default '{}'::jsonb,
 
   submission_snapshot jsonb not null default '{}'::jsonb,
 
@@ -52,6 +53,10 @@ create trigger set_storyofus_submissions_updated_at
 before update on public.storyofus_submissions
 for each row
 execute function public.set_updated_at();
+
+create unique index if not exists storyofus_submissions_order_reference_unique
+on public.storyofus_submissions (order_reference)
+where order_reference is not null;
 
 
 -- Couple and contact details
