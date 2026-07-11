@@ -9,7 +9,19 @@ type SkipState = {
 };
 
 type ConfirmedSkips = Partial<
-  Record<"photos" | "puzzle" | "music" | "voiceNote" | "timeline" | "letters", SkipState>
+  Record<
+    | "photos"
+    | "puzzle"
+    | "music"
+    | "voiceNote"
+    | "timeline"
+    | "letters"
+    | "relationshipStartDate"
+    | "relationshipStory"
+    | "recipientNickname"
+    | "specialDateLabel",
+    SkipState
+  >
 >;
 
 type LegalConsentState = {
@@ -56,6 +68,10 @@ export type StoryOfUsSetupAccessInitialData = {
     songTitle: string;
     artistName: string;
     startAtSeconds: number;
+  };
+  siteAccess: {
+    hasExistingPasscode: boolean;
+    passcodeHint: string;
   };
   timeline: Array<{
     id: string;
@@ -130,6 +146,8 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
           "legal_consents",
           "submitted_at",
           "editable_until",
+          "site_passcode_hash",
+          "site_passcode_hint",
         ].join(", "),
       )
       .eq("setup_token", data.token)
@@ -236,6 +254,10 @@ async function createInitialData(submission: Record<string, unknown>) {
       artistName: stringValue(musicDetails?.artist_name),
       startAtSeconds:
         typeof musicDetails?.start_at_seconds === "number" ? musicDetails.start_at_seconds : 0,
+    },
+    siteAccess: {
+      hasExistingPasscode: Boolean(submission.site_passcode_hash),
+      passcodeHint: stringValue(submission.site_passcode_hint),
     },
     timeline: timelineItems.map((item, index) => ({
       id: stringValue(item.id) || `timeline-${index}`,

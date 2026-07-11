@@ -20,6 +20,7 @@ import {
   type StoryOfUsPuzzleData,
   type StoryOfUsOptionalSectionId,
   type StoryOfUsSkipState,
+  type StoryOfUsSiteAccessData,
   type StoryOfUsSetupStepId,
   type StoryOfUsSetupFormData,
   type StoryOfUsTimelineItem,
@@ -50,6 +51,7 @@ type StoryOfUsSetupDraft = Pick<
   | "letters"
   | "legalConsents"
 > & {
+  siteAccess: Pick<StoryOfUsSiteAccessData, "passcodeHint" | "hasExistingPasscode">;
   media: {
     puzzle: {
       selectedPhotoId: null;
@@ -74,10 +76,12 @@ type OptionalSectionWarning = {
 type StepValidationNotice = {
   blockingErrors: string[];
   contactFieldErrors?: ContactCoupleFieldErrors;
+  siteAccessFieldErrors?: SiteAccessFieldErrors;
   warning: OptionalSectionWarning | null;
 };
 
 type ContactCoupleFieldErrors = Partial<Record<keyof StoryOfUsContactCoupleData, string>>;
+type SiteAccessFieldErrors = Partial<Record<keyof StoryOfUsSiteAccessData, string>>;
 type LegalConsentKey = keyof StoryOfUsLegalConsents;
 
 type StoryOfUsSubmissionResult = {
@@ -129,7 +133,10 @@ function StoryOfUsSetupRoute() {
   const isLastStep = currentStepIndex === totalSteps - 1;
   const displayedValidationNotice =
     currentStep.id === "contactCouple" && validationNotice?.contactFieldErrors
-      ? getLiveContactValidationNotice(formData.contactCouple)
+      ? mergeLiveContactValidationNotice(
+          getLiveContactValidationNotice(formData.contactCouple),
+          validationNotice,
+        )
       : validationNotice;
 
   function revokeCurrentPreviewUrls() {
@@ -192,7 +199,17 @@ function StoryOfUsSetupRoute() {
         revokeCurrentPreviewUrls();
         setExistingMedia(readyAccess.initialData.existingMedia);
         setFormData(
-          restoredDraft ?? createSetupFormDataFromAccessInitialData(readyAccess.initialData),
+          restoredDraft
+            ? {
+                ...restoredDraft,
+                siteAccess: {
+                  ...restoredDraft.siteAccess,
+                  passcode: "",
+                  confirmPasscode: "",
+                  hasExistingPasscode: readyAccess.initialData.siteAccess.hasExistingPasscode,
+                },
+              }
+            : createSetupFormDataFromAccessInitialData(readyAccess.initialData),
         );
         setWasDraftRestored(Boolean(restoredDraft));
         setCurrentStepIndex(0);
@@ -301,6 +318,19 @@ function StoryOfUsSetupRoute() {
     if (contactValidation.blockingErrors.length > 0) {
       setValidationNotice(contactValidation);
       setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
+      setCurrentStepIndex(0);
+      return;
+    }
+
+    const importantFieldWarning = getFirstImportantFieldWarning(formData);
+
+    if (importantFieldWarning) {
+      setValidationNotice({
+        blockingErrors: [],
+        warning: importantFieldWarning,
+      });
+      setSubmitError("Devam etmeden önce önemli kişisel detayları kontrol etmeniz gerekiyor.");
+      setCurrentStepIndex(0);
       return;
     }
 
@@ -438,6 +468,20 @@ function StoryOfUsSetupRoute() {
       contactCouple: {
         ...current.contactCouple,
         [field]: value,
+      },
+      confirmedSkips: value.trim()
+        ? removeConfirmedSkip(current.confirmedSkips, field as StoryOfUsOptionalSectionId)
+        : current.confirmedSkips,
+    }));
+  }
+
+  function updateSiteAccessField(field: keyof StoryOfUsSiteAccessData, value: string) {
+    setSubmitError(null);
+    setFormData((current) => ({
+      ...current,
+      siteAccess: {
+        ...current.siteAccess,
+        [field]: field === "passcode" || field === "confirmPasscode" ? value.replace(/\D/g, "").slice(0, 4) : value,
       },
     }));
   }
@@ -1108,8 +1152,11 @@ function StoryOfUsSetupRoute() {
               {currentStep.id === "contactCouple" ? (
                 <ContactCoupleStep
                   value={formData.contactCouple}
+                  siteAccess={formData.siteAccess}
                   onChange={updateContactCoupleField}
+                  onSiteAccessChange={updateSiteAccessField}
                   fieldErrors={displayedValidationNotice?.contactFieldErrors ?? {}}
+                  siteAccessErrors={displayedValidationNotice?.siteAccessFieldErrors ?? {}}
                 />
               ) : currentStep.id === "photosPuzzle" ? (
                 <PhotosPuzzleStep
@@ -1292,19 +1339,35 @@ function validateCurrentStep(
 ): StepValidationNotice {
   const blockingErrors: string[] = [];
   let contactFieldErrors: ContactCoupleFieldErrors | undefined;
+  let siteAccessFieldErrors: SiteAccessFieldErrors | undefined;
 
   if (stepId === "contactCouple") {
     const contactValidation = validateContactCoupleData(formData.contactCouple);
+    const siteAccessValidation = validateSiteAccessData(formData.siteAccess);
     blockingErrors.push(...contactValidation.blockingErrors);
+    blockingErrors.push(...siteAccessValidation.blockingErrors);
     contactFieldErrors = contactValidation.fieldErrors;
+    siteAccessFieldErrors = siteAccessValidation.fieldErrors;
   }
 
   if (blockingErrors.length > 0) {
     return {
       blockingErrors,
       contactFieldErrors,
+      siteAccessFieldErrors,
       warning: null,
     };
+  }
+
+  if (stepId === "contactCouple") {
+    const importantFieldWarning = getFirstImportantFieldWarning(formData);
+
+    if (importantFieldWarning) {
+      return {
+        blockingErrors: [],
+        warning: importantFieldWarning,
+      };
+    }
   }
 
   if (
@@ -1419,6 +1482,39 @@ function validateContactCoupleData(contactCouple: StoryOfUsContactCoupleData) {
   };
 }
 
+function validateSiteAccessData(siteAccess: StoryOfUsSiteAccessData) {
+  const blockingErrors: string[] = [];
+  const fieldErrors: SiteAccessFieldErrors = {};
+  const passcode = siteAccess.passcode.trim();
+  const confirmPasscode = siteAccess.confirmPasscode.trim();
+  const hint = siteAccess.passcodeHint.trim();
+  const isChangingExistingPasscode = Boolean(passcode || confirmPasscode);
+  const shouldRequirePasscode = !siteAccess.hasExistingPasscode || isChangingExistingPasscode;
+
+  if (shouldRequirePasscode && !/^\d{4}$/.test(passcode)) {
+    fieldErrors.passcode = "Website giriş şifresi tam 4 rakam olmalı.";
+    blockingErrors.push(fieldErrors.passcode);
+  }
+
+  if (shouldRequirePasscode && confirmPasscode !== passcode) {
+    fieldErrors.confirmPasscode = "Şifre tekrarı aynı olmalı.";
+    blockingErrors.push(fieldErrors.confirmPasscode);
+  }
+
+  if (hint.length < 2) {
+    fieldErrors.passcodeHint = "Şifre ipucu zorunlu.";
+    blockingErrors.push(fieldErrors.passcodeHint);
+  } else if (hint.length > 80) {
+    fieldErrors.passcodeHint = "Şifre ipucu en fazla 80 karakter olabilir.";
+    blockingErrors.push(fieldErrors.passcodeHint);
+  }
+
+  return {
+    blockingErrors,
+    fieldErrors,
+  };
+}
+
 function getLiveContactValidationNotice(
   contactCouple: StoryOfUsContactCoupleData,
 ): StepValidationNotice | null {
@@ -1431,6 +1527,25 @@ function getLiveContactValidationNotice(
   return {
     blockingErrors: contactValidation.blockingErrors,
     contactFieldErrors: contactValidation.fieldErrors,
+    warning: null,
+  };
+}
+
+function mergeLiveContactValidationNotice(
+  liveContactNotice: StepValidationNotice | null,
+  currentNotice: StepValidationNotice,
+): StepValidationNotice | null {
+  if (!liveContactNotice && !currentNotice.siteAccessFieldErrors) {
+    return null;
+  }
+
+  return {
+    blockingErrors: [
+      ...(liveContactNotice?.blockingErrors ?? []),
+      ...Object.values(currentNotice.siteAccessFieldErrors ?? {}).filter(Boolean),
+    ],
+    contactFieldErrors: liveContactNotice?.contactFieldErrors,
+    siteAccessFieldErrors: currentNotice.siteAccessFieldErrors,
     warning: null,
   };
 }
@@ -1482,6 +1597,21 @@ function isSectionConfirmedSkipped(
   return formData.confirmedSkips[sectionId]?.confirmed === true;
 }
 
+function getFirstImportantFieldWarning(formData: StoryOfUsSetupFormData) {
+  const importantFields: Array<keyof Pick<
+    StoryOfUsContactCoupleData,
+    "relationshipStartDate" | "relationshipStory" | "recipientNickname" | "specialDateLabel"
+  >> = ["relationshipStartDate", "relationshipStory", "recipientNickname", "specialDateLabel"];
+
+  for (const field of importantFields) {
+    if (!formData.contactCouple[field].trim() && !isSectionConfirmedSkipped(field, formData)) {
+      return getOptionalSectionWarning(field);
+    }
+  }
+
+  return null;
+}
+
 function hasPuzzleSource(puzzle: StoryOfUsPuzzleData) {
   return (
     (puzzle.sourceType === "gallery" && Boolean(puzzle.selectedPhotoId)) ||
@@ -1512,49 +1642,81 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Fotoğraf eklemezseniz galeri bölümü hazırlanan web sitesinde görünmeyecek. Bunu bilerek mi boş bırakmak istiyorsunuz?",
-        confirmLabel: "Evet, fotoğraf istemiyorum",
-        cancelLabel: "Fotoğraf ekleyeceğim",
+          "Fotoğraf eklemezseniz final site çok daha sade görünür. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
     case "puzzle":
       return {
         sectionId,
         message:
-          "Puzzle fotoğrafı seçmezseniz puzzle oyunu hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
-        confirmLabel: "Evet, puzzle istemiyorum",
-        cancelLabel: "Puzzle fotoğrafı seçeceğim",
+          "Puzzle fotoğrafı eklemezseniz interaktif puzzle bölümü gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
     case "music":
       return {
         sectionId,
         message:
-          "Şarkı eklemezseniz müzik bölümü hazırlanan web sitesinde görünmeyebilir. Bunu bilerek mi boş bırakmak istiyorsunuz?",
-        confirmLabel: "Evet, müzik istemiyorum",
-        cancelLabel: "Müzik ekleyeceğim",
+          "Şarkı eklemezseniz final sitede müzik bölümü gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
     case "voiceNote":
       return {
         sectionId,
         message:
-          "Ses notu eklemezseniz size özel hazırlanan web sitesinde ses notu bölümü görünmeyecek. Emin misiniz?",
-        confirmLabel: "Evet, ses notu istemiyorum",
-        cancelLabel: "Vazgeç, ses notu ekleyeceğim",
+          "Ses notu eklemezseniz bu kişisel bölüm final sitede yer almaz. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
     case "timeline":
       return {
         sectionId,
         message:
-          "Zaman çizelgesi eklemezseniz ilişkinizin özel anları bölümü hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
-        confirmLabel: "Evet, zaman çizelgesi istemiyorum",
-        cancelLabel: "Anı ekleyeceğim",
+          "Timeline eklemezseniz ilişkinizin önemli anları ayrı bir bölüm olarak gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
     case "letters":
       return {
         sectionId,
         message:
-          "Mektup eklemezseniz aşk mektubu / open-when mektupları bölümü hazırlanan web sitesinde görünmeyecek. Emin misiniz?",
-        confirmLabel: "Evet, mektup istemiyorum",
-        cancelLabel: "Mektup ekleyeceğim",
+          "Mektup eklemezseniz final sitede aşk mektubu / open when bölümü görünmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
+      };
+    case "relationshipStartDate":
+      return {
+        sectionId,
+        message:
+          "İlişki başlangıç tarihini eklemezseniz, final sitede ne kadar süredir birlikte olduğunuz hesaplanamaz.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
+      };
+    case "relationshipStory":
+      return {
+        sectionId,
+        message:
+          "Hikayenizi eklemezseniz, final site daha kişisel ve duygusal hissettirmeyebilir.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
+      };
+    case "recipientNickname":
+      return {
+        sectionId,
+        message:
+          "Hitap ismini eklemezseniz, bazı metinler daha genel görünebilir.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
+      };
+    case "specialDateLabel":
+      return {
+        sectionId,
+        message:
+          "Özel tarih başlığı eklemezseniz, final sitede bu detay daha sade görünebilir.",
+        confirmLabel: "Bunu istemiyorum",
+        cancelLabel: "Eksikleri tamamlayacağım",
       };
   }
 }
@@ -1588,6 +1750,12 @@ function createSetupFormDataFromAccessInitialData(
       ...formData.musicVoice,
       music: initialData.music,
     },
+    siteAccess: {
+      passcode: "",
+      confirmPasscode: "",
+      passcodeHint: initialData.siteAccess.passcodeHint,
+      hasExistingPasscode: initialData.siteAccess.hasExistingPasscode,
+    },
     timeline: initialData.timeline.map((item, index) => ({ ...item, sortOrder: index })),
     letters: initialData.letters.map((letter, index) => ({ ...letter, sortOrder: index })),
     confirmedSkips: initialData.confirmedSkips,
@@ -1613,6 +1781,10 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
     orderReference: formData.orderReference,
     status: formData.status,
     contactCouple: formData.contactCouple,
+    siteAccess: {
+      passcodeHint: formData.siteAccess.passcodeHint,
+      hasExistingPasscode: formData.siteAccess.hasExistingPasscode,
+    },
     media: {
       puzzle: {
         selectedPhotoId: null,
@@ -1649,6 +1821,7 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
       ...formData.contactCouple,
       contactPhone: normalizedContactPhone ?? formData.contactCouple.contactPhone,
     },
+    siteAccess: formData.siteAccess,
     media: {
       photos: photos.map((photo) => ({
         id: photo.id,
@@ -1806,6 +1979,15 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
         },
         voiceNote: null,
       },
+      siteAccess: {
+        passcode: "",
+        confirmPasscode: "",
+        passcodeHint:
+          typeof parsedDraft.siteAccess?.passcodeHint === "string"
+            ? parsedDraft.siteAccess.passcodeHint
+            : "",
+        hasExistingPasscode: Boolean(parsedDraft.siteAccess?.hasExistingPasscode),
+      },
       confirmedSkips: parsedDraft.confirmedSkips ?? emptyFormData.confirmedSkips,
       legalConsents: restoreLegalConsents(parsedDraft.legalConsents, emptyFormData.legalConsents),
       timeline: restoredTimeline,
@@ -1954,6 +2136,28 @@ function getRemainingEditWindowText(value: string) {
   }
 
   return `Yaklaşık ${minutes} dakika kaldı.`;
+}
+
+function getSkippedImportantFieldReviewItems(formData: StoryOfUsSetupFormData) {
+  const items: string[] = [];
+
+  if (isSectionConfirmedSkipped("relationshipStartDate", formData)) {
+    items.push("İlişki başlangıç tarihi eklenmeyecek.");
+  }
+
+  if (isSectionConfirmedSkipped("relationshipStory", formData)) {
+    items.push("Hikaye bölümü eklenmeyecek.");
+  }
+
+  if (isSectionConfirmedSkipped("recipientNickname", formData)) {
+    items.push("Hitap ismi eklenmeyecek.");
+  }
+
+  if (isSectionConfirmedSkipped("specialDateLabel", formData)) {
+    items.push("Özel tarih başlığı eklenmeyecek.");
+  }
+
+  return items;
 }
 
 function getOrderedPhotos(photos: StoryOfUsPhotoDraftItem[]) {
@@ -3023,6 +3227,9 @@ function StoryOfUsSetupSuccessScreen({
 
             <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/50">
               Fotoğraf, müzik, zaman çizelgesi ve mektup detaylarınız güvenli şekilde kaydedildi.
+              <span className="mt-2 block font-semibold text-rose-700">
+                Final site giriş şifreniz kaydedildi.
+              </span>
               {editableUntil && (
                 <span className="mt-2 block font-semibold text-rose-700">
                   Son düzenleme zamanı: {formatEditableUntil(editableUntil)}
@@ -3091,6 +3298,7 @@ function ReviewSubmitStep({
   );
   const existingVoiceNoteMedia = existingMedia.filter((media) => media.section === "voice_note");
   const areLegalConsentsComplete = validateLegalConsents(formData.legalConsents).length === 0;
+  const skippedImportantFields = getSkippedImportantFieldReviewItems(formData);
 
   return (
     <div className="grid gap-5">
@@ -3134,7 +3342,29 @@ function ReviewSubmitStep({
             value={displayValue(formData.contactCouple.relationshipStory)}
             className="sm:col-span-2"
           />
+          <ReviewField
+            label="Website giriş şifresi"
+            value={
+              formData.siteAccess.hasExistingPasscode || formData.siteAccess.passcode
+                ? "Ayarlandı"
+                : "Henüz ayarlanmadı"
+            }
+          />
+          <ReviewField
+            label="Şifre ipucu"
+            value={displayValue(formData.siteAccess.passcodeHint)}
+          />
         </div>
+        {skippedImportantFields.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-rose-100 bg-white/80 p-4 text-sm leading-7 text-rose-950/65">
+            <p className="font-semibold text-rose-700">Eklenmeyecek kişisel detaylar</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {skippedImportantFields.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </ReviewSection>
 
       <ReviewSection
@@ -3589,12 +3819,18 @@ function ExistingMediaList({
 
 function ContactCoupleStep({
   value,
+  siteAccess,
   onChange,
+  onSiteAccessChange,
   fieldErrors,
+  siteAccessErrors,
 }: {
   value: StoryOfUsContactCoupleData;
+  siteAccess: StoryOfUsSiteAccessData;
   onChange: (field: keyof StoryOfUsContactCoupleData, value: string) => void;
+  onSiteAccessChange: (field: keyof StoryOfUsSiteAccessData, value: string) => void;
   fieldErrors: ContactCoupleFieldErrors;
+  siteAccessErrors: SiteAccessFieldErrors;
 }) {
   return (
     <div className="grid gap-5">
@@ -3687,6 +3923,49 @@ function ContactCoupleStep({
           helperText="Birkaç cümle yeterli; bunu romantik metinlerde referans olarak kullanacağız."
         />
       </section>
+
+      <section className="rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-4 shadow-sm shadow-fuchsia-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Website giriş şifresi</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Final site linki size gönderildiğinde, siteyi açmak için bu 4 rakamlı şifre
+            istenecek. Bu şifre sevgilinizin siteye girişte kullanacağı özel koddur.
+          </p>
+          {siteAccess.hasExistingPasscode && (
+            <div className="mt-3 rounded-2xl border border-fuchsia-100 bg-white/80 px-4 py-3 text-sm leading-6 text-fuchsia-800">
+              <p className="font-semibold">Mevcut giriş şifresi kayıtlı.</p>
+              <p>Değiştirmek isterseniz yeni 4 rakamlı şifre girin.</p>
+            </div>
+          )}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SetupTextField
+            label="Website giriş şifresi *"
+            value={siteAccess.passcode}
+            onChange={(nextValue) => onSiteAccessChange("passcode", nextValue)}
+            placeholder="4 rakamlı şifre"
+            inputMode="numeric"
+            errorText={siteAccessErrors.passcode}
+          />
+          <SetupTextField
+            label="Şifre tekrar *"
+            value={siteAccess.confirmPasscode}
+            onChange={(nextValue) => onSiteAccessChange("confirmPasscode", nextValue)}
+            placeholder="Şifrenizi tekrar girin"
+            inputMode="numeric"
+            errorText={siteAccessErrors.confirmPasscode}
+          />
+          <SetupTextField
+            label="Şifre ipucu *"
+            value={siteAccess.passcodeHint}
+            onChange={(nextValue) => onSiteAccessChange("passcodeHint", nextValue)}
+            placeholder="Örn. ilk buluştuğumuz yer"
+            helperText="Sevgiliniz şifreyi hatırlamak için bu ipucunu görebilir."
+            errorText={siteAccessErrors.passcodeHint}
+            className="sm:col-span-2"
+          />
+        </div>
+      </section>
     </div>
   );
 }
@@ -3699,6 +3978,7 @@ function SetupTextField({
   placeholder,
   helperText,
   errorText,
+  inputMode,
   className = "",
 }: {
   label: string;
@@ -3708,6 +3988,7 @@ function SetupTextField({
   placeholder?: string;
   helperText?: string;
   errorText?: string;
+  inputMode?: "numeric" | "text" | "email" | "tel";
   className?: string;
 }) {
   return (
@@ -3718,6 +3999,7 @@ function SetupTextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        inputMode={inputMode}
         aria-invalid={errorText ? true : undefined}
         className={`mt-2 w-full rounded-2xl border bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm outline-none transition placeholder:text-rose-950/35 focus:ring-4 ${
           errorText

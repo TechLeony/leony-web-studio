@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { hashSitePasscode, validateSitePasscode } from "./passcode.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
@@ -11,7 +12,19 @@ type SkipState = {
 };
 
 type ConfirmedSkips = Partial<
-  Record<"photos" | "puzzle" | "music" | "voiceNote" | "timeline" | "letters", SkipState>
+  Record<
+    | "photos"
+    | "puzzle"
+    | "music"
+    | "voiceNote"
+    | "timeline"
+    | "letters"
+    | "relationshipStartDate"
+    | "relationshipStory"
+    | "recipientNickname"
+    | "specialDateLabel",
+    SkipState
+  >
 >;
 
 type SubmitPhotoMetadata = {
@@ -63,6 +76,12 @@ type SubmitPayload = {
       startAtSeconds: number;
     };
     voiceNote: SubmitVoiceNoteMetadata | null;
+  };
+  siteAccess: {
+    passcode: string;
+    confirmPasscode: string;
+    passcodeHint: string;
+    hasExistingPasscode?: boolean;
   };
   confirmedSkips: ConfirmedSkips;
   legalConsents: {
@@ -131,7 +150,9 @@ async function submitStoryOfUsSetupData(
 
   const { data: submission, error: submissionError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("id, setup_token, status, payment_status, submitted_at, editable_until")
+    .select(
+      "id, setup_token, status, payment_status, submitted_at, editable_until, site_passcode_hash, site_passcode_set_at",
+    )
     .eq("setup_token", setupToken)
     .maybeSingle();
 
@@ -165,6 +186,29 @@ async function submitStoryOfUsSetupData(
   const nextEditableUntil = isFirstSubmit
     ? new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString()
     : effectiveEditableUntil;
+  const hasExistingPasscode = typeof submission.site_passcode_hash === "string";
+  const siteAccess = payload.siteAccess ?? {
+    passcode: "",
+    confirmPasscode: "",
+    passcodeHint: "",
+  };
+  const passcodeValidation = validateSitePasscode({
+    passcode: siteAccess.passcode,
+    confirmPasscode: siteAccess.confirmPasscode,
+    hint: siteAccess.passcodeHint,
+    hasExistingPasscode,
+  });
+
+  if (!passcodeValidation.isValid) {
+    throw new Error(passcodeValidation.errors[0] ?? "Website giriş şifresi geçersiz.");
+  }
+
+  const nextPasscodeHash = passcodeValidation.shouldHashPasscode
+    ? hashSitePasscode(siteAccess.passcode.trim())
+    : submission.site_passcode_hash;
+  const nextPasscodeSetAt = passcodeValidation.shouldHashPasscode
+    ? submittedAt
+    : submission.site_passcode_set_at;
 
   await deleteExistingTextDetails(submissionId);
   await prepareExistingMediaForSubmit(submissionId, payload, isFirstSubmit);
@@ -183,6 +227,9 @@ async function submitStoryOfUsSetupData(
       submitted_at: isFirstSubmit ? submittedAt : submission.submitted_at,
       editable_until: nextEditableUntil,
       last_resubmitted_at: isFirstSubmit ? null : submittedAt,
+      site_passcode_hash: nextPasscodeHash,
+      site_passcode_hint: emptyToNull(passcodeValidation.normalizedHint),
+      site_passcode_set_at: nextPasscodeSetAt,
     })
     .eq("id", submissionId)
     .select("id, setup_token, status")
@@ -536,6 +583,10 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
     musicVoice: {
       music: payload.musicVoice.music,
       voiceNote: payload.musicVoice.voiceNote,
+    },
+    siteAccess: {
+      passcodeConfigured: true,
+      passcodeHint: payload.siteAccess?.passcodeHint ?? "",
     },
     confirmedSkips: payload.confirmedSkips,
     legalConsents: payload.legalConsents,

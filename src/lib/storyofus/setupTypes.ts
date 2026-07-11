@@ -2,7 +2,16 @@ export type StoryOfUsSetupStepId =
   "contactCouple" | "photosPuzzle" | "musicVoice" | "timeline" | "letters" | "review";
 
 export type StoryOfUsOptionalSectionId =
-  "photos" | "puzzle" | "music" | "voiceNote" | "timeline" | "letters";
+  | "photos"
+  | "puzzle"
+  | "music"
+  | "voiceNote"
+  | "timeline"
+  | "letters"
+  | "relationshipStartDate"
+  | "relationshipStory"
+  | "recipientNickname"
+  | "specialDateLabel";
 
 export type StoryOfUsSubmissionStatus =
   "draft" | "submitted" | "in_review" | "published" | "archived";
@@ -114,6 +123,13 @@ export type StoryOfUsLegalConsents = {
   contentResponsibilityAccepted: StoryOfUsLegalConsentState;
 };
 
+export type StoryOfUsSiteAccessData = {
+  passcode: string;
+  confirmPasscode: string;
+  passcodeHint: string;
+  hasExistingPasscode?: boolean;
+};
+
 export type StoryOfUsSetupFormData = {
   orderReference: string;
   status: StoryOfUsSubmissionStatus;
@@ -121,6 +137,7 @@ export type StoryOfUsSetupFormData = {
   contactCouple: StoryOfUsContactCoupleData;
   media: StoryOfUsMediaData;
   musicVoice: StoryOfUsMusicVoiceData;
+  siteAccess: StoryOfUsSiteAccessData;
   timeline: StoryOfUsTimelineItem[];
   letters: StoryOfUsLetterItem[];
 
@@ -229,6 +246,13 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
       startAtSeconds: 0,
     },
     voiceNote: null,
+  },
+
+  siteAccess: {
+    passcode: "",
+    confirmPasscode: "",
+    passcodeHint: "",
+    hasExistingPasscode: false,
   },
 
   timeline: [],

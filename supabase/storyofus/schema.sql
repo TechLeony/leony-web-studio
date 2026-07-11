@@ -40,6 +40,9 @@ create table if not exists public.storyofus_submissions (
   payment_verified_at timestamptz,
   payment_error text,
   checkout_expires_at timestamptz,
+  site_passcode_hash text,
+  site_passcode_hint text,
+  site_passcode_set_at timestamptz,
 
   confirmed_skips jsonb not null default '{}'::jsonb,
   legal_consents jsonb not null default '{}'::jsonb,
