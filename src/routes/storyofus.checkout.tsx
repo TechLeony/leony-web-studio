@@ -32,7 +32,10 @@ type CheckoutOrderResult = {
   customerName: string;
   contactPhone: string;
   paymentStatus: "pending";
+  paymentAmount: number;
+  paymentCurrency: string;
   shopierPaymentUrl: string;
+  needsManualShopierConfig: boolean;
 };
 
 const initialCheckoutContactForm: StoryOfUsCheckoutContactInput = {
@@ -239,6 +242,12 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
           Sipariş referansınız: <span className="font-bold text-rose-700">{order.orderReference}</span>
         </p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
+          Ödeme tutarı:{" "}
+          <span className="font-bold text-rose-700">
+            {formatPaymentAmount(order.paymentAmount, order.paymentCurrency)}
+          </span>
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
           Ödeme tamamlandıktan sonra kurulum bağlantınız e-posta adresinize gönderilecek.
         </p>
       </div>
@@ -246,6 +255,11 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
       <div className="rounded-3xl border border-rose-100 bg-white/85 p-4 text-sm leading-7 text-rose-950/65">
         Kurulum bağlantısı şu adrese gönderilecek:{" "}
         <span className="font-semibold text-rose-700">{order.customerEmail}</span>
+      </div>
+
+      <div className="rounded-3xl border border-pink-100 bg-white/80 p-4 text-sm leading-7 text-rose-950/65">
+        Ödeme açıklaması / sipariş referansı:{" "}
+        <span className="font-bold text-rose-700">{order.orderReference}</span>
       </div>
 
       <a
@@ -262,6 +276,14 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
         E-posta adresiniz yanlışsa lütfen ödeme yapmadan önce bu sayfayı yenileyip bilgilerinizi
         tekrar girin.
       </p>
+
+      {import.meta.env.DEV && order.needsManualShopierConfig && (
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800">
+          Geliştirme notu: Shopier merchant order id entegrasyonu henüz gerçek panel bilgileriyle
+          bağlanmadı. Sipariş referansının Shopier tarafına otomatik aktarılması için merchant
+          dokümanındaki alan eşlemesi doğrulanmalı.
+        </p>
+      )}
     </div>
   );
 }
@@ -339,4 +361,12 @@ function savePendingCheckoutOrder(order: CheckoutOrderResult) {
       createdAt: new Date().toISOString(),
     }),
   );
+}
+
+function formatPaymentAmount(amount: number, currency: string) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return currency || "TRY";
+  }
+
+  return `${amount.toFixed(2)} ${currency || "TRY"}`;
 }

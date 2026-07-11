@@ -33,6 +33,13 @@ create table if not exists public.storyofus_submissions (
   payment_provider text,
   payment_reference text,
   setup_link_sent_at timestamptz,
+  payment_amount numeric(10,2),
+  payment_currency text not null default 'TRY',
+  payment_callback_received_at timestamptz,
+  payment_raw_callback jsonb not null default '{}'::jsonb,
+  payment_verified_at timestamptz,
+  payment_error text,
+  checkout_expires_at timestamptz,
 
   confirmed_skips jsonb not null default '{}'::jsonb,
   legal_consents jsonb not null default '{}'::jsonb,

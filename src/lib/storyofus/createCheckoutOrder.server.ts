@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { storyOfUsDemoCtaConfig } from "./demoCtaConfig";
-import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 import {
   type StoryOfUsCheckoutContactInput,
   validateStoryOfUsCheckoutContact,
 } from "./contactValidation";
+import { createShopierPaymentTarget } from "./shopierPayment.server";
+import { storyOfUsShopierConfig } from "./shopierConfig.server";
+import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 type CreateCheckoutOrderResult = {
   orderReference: string;
@@ -13,7 +14,10 @@ type CreateCheckoutOrderResult = {
   customerName: string;
   contactPhone: string;
   paymentStatus: "pending";
+  paymentAmount: number;
+  paymentCurrency: string;
   shopierPaymentUrl: string;
+  needsManualShopierConfig: boolean;
 };
 
 const ORDER_REFERENCE_MAX_ATTEMPTS = 8;
@@ -44,6 +48,17 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
 
     const orderReference = await createUniqueOrderReference();
     const acceptedAt = new Date().toISOString();
+    const checkoutExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const paymentAmount = storyOfUsShopierConfig.paymentAmountTry;
+    const paymentCurrency = storyOfUsShopierConfig.paymentCurrency;
+    const paymentTarget = createShopierPaymentTarget({
+      orderReference,
+      customerName: validation.normalized.customerName,
+      customerEmail: validation.normalized.customerEmail,
+      contactPhone: validation.normalized.contactPhone,
+      amount: paymentAmount,
+      currency: paymentCurrency,
+    });
 
     const { data: insertedSubmission, error } = await storyOfUsSupabaseAdmin
       .from("storyofus_submissions")
@@ -55,6 +70,9 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
         contact_phone: validation.normalized.contactPhone,
         order_reference: orderReference,
         payment_provider: "shopier",
+        payment_amount: paymentAmount,
+        payment_currency: paymentCurrency,
+        checkout_expires_at: checkoutExpiresAt,
         checkout_consents: {
           contactConsentAccepted: {
             accepted: true,
@@ -66,7 +84,9 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
           },
         },
       })
-      .select("order_reference, customer_email, customer_name, contact_phone, payment_status")
+      .select(
+        "order_reference, customer_email, customer_name, contact_phone, payment_status, payment_amount, payment_currency",
+      )
       .single();
 
     if (error || !insertedSubmission) {
@@ -79,7 +99,10 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
       customerName: String(insertedSubmission.customer_name),
       contactPhone: String(insertedSubmission.contact_phone),
       paymentStatus: "pending",
-      shopierPaymentUrl: storyOfUsDemoCtaConfig.shopierPaymentUrl,
+      paymentAmount: Number(insertedSubmission.payment_amount) || paymentTarget.amount,
+      paymentCurrency: String(insertedSubmission.payment_currency || paymentTarget.currency),
+      shopierPaymentUrl: paymentTarget.paymentUrl,
+      needsManualShopierConfig: paymentTarget.needsManualShopierConfig,
     };
   });
 

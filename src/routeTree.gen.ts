@@ -25,6 +25,7 @@ import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
+import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -106,6 +107,12 @@ const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
   path: '/demo',
   getParentRoute: () => StoryofusSetupRoute,
 } as any)
+const ApiStoryofusShopierCallbackRoute =
+  ApiStoryofusShopierCallbackRouteImport.update({
+    id: '/api/storyofus/shopier/callback',
+    path: '/api/storyofus/shopier/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -141,6 +149,7 @@ export interface FileRoutesByTo {
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,6 +169,7 @@ export interface FileRoutesById {
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/storyofus/shopier/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/storyofus'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/storyofus/shopier/callback'
   id:
     | '__root__'
     | '/'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/storyofus/shopier/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -230,6 +243,7 @@ export interface RootRouteChildren {
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusIndexRoute: typeof StoryofusIndexRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
+  ApiStoryofusShopierCallbackRoute: typeof ApiStoryofusShopierCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -346,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusSetupDemoRouteImport
       parentRoute: typeof StoryofusSetupRoute
     }
+    '/api/storyofus/shopier/callback': {
+      id: '/api/storyofus/shopier/callback'
+      path: '/api/storyofus/shopier/callback'
+      fullPath: '/api/storyofus/shopier/callback'
+      preLoaderRoute: typeof ApiStoryofusShopierCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -388,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusIndexRoute: StoryofusIndexRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
+  ApiStoryofusShopierCallbackRoute: ApiStoryofusShopierCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
