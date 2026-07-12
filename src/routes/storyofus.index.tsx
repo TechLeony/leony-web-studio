@@ -25,7 +25,7 @@ export const Route = createFileRoute("/storyofus/")({
 });
 
 const PINK_BG = "bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_45%,#ffd1de_100%)]";
-const STORYOFUS_LOADING_DURATION_MS = 3000;
+const STORYOFUS_LOADING_DURATION_MS = 2000;
 
 function StoryOfUsLanding() {
   const [demoLoading, setDemoLoading] = useState(false);
@@ -119,6 +119,12 @@ function StoryOfUsLanding() {
           >
             Örnek hediyeyi görmek için tıklayın →
           </button>
+          <a
+            href={storyOfUsDemoCtaConfig.trackOrderPath}
+            className="text-xs font-semibold text-rose-600 underline underline-offset-4 decoration-rose-300 hover:text-rose-800"
+          >
+            Sipariş takip
+          </a>
         </div>
       </section>
 
@@ -469,6 +475,12 @@ function StoryOfUsLanding() {
             >
               <Heart className="h-5 w-5 fill-fuchsia-600 text-fuchsia-600" />{" "}
               {storyOfUsDemoCtaConfig.primaryCtaLabel}
+            </a>
+            <a
+              href={storyOfUsDemoCtaConfig.trackOrderPath}
+              className="mt-4 inline-flex text-sm font-semibold text-white/90 underline underline-offset-4 decoration-white/40 hover:text-white"
+            >
+              Sipariş takip
             </a>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 text-sm text-white/90 sm:flex-row sm:flex-wrap sm:gap-0">

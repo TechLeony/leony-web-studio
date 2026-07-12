@@ -3,6 +3,7 @@ export const storyOfUsDemoCtaConfig = {
   demoPath: "/storyofus/demo",
   setupPath: "/storyofus/setup",
   checkoutPath: "/storyofus/checkout",
+  trackOrderPath: "/storyofus/track-order",
   primaryCtaLabel: "Sürprize Başla",
   demoCtaLabel: "Demoyu Gör",
   paymentCtaLabel: "Ödeme sayfasına geç",

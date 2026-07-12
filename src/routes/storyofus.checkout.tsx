@@ -28,6 +28,7 @@ export const Route = createFileRoute("/storyofus/checkout")({
 
 type CheckoutOrderResult = {
   orderReference: string;
+  trackingCode: string;
   customerEmail: string;
   customerName: string;
   contactPhone: string;
@@ -242,6 +243,10 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
           Sipariş referansınız: <span className="font-bold text-rose-700">{order.orderReference}</span>
         </p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
+          Sipariş takip numarası:{" "}
+          <span className="font-bold text-rose-700">{order.trackingCode}</span>
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
           Ödeme tutarı:{" "}
           <span className="font-bold text-rose-700">
             {formatPaymentAmount(order.paymentAmount, order.paymentCurrency)}
@@ -270,6 +275,17 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
       >
         <Heart className="h-4 w-4 fill-white" />
         Shopier’de ödemeye devam et
+      </a>
+
+      <p className="mx-auto max-w-xl text-xs leading-6 text-rose-950/55">
+        Sipariş durumunuzu takip etmek için bu takip numarasını saklayın.
+      </p>
+
+      <a
+        href={`${storyOfUsDemoCtaConfig.trackOrderPath}?code=${encodeURIComponent(order.trackingCode)}`}
+        className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-white px-6 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+      >
+        Siparişimi takip et
       </a>
 
       <p className="mx-auto max-w-xl text-xs leading-6 text-rose-950/55">
@@ -357,6 +373,7 @@ function savePendingCheckoutOrder(order: CheckoutOrderResult) {
     "storyofus.checkout.pendingOrder.v1",
     JSON.stringify({
       orderReference: order.orderReference,
+      trackingCode: order.trackingCode,
       customerEmail: order.customerEmail,
       createdAt: new Date().toISOString(),
     }),

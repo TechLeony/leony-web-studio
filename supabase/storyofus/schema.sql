@@ -20,6 +20,7 @@ create table if not exists public.storyofus_submissions (
   setup_token uuid not null default gen_random_uuid() unique,
 
   order_reference text,
+  tracking_code text,
   customer_email text,
   customer_name text,
   contact_phone text,
@@ -40,6 +41,8 @@ create table if not exists public.storyofus_submissions (
   payment_verified_at timestamptz,
   payment_error text,
   checkout_expires_at timestamptz,
+  delivered_at timestamptz,
+  final_site_url text,
   site_passcode_hash text,
   site_passcode_hint text,
   site_passcode_set_at timestamptz,
@@ -67,6 +70,10 @@ execute function public.set_updated_at();
 create unique index if not exists storyofus_submissions_order_reference_unique
 on public.storyofus_submissions (order_reference)
 where order_reference is not null;
+
+create unique index if not exists storyofus_submissions_tracking_code_unique
+on public.storyofus_submissions (tracking_code)
+where tracking_code is not null;
 
 
 -- Couple and contact details

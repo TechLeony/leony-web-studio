@@ -78,6 +78,7 @@ type StepValidationNotice = {
   contactFieldErrors?: ContactCoupleFieldErrors;
   siteAccessFieldErrors?: SiteAccessFieldErrors;
   warning: OptionalSectionWarning | null;
+  warnings?: OptionalSectionWarning[];
 };
 
 type ContactCoupleFieldErrors = Partial<Record<keyof StoryOfUsContactCoupleData, string>>;
@@ -261,14 +262,10 @@ function StoryOfUsSetupRoute() {
   function goToNextStep() {
     const nextValidationNotice = validateCurrentStep(currentStep.id, formData);
 
-    if (nextValidationNotice.blockingErrors.length > 0 || nextValidationNotice.warning) {
-      if (
-        nextValidationNotice.warning &&
-        nextValidationNotice.warning.sectionId !== "voiceNote"
-      ) {
-        requestSectionSkip(nextValidationNotice.warning.sectionId, false);
-      }
-
+    if (
+      nextValidationNotice.blockingErrors.length > 0 ||
+      getValidationWarnings(nextValidationNotice).length > 0
+    ) {
       setValidationNotice(nextValidationNotice);
       return;
     }
@@ -322,15 +319,18 @@ function StoryOfUsSetupRoute() {
       return;
     }
 
-    const importantFieldWarning = getFirstImportantFieldWarning(formData);
+    const setupWarnings = getFullSetupWarnings(formData);
 
-    if (importantFieldWarning) {
+    if (setupWarnings.length > 0) {
       setValidationNotice({
         blockingErrors: [],
-        warning: importantFieldWarning,
+        warning: setupWarnings[0],
+        warnings: setupWarnings,
       });
-      setSubmitError("Devam etmeden önce önemli kişisel detayları kontrol etmeniz gerekiyor.");
-      setCurrentStepIndex(0);
+      setSubmitError(
+        "Devam etmeden önce eksik bırakılan bölümleri tamamlamanız veya istemediğinizi onaylamanız gerekiyor.",
+      );
+      setCurrentStepIndex(totalSteps - 1);
       return;
     }
 
@@ -387,14 +387,20 @@ function StoryOfUsSetupRoute() {
     }));
 
     if (showNotice) {
+      const warning = getOptionalSectionWarning(sectionId);
+
       setValidationNotice({
         blockingErrors: [],
-        warning: getOptionalSectionWarning(sectionId),
+        warning,
+        warnings: [warning],
       });
     }
   }
 
   function confirmSectionSkip(sectionId: StoryOfUsOptionalSectionId, shouldProceed = true) {
+    const currentWarnings = getValidationWarnings(validationNotice);
+    const remainingWarnings = currentWarnings.filter((warning) => warning.sectionId !== sectionId);
+
     setFormData((current) => ({
       ...current,
       media:
@@ -416,7 +422,33 @@ function StoryOfUsSetupRoute() {
         },
       },
     }));
-    setValidationNotice(null);
+
+    if (remainingWarnings.length > 0) {
+      setValidationNotice((currentNotice) =>
+        currentNotice
+          ? {
+              ...currentNotice,
+              warning: remainingWarnings[0],
+              warnings: remainingWarnings,
+            }
+          : {
+              blockingErrors: [],
+              warning: remainingWarnings[0],
+              warnings: remainingWarnings,
+            },
+      );
+      return;
+    }
+
+    setValidationNotice((currentNotice) =>
+      currentNotice?.blockingErrors.length
+        ? {
+            ...currentNotice,
+            warning: null,
+            warnings: [],
+          }
+        : null,
+    );
 
     if (shouldProceed) {
       if (
@@ -428,6 +460,7 @@ function StoryOfUsSetupRoute() {
         setValidationNotice({
           blockingErrors: [],
           warning: getOptionalSectionWarning("puzzle"),
+          warnings: [getOptionalSectionWarning("puzzle")],
         });
         return;
       }
@@ -454,6 +487,11 @@ function StoryOfUsSetupRoute() {
     setValidationNotice(null);
   }
 
+  function cancelValidationWarning(sectionId: StoryOfUsOptionalSectionId) {
+    undoSectionSkip(sectionId);
+    goToStepById(getStepIdForOptionalSection(sectionId));
+  }
+
   function clearSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
     setFormData((current) => ({
       ...current,
@@ -461,8 +499,27 @@ function StoryOfUsSetupRoute() {
     }));
   }
 
+  function clearValidationWarning(sectionId: StoryOfUsOptionalSectionId) {
+    setValidationNotice((currentNotice) => {
+      const remainingWarnings = getValidationWarnings(currentNotice).filter(
+        (warning) => warning.sectionId !== sectionId,
+      );
+
+      if (!currentNotice || (currentNotice.blockingErrors.length === 0 && remainingWarnings.length === 0)) {
+        return null;
+      }
+
+      return {
+        ...currentNotice,
+        warning: remainingWarnings[0] ?? null,
+        warnings: remainingWarnings,
+      };
+    });
+  }
+
   function updateContactCoupleField(field: keyof StoryOfUsContactCoupleData, value: string) {
     setSubmitError(null);
+    const optionalSectionId = field as StoryOfUsOptionalSectionId;
     setFormData((current) => ({
       ...current,
       contactCouple: {
@@ -470,9 +527,13 @@ function StoryOfUsSetupRoute() {
         [field]: value,
       },
       confirmedSkips: value.trim()
-        ? removeConfirmedSkip(current.confirmedSkips, field as StoryOfUsOptionalSectionId)
+        ? removeConfirmedSkip(current.confirmedSkips, optionalSectionId)
         : current.confirmedSkips,
     }));
+
+    if (value.trim()) {
+      clearValidationWarning(optionalSectionId);
+    }
   }
 
   function updateSiteAccessField(field: keyof StoryOfUsSiteAccessData, value: string) {
@@ -1139,8 +1200,10 @@ function StoryOfUsSetupRoute() {
 
               <StepValidationPanel
                 notice={displayedValidationNotice}
-                onConfirmSkip={(sectionId) => confirmSectionSkip(sectionId)}
-                onCancelSkip={(sectionId) => undoSectionSkip(sectionId)}
+                onConfirmSkip={(sectionId) =>
+                  confirmSectionSkip(sectionId, currentStep.id !== "review")
+                }
+                onCancelSkip={cancelValidationWarning}
               />
 
               <ConfirmedSkipNotices
@@ -1338,6 +1401,7 @@ function validateCurrentStep(
   formData: StoryOfUsSetupFormData,
 ): StepValidationNotice {
   const blockingErrors: string[] = [];
+  const warnings: OptionalSectionWarning[] = [];
   let contactFieldErrors: ContactCoupleFieldErrors | undefined;
   let siteAccessFieldErrors: SiteAccessFieldErrors | undefined;
 
@@ -1360,14 +1424,7 @@ function validateCurrentStep(
   }
 
   if (stepId === "contactCouple") {
-    const importantFieldWarning = getFirstImportantFieldWarning(formData);
-
-    if (importantFieldWarning) {
-      return {
-        blockingErrors: [],
-        warning: importantFieldWarning,
-      };
-    }
+    warnings.push(...getImportantFieldWarnings(formData));
   }
 
   if (
@@ -1375,10 +1432,7 @@ function validateCurrentStep(
     formData.media.photos.length === 0 &&
     !isSectionConfirmedSkipped("photos", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("photos"),
-    };
+    warnings.push(getOptionalSectionWarning("photos"));
   }
 
   if (
@@ -1386,10 +1440,7 @@ function validateCurrentStep(
     !hasPuzzleSource(formData.media.puzzle) &&
     !isSectionConfirmedSkipped("puzzle", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("puzzle"),
-    };
+    warnings.push(getOptionalSectionWarning("puzzle"));
   }
 
   if (
@@ -1397,10 +1448,7 @@ function validateCurrentStep(
     isMusicSectionEmpty(formData.musicVoice.music) &&
     !isSectionConfirmedSkipped("music", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("music"),
-    };
+    warnings.push(getOptionalSectionWarning("music"));
   }
 
   if (
@@ -1408,10 +1456,7 @@ function validateCurrentStep(
     !formData.musicVoice.voiceNote &&
     !isSectionConfirmedSkipped("voiceNote", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("voiceNote"),
-    };
+    warnings.push(getOptionalSectionWarning("voiceNote"));
   }
 
   if (
@@ -1419,10 +1464,7 @@ function validateCurrentStep(
     formData.timeline.length === 0 &&
     !isSectionConfirmedSkipped("timeline", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("timeline"),
-    };
+    warnings.push(getOptionalSectionWarning("timeline"));
   }
 
   if (
@@ -1430,15 +1472,13 @@ function validateCurrentStep(
     formData.letters.length === 0 &&
     !isSectionConfirmedSkipped("letters", formData)
   ) {
-    return {
-      blockingErrors: [],
-      warning: getOptionalSectionWarning("letters"),
-    };
+    warnings.push(getOptionalSectionWarning("letters"));
   }
 
   return {
     blockingErrors: [],
-    warning: null,
+    warning: warnings[0] ?? null,
+    warnings,
   };
 }
 
@@ -1535,7 +1575,9 @@ function mergeLiveContactValidationNotice(
   liveContactNotice: StepValidationNotice | null,
   currentNotice: StepValidationNotice,
 ): StepValidationNotice | null {
-  if (!liveContactNotice && !currentNotice.siteAccessFieldErrors) {
+  const currentWarnings = getValidationWarnings(currentNotice);
+
+  if (!liveContactNotice && !currentNotice.siteAccessFieldErrors && currentWarnings.length === 0) {
     return null;
   }
 
@@ -1546,7 +1588,8 @@ function mergeLiveContactValidationNotice(
     ],
     contactFieldErrors: liveContactNotice?.contactFieldErrors,
     siteAccessFieldErrors: currentNotice.siteAccessFieldErrors,
-    warning: null,
+    warning: currentWarnings[0] ?? null,
+    warnings: currentWarnings,
   };
 }
 
@@ -1597,19 +1640,57 @@ function isSectionConfirmedSkipped(
   return formData.confirmedSkips[sectionId]?.confirmed === true;
 }
 
-function getFirstImportantFieldWarning(formData: StoryOfUsSetupFormData) {
+function getValidationWarnings(notice: StepValidationNotice | null) {
+  if (!notice) {
+    return [];
+  }
+
+  if (notice.warnings?.length) {
+    return notice.warnings;
+  }
+
+  return notice.warning ? [notice.warning] : [];
+}
+
+function getImportantFieldWarnings(formData: StoryOfUsSetupFormData) {
   const importantFields: Array<keyof Pick<
     StoryOfUsContactCoupleData,
     "relationshipStartDate" | "relationshipStory" | "recipientNickname" | "specialDateLabel"
   >> = ["relationshipStartDate", "relationshipStory", "recipientNickname", "specialDateLabel"];
 
-  for (const field of importantFields) {
-    if (!formData.contactCouple[field].trim() && !isSectionConfirmedSkipped(field, formData)) {
-      return getOptionalSectionWarning(field);
-    }
+  return importantFields
+    .filter((field) => !formData.contactCouple[field].trim() && !isSectionConfirmedSkipped(field, formData))
+    .map((field) => getOptionalSectionWarning(field));
+}
+
+function getFullSetupWarnings(formData: StoryOfUsSetupFormData) {
+  const warnings = [...getImportantFieldWarnings(formData)];
+
+  if (formData.media.photos.length === 0 && !isSectionConfirmedSkipped("photos", formData)) {
+    warnings.push(getOptionalSectionWarning("photos"));
   }
 
-  return null;
+  if (!hasPuzzleSource(formData.media.puzzle) && !isSectionConfirmedSkipped("puzzle", formData)) {
+    warnings.push(getOptionalSectionWarning("puzzle"));
+  }
+
+  if (isMusicSectionEmpty(formData.musicVoice.music) && !isSectionConfirmedSkipped("music", formData)) {
+    warnings.push(getOptionalSectionWarning("music"));
+  }
+
+  if (!formData.musicVoice.voiceNote && !isSectionConfirmedSkipped("voiceNote", formData)) {
+    warnings.push(getOptionalSectionWarning("voiceNote"));
+  }
+
+  if (formData.timeline.length === 0 && !isSectionConfirmedSkipped("timeline", formData)) {
+    warnings.push(getOptionalSectionWarning("timeline"));
+  }
+
+  if (formData.letters.length === 0 && !isSectionConfirmedSkipped("letters", formData)) {
+    warnings.push(getOptionalSectionWarning("letters"));
+  }
+
+  return warnings;
 }
 
 function hasPuzzleSource(puzzle: StoryOfUsPuzzleData) {
@@ -1633,6 +1714,26 @@ function getStepOptionalSections(stepId: StoryOfUsSetupStepId): StoryOfUsOptiona
       return ["photos", "puzzle", "music", "voiceNote", "timeline", "letters"];
     case "contactCouple":
       return [];
+  }
+}
+
+function getStepIdForOptionalSection(sectionId: StoryOfUsOptionalSectionId): StoryOfUsSetupStepId {
+  switch (sectionId) {
+    case "photos":
+    case "puzzle":
+      return "photosPuzzle";
+    case "music":
+    case "voiceNote":
+      return "musicVoice";
+    case "timeline":
+      return "timeline";
+    case "letters":
+      return "letters";
+    case "relationshipStartDate":
+    case "relationshipStory":
+    case "recipientNickname":
+    case "specialDateLabel":
+      return "contactCouple";
   }
 }
 
@@ -2211,7 +2312,9 @@ function StepValidationPanel({
   onConfirmSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
   onCancelSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
 }) {
-  if (!notice || (notice.blockingErrors.length === 0 && !notice.warning)) {
+  const warnings = getValidationWarnings(notice);
+
+  if (!notice || (notice.blockingErrors.length === 0 && warnings.length === 0)) {
     return null;
   }
 
@@ -2242,25 +2345,40 @@ function StepValidationPanel({
         </div>
       )}
 
-      {notice.warning && (
-        <div>
-          <h4 className="text-sm font-semibold text-rose-900">Küçük bir hatırlatma</h4>
-          <p className="mt-2 text-sm leading-6 text-rose-950/70">{notice.warning.message}</p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => onConfirmSkip(notice.warning.sectionId)}
-              className="rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:bg-rose-600"
-            >
-              {notice.warning.confirmLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => onCancelSkip(notice.warning.sectionId)}
-              className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
-            >
-              {notice.warning.cancelLabel}
-            </button>
+      {warnings.length > 0 && (
+        <div className={hasBlockingErrors ? "mt-5 border-t border-rose-200 pt-5" : ""}>
+          <h4 className="text-sm font-semibold text-rose-900">
+            {warnings.length === 1 ? "Küçük bir hatırlatma" : "Kontrol etmeniz gereken bölümler"}
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-rose-950/70">
+            Eksik bırakmak istediğiniz bölümleri tek tek onaylayabilir ya da ilgili adıma dönüp
+            tamamlayabilirsiniz.
+          </p>
+          <div className="mt-4 grid gap-3">
+            {warnings.map((warning) => (
+              <div
+                key={warning.sectionId}
+                className="rounded-2xl border border-rose-100 bg-white/80 p-3 shadow-sm shadow-rose-100/50"
+              >
+                <p className="text-sm leading-6 text-rose-950/70">{warning.message}</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => onConfirmSkip(warning.sectionId)}
+                    className="rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:bg-rose-600"
+                  >
+                    {warning.confirmLabel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCancelSkip(warning.sectionId)}
+                    className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                  >
+                    {warning.cancelLabel}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

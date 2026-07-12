@@ -18,7 +18,7 @@ import { ArrowRight, Check, X as XIcon, Plus, Sparkles } from "lucide-react";
 import * as Icons from "lucide-react";
 import { GlobalPending } from "@/components/leony/GlobalPending";
 
-const STORYOFUS_LOADING_DURATION_MS = 3000;
+const STORYOFUS_LOADING_DURATION_MS = 2000;
 
 export function WhatIsSection() {
   const t = useT();

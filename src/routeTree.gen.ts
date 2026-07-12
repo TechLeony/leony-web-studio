@@ -16,6 +16,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StoryofusTrackOrderRouteImport } from './routes/storyofus.track-order'
 import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
@@ -61,6 +62,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const StoryofusTrackOrderRoute = StoryofusTrackOrderRouteImport.update({
+  id: '/storyofus/track-order',
+  path: '/storyofus/track-order',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
   id: '/storyofus/setup',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin'
     | '/storyofus'
     | '/storyofus/setup/demo'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/storyofus/checkout'
     | '/storyofus/demo'
     | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   StoryofusCheckoutRoute: typeof StoryofusCheckoutRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
+  StoryofusTrackOrderRoute: typeof StoryofusTrackOrderRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
   ApiStoryofusShopierCallbackRoute: typeof ApiStoryofusShopierCallbackRoute
@@ -296,6 +309,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/storyofus/track-order': {
+      id: '/storyofus/track-order'
+      path: '/storyofus/track-order'
+      fullPath: '/storyofus/track-order'
+      preLoaderRoute: typeof StoryofusTrackOrderRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/storyofus/setup': {
       id: '/storyofus/setup'
@@ -407,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusCheckoutRoute: StoryofusCheckoutRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
+  StoryofusTrackOrderRoute: StoryofusTrackOrderRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
   ApiStoryofusShopierCallbackRoute: ApiStoryofusShopierCallbackRoute,
