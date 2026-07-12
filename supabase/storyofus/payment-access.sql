@@ -14,27 +14,16 @@ alter table public.storyofus_submissions
 add constraint storyofus_submissions_payment_status_check
 check (payment_status in ('pending', 'paid', 'failed', 'refunded', 'cancelled'));
 
--- Manual QA paid setup link:
--- insert into public.storyofus_submissions (
+-- Safe inspection only:
+-- select
+--   id,
+--   order_reference,
+--   customer_email,
 --   payment_status,
 --   status,
---   customer_email,
---   customer_name,
---   contact_phone,
 --   paid_at,
---   payment_provider,
---   payment_reference,
---   order_reference
--- )
--- values (
---   'paid',
---   'draft',
---   'qa-token@example.com',
---   'QA Token Customer',
---   '+905321234567',
---   now(),
---   'manual',
---   'manual-qa-001',
---   'manual-qa-001'
--- )
--- returning setup_token;
+--   setup_link_sent_at,
+--   created_at
+-- from public.storyofus_submissions
+-- order by created_at desc
+-- limit 20;

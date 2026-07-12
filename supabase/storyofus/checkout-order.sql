@@ -24,10 +24,4 @@ where order_reference is not null;
 -- order by created_at desc
 -- limit 10;
 
--- Manually mark an order as paid for QA:
--- update public.storyofus_submissions
--- set payment_status = 'paid',
---     paid_at = now(),
---     payment_reference = order_reference
--- where order_reference = 'PASTE_ORDER_REFERENCE_HERE'
--- returning setup_token, order_reference, payment_status, status;
+-- Payment status should be changed only by the verified server-side payment callback.

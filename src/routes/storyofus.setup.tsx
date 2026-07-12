@@ -1652,6 +1652,13 @@ function getValidationWarnings(notice: StepValidationNotice | null) {
   return notice.warning ? [notice.warning] : [];
 }
 
+function getRenderableValidationWarnings(notice: StepValidationNotice | null) {
+  return getValidationWarnings(notice).filter(
+    (warning): warning is OptionalSectionWarning =>
+      Boolean(warning?.sectionId && warning.message),
+  );
+}
+
 function getImportantFieldWarnings(formData: StoryOfUsSetupFormData) {
   const importantFields: Array<keyof Pick<
     StoryOfUsContactCoupleData,
@@ -2312,7 +2319,7 @@ function StepValidationPanel({
   onConfirmSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
   onCancelSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
 }) {
-  const warnings = getValidationWarnings(notice);
+  const warnings = getRenderableValidationWarnings(notice);
 
   if (!notice || (notice.blockingErrors.length === 0 && warnings.length === 0)) {
     return null;
@@ -2367,14 +2374,14 @@ function StepValidationPanel({
                     onClick={() => onConfirmSkip(warning.sectionId)}
                     className="rounded-full bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:bg-rose-600"
                   >
-                    {warning.confirmLabel}
+                    {warning.confirmLabel || "Bunu istemiyorum"}
                   </button>
                   <button
                     type="button"
                     onClick={() => onCancelSkip(warning.sectionId)}
                     className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
                   >
-                    {warning.cancelLabel}
+                    {warning.cancelLabel || "Eksikleri tamamlayacağım"}
                   </button>
                 </div>
               </div>
@@ -3223,6 +3230,7 @@ function LettersStep({
 
 function StoryOfUsSetupAccessScreen({ access }: { access: SetupAccessUiState }) {
   const content = getSetupAccessScreenContent(access);
+  const note = typeof content.note === "string" && content.note.trim() ? content.note : null;
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
@@ -3233,21 +3241,21 @@ function StoryOfUsSetupAccessScreen({ access }: { access: SetupAccessUiState }) 
 
           <div className="relative mx-auto grid max-w-2xl gap-5">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-rose-100 bg-rose-50 text-2xl shadow-lg shadow-rose-100/70">
-              {content.icon}
+              {content.icon || "💌"}
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500">
                 StoryOfUs Setup
               </p>
               <h1 className="mt-3 text-2xl font-bold tracking-tight text-rose-950 sm:text-4xl">
-                {content.title}
+                {content.title || "Kurulum bağlantısı kontrol ediliyor"}
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
-                {content.body}
+                {content.body || "Lütfen birkaç saniye sonra tekrar deneyin."}
               </p>
-              {content.note && (
+              {note && (
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/55">
-                  {content.note}
+                  {note}
                 </p>
               )}
             </div>
