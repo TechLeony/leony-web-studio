@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
@@ -9,6 +9,7 @@ import {
   type StoryOfUsSetupAccessResult,
 } from "../lib/storyofus/setupAccess.server";
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
+import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
 import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
@@ -122,6 +123,7 @@ function StoryOfUsSetupRoute() {
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
+  const [hasEnteredSubmittedEditMode, setHasEnteredSubmittedEditMode] = useState(false);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
@@ -170,6 +172,7 @@ function StoryOfUsSetupRoute() {
     setLegalConsentErrors([]);
     setSubmitError(null);
     setSubmissionResult(null);
+    setHasEnteredSubmittedEditMode(false);
 
     if (!setupToken) {
       revokeCurrentPreviewUrls();
@@ -199,6 +202,7 @@ function StoryOfUsSetupRoute() {
           setWasDraftRestored(false);
           setCurrentStepIndex(0);
           setFormData(createEmptyStoryOfUsSetupFormData());
+          setHasEnteredSubmittedEditMode(false);
           return;
         }
 
@@ -222,6 +226,7 @@ function StoryOfUsSetupRoute() {
         );
         setWasDraftRestored(Boolean(restoredDraft));
         setCurrentStepIndex(0);
+        setHasEnteredSubmittedEditMode(false);
       })
       .catch((error) => {
         if (!isActive) {
@@ -313,6 +318,15 @@ function StoryOfUsSetupRoute() {
     setWasDraftRestored(false);
   }
 
+  function enterSubmittedEditMode() {
+    setHasEnteredSubmittedEditMode(true);
+    setCurrentStepIndex(0);
+    setValidationNotice(null);
+    setLegalConsentErrors([]);
+    setSubmitError(null);
+    scheduleStepCardScroll(120);
+  }
+
   async function handleSubmitSetup() {
     if (isSubmittingSetup) {
       return;
@@ -349,7 +363,10 @@ function StoryOfUsSetupRoute() {
       return;
     }
 
-    const nextLegalConsentErrors = validateLegalConsents(formData.legalConsents);
+    const nextLegalConsentErrors = validateLegalConsents(
+      formData.legalConsents,
+      formData.status === "draft",
+    );
 
     if (nextLegalConsentErrors.length > 0) {
       setLegalConsentErrors(nextLegalConsentErrors);
@@ -1183,13 +1200,25 @@ function StoryOfUsSetupRoute() {
     return (
       <StoryOfUsSetupSuccessScreen
         editableUntil={submissionResult.editableUntil}
-        onEditAgain={() => setSubmissionResult(null)}
+        onEditAgain={() => {
+          setSubmissionResult(null);
+          enterSubmittedEditMode();
+        }}
       />
     );
   }
 
   if (setupAccess.status !== "ready") {
     return <StoryOfUsSetupAccessScreen access={setupAccess} />;
+  }
+
+  if (setupAccess.mode === "edit" && !hasEnteredSubmittedEditMode) {
+    return (
+      <StoryOfUsSubmittedReentryScreen
+        editableUntil={setupAccess.editableUntil}
+        onEnterEditMode={enterSubmittedEditMode}
+      />
+    );
   }
 
   return (
@@ -1746,7 +1775,10 @@ function normalizeTurkeyMobilePhone(value: string) {
   return null;
 }
 
-function validateLegalConsents(legalConsents: StoryOfUsLegalConsents) {
+function validateLegalConsents(
+  legalConsents: StoryOfUsLegalConsents,
+  requireServiceStartConsent = false,
+) {
   const errors: string[] = [];
 
   if (!legalConsents.privacyNoticeAccepted.accepted) {
@@ -1759,6 +1791,10 @@ function validateLegalConsents(legalConsents: StoryOfUsLegalConsents) {
 
   if (!legalConsents.contentResponsibilityAccepted.accepted) {
     errors.push("Yüklenen içeriklerin sorumluluğu kabulü zorunlu.");
+  }
+
+  if (requireServiceStartConsent && !legalConsents.serviceStartConsentAccepted.accepted) {
+    errors.push("3 saatlik düzenleme ve iade süresi bilgilendirmesi onayı zorunlu.");
   }
 
   return errors;
@@ -2310,6 +2346,10 @@ function restoreLegalConsents(
     contentResponsibilityAccepted: restoreLegalConsentState(
       legalConsents?.contentResponsibilityAccepted,
       fallback.contentResponsibilityAccepted,
+    ),
+    serviceStartConsentAccepted: restoreLegalConsentState(
+      legalConsents?.serviceStartConsentAccepted,
+      fallback.serviceStartConsentAccepted,
     ),
   };
 }
@@ -3512,7 +3552,24 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
         icon: "💳",
         title: "Ödeme onayı bekleniyor.",
         body: "Kurulum formu, ödeme onaylandıktan sonra aktif hale gelir.",
-        note: access.paymentStatus ? `Mevcut ödeme durumu: ${access.paymentStatus}` : undefined,
+        note: access.paymentStatus ? `Ödeme durumu: ${access.paymentStatus}` : undefined,
+      };
+    case "refund_under_review":
+      return {
+        icon: "💌",
+        title: access.title,
+        body: (
+          <>
+            {access.body} Ayrıntılı bilgi için{" "}
+            <a
+              href="mailto:contact@leony.tech"
+              className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
+            >
+              contact@leony.tech
+            </a>{" "}
+            adresinden bize ulaşabilirsiniz.
+          </>
+        ),
       };
     case "edit_locked":
       return {
@@ -3531,6 +3588,88 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
         body: access.message,
       };
   }
+}
+
+function StoryOfUsSubmittedReentryScreen({
+  editableUntil,
+  onEnterEditMode,
+}: {
+  editableUntil: string | null;
+  onEnterEditMode: () => void;
+}) {
+  return (
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
+      <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 p-6 text-center shadow-2xl shadow-rose-100/70 backdrop-blur sm:p-10">
+          <div className="absolute -left-16 top-10 h-36 w-36 rounded-full bg-rose-200/25 blur-3xl" />
+          <div className="absolute -right-12 bottom-8 h-40 w-40 rounded-full bg-pink-200/30 blur-3xl" />
+
+          <div className="relative mx-auto grid max-w-2xl gap-6">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-rose-100 bg-rose-50 text-2xl shadow-lg shadow-rose-100/70">
+              💌
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500">
+                StoryOfUs Setup
+              </p>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-rose-950 sm:text-5xl">
+                Bilgilerinizi aldık 💌
+              </h1>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
+                Kurulum formunuz başarıyla gönderildi. Aşağıdaki saate kadar bilgilerinizi yeniden
+                düzenleyebilirsiniz.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/50">
+              {editableUntil ? (
+                <>
+                  <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                    Son düzenleme ve iade talebi zamanı
+                  </span>
+                  <span className="mt-2 block text-2xl font-bold text-rose-800 sm:text-3xl">
+                    {formatEditableUntil(editableUntil)}
+                  </span>
+                  <span className="mt-3 block">
+                    Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.
+                  </span>
+                </>
+              ) : (
+                "Bilgilerinizi 3 saatlik düzenleme süresi içinde güncelleyebilirsiniz."
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-pink-100 bg-white/80 p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/40">
+              Herhangi bir konuda bize ulaşmanız gerekirse veya eklemek istediğiniz bir şey olursa{" "}
+              <a
+                href="mailto:contact@leony.tech"
+                className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
+              >
+                contact@leony.tech
+              </a>{" "}
+              adresinden bize yazabilirsiniz.
+            </div>
+
+            <div className="flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={onEnterEditMode}
+                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+              >
+                Bilgilerimi düzenle
+              </button>
+              <Link
+                to={storyOfUsDemoCtaConfig.mainPath}
+                className="rounded-full border border-rose-200 bg-white/85 px-6 py-3 text-sm font-semibold text-rose-700 shadow-sm shadow-rose-100 transition hover:border-rose-300 hover:bg-rose-50"
+              >
+                StoryOfUs sayfasına dön
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 function StoryOfUsSetupSuccessScreen({
@@ -3570,7 +3709,9 @@ function StoryOfUsSetupSuccessScreen({
                 adresinden bize yazabilirsiniz.
               </p>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/60 sm:text-base">
-                Bu bağlantı üzerinden bilgilerinizi 3 saat içinde düzenleyebilirsiniz.
+                {editableUntil
+                  ? `Bilgilerinizi ${formatEditableUntil(editableUntil)} tarihine kadar düzenleyebilirsiniz. Aynı süre içinde iade talebinizi bize iletebilirsiniz.`
+                  : "Bilgilerinizi 3 saatlik düzenleme süresi içinde güncelleyebilirsiniz."}
               </p>
             </div>
 
@@ -3581,10 +3722,25 @@ function StoryOfUsSetupSuccessScreen({
               </span>
               {editableUntil && (
                 <span className="mt-2 block font-semibold text-rose-700">
-                  Son düzenleme zamanı: {formatEditableUntil(editableUntil)}
+                  Son düzenleme ve iade talebi zamanı: {formatEditableUntil(editableUntil)}
                 </span>
               )}
             </div>
+
+            {editableUntil && (
+              <div className="rounded-3xl border border-pink-100 bg-white/80 p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/40">
+                İade talebinizin bu süre dolmadan Leony’ye ulaşması gerekir ve talep bu politika
+                kapsamında işleme alınır. Süre sona erdiğinde bilgileriniz kilitlenir ve
+                kişiselleştirilmiş web sitenizin hazırlanmasına başlanır. Bize{" "}
+                <a
+                  href="mailto:contact@leony.tech"
+                  className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
+                >
+                  contact@leony.tech
+                </a>{" "}
+                adresinden yazabilirsiniz.
+              </div>
+            )}
 
             <div className="mx-auto inline-flex rounded-full border border-rose-100 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-600 shadow-sm shadow-rose-100/50">
               Başvuru durumunuz: Alındı
@@ -3646,7 +3802,9 @@ function ReviewSubmitStep({
     (media) => media.section === "puzzle" || media.isPuzzleSource,
   );
   const existingVoiceNoteMedia = existingMedia.filter((media) => media.section === "voice_note");
-  const areLegalConsentsComplete = validateLegalConsents(formData.legalConsents).length === 0;
+  const shouldRequireServiceStartConsent = formData.status === "draft";
+  const areLegalConsentsComplete =
+    validateLegalConsents(formData.legalConsents, shouldRequireServiceStartConsent).length === 0;
   const skippedImportantFields = getSkippedImportantFieldReviewItems(formData);
 
   return (
@@ -4018,6 +4176,30 @@ function ReviewSubmitStep({
               }
               label="Yüklediğim içerikleri paylaşma hakkına sahip olduğumu; içeriklerde yer alan kişilerin gerekli izinlerini aldığımı ve bu içeriklerin doğruluğundan/sorumluluğundan benim sorumlu olduğumu kabul ediyorum."
             />
+            {shouldRequireServiceStartConsent && (
+              <ConsentCheckbox
+                checked={formData.legalConsents.serviceStartConsentAccepted.accepted}
+                onChange={(accepted) =>
+                  onUpdateLegalConsent("serviceStartConsentAccepted", accepted)
+                }
+                label={
+                  <>
+                    Kurulum formunu gönderdikten sonra 3 saat boyunca bilgilerimi
+                    düzenleyebileceğimi ve bu süre içinde iade talebinde bulunabileceğimi biliyorum.
+                    Bu sürenin sonunda paylaştığım bilgilere göre kişiselleştirilmiş StoryOfUs
+                    hizmetinin hazırlanmasına başlanmasını açıkça talep ediyorum. Hazırlık başladıktan
+                    sonra yalnızca fikir değişikliğine dayalı standart cayma hakkının
+                    uygulanmayabileceği konusunda bilgilendirildim.{" "}
+                    <Link
+                      to={storyOfUsDemoCtaConfig.refundPolicyPath}
+                      className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 hover:text-rose-700"
+                    >
+                      İade Politikası
+                    </Link>
+                  </>
+                }
+              />
+            )}
           </div>
 
           {areLegalConsentsComplete && (
@@ -4096,7 +4278,7 @@ function ConsentCheckbox({
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  label: string;
+  label: ReactNode;
 }) {
   return (
     <label

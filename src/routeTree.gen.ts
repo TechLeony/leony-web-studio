@@ -18,6 +18,7 @@ import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as StoryofusTrackOrderRouteImport } from './routes/storyofus.track-order'
 import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
+import { Route as StoryofusRefundPolicyRouteImport } from './routes/storyofus.refund-policy'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
@@ -71,6 +72,11 @@ const StoryofusTrackOrderRoute = StoryofusTrackOrderRouteImport.update({
 const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
   id: '/storyofus/setup',
   path: '/storyofus/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusRefundPolicyRoute = StoryofusRefundPolicyRouteImport.update({
+  id: '/storyofus/refund-policy',
+  path: '/storyofus/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin': typeof AdminIndexRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
   '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
     | '/storyofus/setup'
     | '/storyofus/track-order'
     | '/admin/'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
     | '/storyofus/setup'
     | '/storyofus/track-order'
     | '/admin'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/sektor/$slug'
     | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
     | '/storyofus/setup'
     | '/storyofus/track-order'
     | '/admin/'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   SektorSlugRoute: typeof SektorSlugRoute
   StoryofusCheckoutRoute: typeof StoryofusCheckoutRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
+  StoryofusRefundPolicyRoute: typeof StoryofusRefundPolicyRoute
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusTrackOrderRoute: typeof StoryofusTrackOrderRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       path: '/storyofus/setup'
       fullPath: '/storyofus/setup'
       preLoaderRoute: typeof StoryofusSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/refund-policy': {
+      id: '/storyofus/refund-policy'
+      path: '/storyofus/refund-policy'
+      fullPath: '/storyofus/refund-policy'
+      preLoaderRoute: typeof StoryofusRefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/storyofus/demo': {
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   SektorSlugRoute: SektorSlugRoute,
   StoryofusCheckoutRoute: StoryofusCheckoutRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
+  StoryofusRefundPolicyRoute: StoryofusRefundPolicyRoute,
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusTrackOrderRoute: StoryofusTrackOrderRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,

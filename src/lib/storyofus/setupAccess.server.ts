@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { isStoryOfUsActiveRefundStatus } from "./refundEligibility.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 type SkipState = {
@@ -53,6 +54,7 @@ export type StoryOfUsSetupAccessInitialData = {
     privacyNoticeAccepted: LegalConsentState;
     explicitConsentAccepted: LegalConsentState;
     contentResponsibilityAccepted: LegalConsentState;
+    serviceStartConsentAccepted: LegalConsentState;
   } | null;
   contactCouple: {
     partnerName: string;
@@ -104,6 +106,11 @@ export type StoryOfUsSetupAccessResult =
       editableUntil: string | null;
     }
   | {
+      status: "refund_under_review";
+      title: string;
+      body: string;
+    }
+  | {
       status: "ready";
       mode: "new" | "edit";
       setupToken: string;
@@ -142,8 +149,10 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
           "contact_phone",
           "status",
           "payment_status",
+          "refund_status",
           "confirmed_skips",
           "legal_consents",
+          "service_start_consent",
           "submitted_at",
           "editable_until",
           "site_passcode_hash",
@@ -169,7 +178,20 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
     if (paymentStatus !== "paid") {
       return {
         status: "not_paid",
-        paymentStatus,
+        paymentStatus: getPaymentStatusLabel(paymentStatus),
+      };
+    }
+
+    const refundStatus =
+      typeof submission.refund_status === "string" ? submission.refund_status : "none";
+
+    if (isStoryOfUsActiveRefundStatus(refundStatus)) {
+      const refundContent = getRefundSetupAccessContent(refundStatus);
+
+      return {
+        status: "refund_under_review",
+        title: refundContent.title,
+        body: refundContent.body,
       };
     }
 
@@ -236,9 +258,7 @@ async function createInitialData(submission: Record<string, unknown>) {
     confirmedSkips: isRecord(submission.confirmed_skips)
       ? (submission.confirmed_skips as ConfirmedSkips)
       : {},
-    legalConsents: isRecord(submission.legal_consents)
-      ? (submission.legal_consents as StoryOfUsSetupAccessInitialData["legalConsents"])
-      : null,
+    legalConsents: restoreLegalConsents(submission.legal_consents, submission.service_start_consent),
     contactCouple: {
       partnerName: stringValue(coupleDetails?.partner_name),
       coupleDisplayName: stringValue(coupleDetails?.couple_display_name),
@@ -390,4 +410,79 @@ function stringValue(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function restoreLegalConsents(legalConsents: unknown, serviceStartConsent: unknown) {
+  const baseConsents = isRecord(legalConsents) ? legalConsents : {};
+
+  return {
+    privacyNoticeAccepted: restoreConsentState(baseConsents.privacyNoticeAccepted),
+    explicitConsentAccepted: restoreConsentState(baseConsents.explicitConsentAccepted),
+    contentResponsibilityAccepted: restoreConsentState(baseConsents.contentResponsibilityAccepted),
+    serviceStartConsentAccepted: restoreConsentState(serviceStartConsent),
+  };
+}
+
+function restoreConsentState(value: unknown): LegalConsentState {
+  if (!isRecord(value) || value.accepted !== true) {
+    return {
+      accepted: false,
+    };
+  }
+
+  return {
+    accepted: true,
+    acceptedAt: typeof value.acceptedAt === "string" ? value.acceptedAt : undefined,
+  };
+}
+
+function getPaymentStatusLabel(paymentStatus: string | null) {
+  switch (paymentStatus) {
+    case "pending":
+      return "Ödeme bekleniyor";
+    case "failed":
+      return "Ödeme tamamlanamadı";
+    case "cancelled":
+      return "Ödeme iptal edildi";
+    case "refunded":
+      return "İade edildi";
+    case "paid":
+      return "Ödeme onaylandı";
+    default:
+      return null;
+  }
+}
+
+function getRefundSetupAccessContent(refundStatus: string) {
+  switch (refundStatus) {
+    case "requested":
+      return {
+        title: "İade talebiniz alındı.",
+        body:
+          "İade talebiniz bize ulaştı. İnceleme süreci boyunca kurulum formunuz geçici olarak kapalıdır.",
+      };
+    case "approved":
+      return {
+        title: "İade talebiniz onaylandı.",
+        body: "İade talebiniz onaylandı. İade işleminin tamamlanması bekleniyor.",
+      };
+    case "processing":
+      return {
+        title: "İade işleminiz sürüyor.",
+        body:
+          "İade işleminiz devam ediyor. İşlem tamamlandığında sipariş takip sayfanız güncellenecektir.",
+      };
+    case "refunded":
+      return {
+        title: "İade işleminiz tamamlandı.",
+        body: "Bu sipariş için iade işlemi tamamlandı.",
+      };
+    case "under_review":
+    default:
+      return {
+        title: "İade talebiniz inceleniyor.",
+        body:
+          "Bu siparişle ilgili iade talebiniz inceleniyor. Gerekirse sizinle iletişime geçeceğiz.",
+      };
+  }
 }

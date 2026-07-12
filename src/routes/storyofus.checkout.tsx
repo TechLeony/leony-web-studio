@@ -32,7 +32,6 @@ type CheckoutOrderResult = {
   customerEmail: string;
   customerName: string;
   contactPhone: string;
-  paymentStatus: "pending";
   paymentAmount: number;
   paymentCurrency: string;
   shopierPaymentUrl: string;
@@ -176,6 +175,17 @@ function StoryOfUsCheckout() {
                     E-posta adresimi doğru yazdığımı ve kurulum bağlantısının bu adrese
                     gönderileceğini onaylıyorum.
                   </CheckoutCheckbox>
+                  <p className="rounded-2xl border border-rose-100 bg-white/70 px-4 py-3 text-xs leading-6 text-rose-950/55">
+                    Ödeme sonrasında kurulum formunuzu doldurursunuz. Kişiselleştirilmiş
+                    hazırlık, formu göndermenizin ardından verilen 3 saatlik düzenleme süresi sona
+                    erdiğinde başlar.{" "}
+                    <Link
+                      to={storyOfUsDemoCtaConfig.refundPolicyPath}
+                      className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 hover:text-rose-700"
+                    >
+                      İade Politikası
+                    </Link>
+                  </p>
                 </div>
 
                 {submitError && (
@@ -254,6 +264,10 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
         </p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
           Ödeme tamamlandıktan sonra kurulum bağlantınız e-posta adresinize gönderilecek.
+        </p>
+        <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-rose-950/55">
+          Kişiselleştirilmiş hazırlık, kurulum formunu göndermenizden sonra başlayan 3 saatlik
+          düzenleme süresi sona erdiğinde başlar.
         </p>
       </div>
 

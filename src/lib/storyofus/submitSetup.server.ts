@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { hashSitePasscode, validateSitePasscode } from "./passcode.server";
+import { getStoryOfUsServiceStartConsent, isStoryOfUsActiveRefundStatus } from "./refundEligibility.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
@@ -97,6 +98,10 @@ type SubmitPayload = {
       accepted: boolean;
       acceptedAt?: string;
     };
+    serviceStartConsentAccepted?: {
+      accepted: boolean;
+      acceptedAt?: string;
+    };
   };
   timeline: Array<{
     id: string;
@@ -151,7 +156,7 @@ async function submitStoryOfUsSetupData(
   const { data: submission, error: submissionError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
     .select(
-      "id, setup_token, status, payment_status, submitted_at, editable_until, site_passcode_hash, site_passcode_set_at",
+      "id, setup_token, status, payment_status, refund_status, submitted_at, editable_until, site_passcode_hash, site_passcode_set_at",
     )
     .eq("setup_token", setupToken)
     .maybeSingle();
@@ -166,6 +171,10 @@ async function submitStoryOfUsSetupData(
 
   if (submission.payment_status !== "paid") {
     throw new Error("StoryOfUs setup form is not active until payment is approved.");
+  }
+
+  if (isStoryOfUsActiveRefundStatus(typeof submission.refund_status === "string" ? submission.refund_status : null)) {
+    throw new Error("Bu siparişle ilgili iade talebiniz inceleniyor. Ayrıntılı bilgi için contact@leony.tech adresinden bize ulaşabilirsiniz.");
   }
 
   const isFirstSubmit = submission.status === "draft";
@@ -186,6 +195,17 @@ async function submitStoryOfUsSetupData(
   const nextEditableUntil = isFirstSubmit
     ? new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString()
     : effectiveEditableUntil;
+
+  if (isFirstSubmit && payload.legalConsents.serviceStartConsentAccepted?.accepted !== true) {
+    throw new Error("3 saatlik düzenleme ve iade süresi bilgilendirmesi onayı zorunlu.");
+  }
+
+  const serviceStartConsent = isFirstSubmit
+    ? getStoryOfUsServiceStartConsent({
+        acceptedAt: submittedAt,
+        serviceScheduledAt: nextEditableUntil,
+      })
+    : undefined;
   const hasExistingPasscode = typeof submission.site_passcode_hash === "string";
   const siteAccess = payload.siteAccess ?? {
     passcode: "",
@@ -226,6 +246,7 @@ async function submitStoryOfUsSetupData(
       submission_snapshot: submissionSnapshot,
       submitted_at: isFirstSubmit ? submittedAt : submission.submitted_at,
       editable_until: nextEditableUntil,
+      ...(serviceStartConsent ? { service_start_consent: serviceStartConsent } : {}),
       last_resubmitted_at: isFirstSubmit ? null : submittedAt,
       site_passcode_hash: nextPasscodeHash,
       site_passcode_hint: emptyToNull(passcodeValidation.normalizedHint),

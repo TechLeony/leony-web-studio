@@ -121,6 +121,7 @@ export type StoryOfUsLegalConsents = {
   privacyNoticeAccepted: StoryOfUsLegalConsentState;
   explicitConsentAccepted: StoryOfUsLegalConsentState;
   contentResponsibilityAccepted: StoryOfUsLegalConsentState;
+  serviceStartConsentAccepted: StoryOfUsLegalConsentState;
 };
 
 export type StoryOfUsSiteAccessData = {
@@ -269,6 +270,9 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
       accepted: false,
     },
     contentResponsibilityAccepted: {
+      accepted: false,
+    },
+    serviceStartConsentAccepted: {
       accepted: false,
     },
   },

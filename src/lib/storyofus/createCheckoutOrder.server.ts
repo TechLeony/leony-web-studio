@@ -14,7 +14,6 @@ type CreateCheckoutOrderResult = {
   customerEmail: string;
   customerName: string;
   contactPhone: string;
-  paymentStatus: "pending";
   paymentAmount: number;
   paymentCurrency: string;
   shopierPaymentUrl: string;
@@ -89,7 +88,7 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
         },
       })
       .select(
-        "order_reference, tracking_code, customer_email, customer_name, contact_phone, payment_status, payment_amount, payment_currency",
+        "order_reference, tracking_code, customer_email, customer_name, contact_phone, payment_amount, payment_currency",
       )
       .single();
 
@@ -103,7 +102,6 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
       customerEmail: String(insertedSubmission.customer_email),
       customerName: String(insertedSubmission.customer_name),
       contactPhone: String(insertedSubmission.contact_phone),
-      paymentStatus: "pending",
       paymentAmount: Number(insertedSubmission.payment_amount) || paymentTarget.amount,
       paymentCurrency: String(insertedSubmission.payment_currency || paymentTarget.currency),
       shopierPaymentUrl: paymentTarget.paymentUrl,

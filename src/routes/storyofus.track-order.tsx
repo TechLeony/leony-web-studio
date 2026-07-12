@@ -158,7 +158,7 @@ function TrackingResultCard({ result }: { result: Extract<TrackingResult, { stat
         <TrackingInfo label="Takip numarası" value={result.trackingCode} />
         <TrackingInfo label="Sipariş referansı" value={result.orderReference} />
         <TrackingInfo label="E-posta" value={result.customerEmailMasked} />
-        <TrackingInfo label="Ödeme durumu" value={result.paymentStatus} />
+        <TrackingInfo label="Ödeme durumu" value={result.paymentStatusLabel} />
         <TrackingInfo label="Ödeme tarihi" value={formatTrackingDate(result.paidAt)} />
         <TrackingInfo label="Form gönderimi" value={formatTrackingDate(result.submittedAt)} />
         <TrackingInfo label="Düzenleme sonu" value={formatTrackingDate(result.editableUntil)} />

@@ -16,7 +16,23 @@ type CustomerStatus =
   | "in_review"
   | "ready"
   | "delivered"
-  | "cancelled";
+  | "cancelled"
+  | "refund_requested"
+  | "refund_under_review"
+  | "refund_approved"
+  | "refund_processing"
+  | "refunded"
+  | "refund_failed";
+
+type RefundCustomerStatus = Extract<
+  CustomerStatus,
+  | "refund_requested"
+  | "refund_under_review"
+  | "refund_approved"
+  | "refund_processing"
+  | "refunded"
+  | "refund_failed"
+>;
 
 type OrderTrackingFoundResult = {
   status: "found";
@@ -24,8 +40,7 @@ type OrderTrackingFoundResult = {
   orderReference: string;
   customerName: string;
   customerEmailMasked: string;
-  paymentStatus: string;
-  internalStatus: string;
+  paymentStatusLabel: string;
   customerStatus: CustomerStatus;
   customerStatusLabel: string;
   customerStatusDescription: string;
@@ -85,6 +100,7 @@ export const getStoryOfUsOrderTracking = createServerFn({ method: "POST" })
           "customer_email",
           "contact_phone",
           "payment_status",
+          "refund_status",
           "status",
           "setup_link_sent_at",
           "paid_at",
@@ -114,8 +130,7 @@ export const getStoryOfUsOrderTracking = createServerFn({ method: "POST" })
       orderReference: stringValue(submission.order_reference),
       customerName: stringValue(submission.customer_name),
       customerEmailMasked: maskEmail(stringValue(submission.customer_email)),
-      paymentStatus: stringValue(submission.payment_status),
-      internalStatus: stringValue(submission.status),
+      paymentStatusLabel: getPaymentStatusLabel(stringValue(submission.payment_status)),
       customerStatus: customerStatus.id,
       customerStatusLabel: customerStatus.label,
       customerStatusDescription: customerStatus.description,
@@ -140,6 +155,23 @@ function createNotFoundResult(): OrderTrackingResult {
   };
 }
 
+function getPaymentStatusLabel(paymentStatus: string) {
+  switch (paymentStatus) {
+    case "paid":
+      return "Ödeme onaylandı";
+    case "pending":
+      return "Ödeme bekleniyor";
+    case "failed":
+      return "Ödeme tamamlanamadı";
+    case "cancelled":
+      return "Ödeme iptal edildi";
+    case "refunded":
+      return "İade edildi";
+    default:
+      return "Ödeme durumu kontrol ediliyor";
+  }
+}
+
 function doesContactMatch(
   submission: Record<string, unknown>,
   normalizedEmail: string | null,
@@ -160,9 +192,16 @@ function getCustomerStatus(submission: Record<string, unknown>): {
   description: string;
 } {
   const paymentStatus = stringValue(submission.payment_status);
+  const refundStatus = stringValue(submission.refund_status);
   const internalStatus = stringValue(submission.status);
   const editableUntil = nullableString(submission.editable_until);
   const deliveredAt = nullableString(submission.delivered_at);
+
+  const refundCustomerStatus = getRefundCustomerStatus(refundStatus);
+
+  if (refundCustomerStatus) {
+    return refundCustomerStatus;
+  }
 
   if (["failed", "cancelled", "refunded"].includes(paymentStatus) || internalStatus === "archived") {
     return {
@@ -236,7 +275,60 @@ function getCustomerStatus(submission: Record<string, unknown>): {
   };
 }
 
+function getRefundCustomerStatus(refundStatus: string): {
+  id: CustomerStatus;
+  label: string;
+  description: string;
+} | null {
+  switch (refundStatus) {
+    case "requested":
+      return {
+        id: "refund_requested",
+        label: "İade talebi alındı",
+        description: "İade talebiniz alındı. Değerlendirme için sizinle iletişim kurulabilir.",
+      };
+    case "under_review":
+      return {
+        id: "refund_under_review",
+        label: "İade talebi inceleniyor",
+        description: "İade talebiniz inceleniyor. Gerekirse sizinle iletişime geçeceğiz.",
+      };
+    case "approved":
+      return {
+        id: "refund_approved",
+        label: "İade talebi onaylandı",
+        description: "İade talebiniz onaylandı. İşlem adımları takip ediliyor.",
+      };
+    case "processing":
+      return {
+        id: "refund_processing",
+        label: "İade işlemi sürüyor",
+        description: "İade işleminiz devam ediyor.",
+      };
+    case "refunded":
+      return {
+        id: "refunded",
+        label: "İade edildi",
+        description: "Bu sipariş için iade işlemi tamamlandı.",
+      };
+    case "failed":
+      return {
+        id: "refund_failed",
+        label: "İade işlemi için sizinle iletişime geçeceğiz",
+        description: "İade işleminde ek kontrol gerekiyor. Sizinle iletişim kurulacaktır.",
+      };
+    case "rejected":
+    case "none":
+    default:
+      return null;
+  }
+}
+
 function createTrackingTimeline(customerStatus: CustomerStatus) {
+  if (isRefundCustomerStatus(customerStatus)) {
+    return createRefundTrackingTimeline(customerStatus);
+  }
+
   const steps = [
     { id: "created", label: "Sipariş oluşturuldu" },
     { id: "payment_pending", label: "Ödeme onayı" },
@@ -247,7 +339,7 @@ function createTrackingTimeline(customerStatus: CustomerStatus) {
     { id: "ready", label: "Hazır" },
     { id: "delivered", label: "Teslim edildi" },
   ];
-  const statusOrder: Record<CustomerStatus, number> = {
+  const statusOrder: Record<Exclude<CustomerStatus, RefundCustomerStatus>, number> = {
     payment_pending: 1,
     setup_pending: 2,
     edit_window_open: 3,
@@ -267,6 +359,42 @@ function createTrackingTimeline(customerStatus: CustomerStatus) {
         : index === currentIndex
           ? "current"
           : "future",
+  }));
+}
+
+function isRefundCustomerStatus(
+  customerStatus: CustomerStatus,
+): customerStatus is RefundCustomerStatus {
+  return [
+    "refund_requested",
+    "refund_under_review",
+    "refund_approved",
+    "refund_processing",
+    "refunded",
+    "refund_failed",
+  ].includes(customerStatus);
+}
+
+function createRefundTrackingTimeline(customerStatus: RefundCustomerStatus) {
+  const steps = [
+    { id: "refund_requested", label: "İade talebi alındı" },
+    { id: "refund_under_review", label: "İnceleme" },
+    { id: "refund_processing", label: "İade işlemi" },
+    { id: "refunded", label: "Tamamlandı" },
+  ];
+  const statusOrder: Record<RefundCustomerStatus, number> = {
+    refund_requested: 0,
+    refund_under_review: 1,
+    refund_approved: 2,
+    refund_processing: 2,
+    refunded: 3,
+    refund_failed: 2,
+  };
+  const currentIndex = statusOrder[customerStatus];
+
+  return steps.map((step, index) => ({
+    ...step,
+    state: index < currentIndex ? "completed" : index === currentIndex ? "current" : "future",
   }));
 }
 
