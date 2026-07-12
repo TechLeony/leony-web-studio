@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 
 import {
   getStoryOfUsSetupAccess,
@@ -126,6 +126,11 @@ function StoryOfUsSetupRoute() {
   const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
+  const stepCardRef = useRef<HTMLElement | null>(null);
+  const validationPanelRef = useRef<HTMLElement | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const [highlightedWarningId, setHighlightedWarningId] =
+    useState<StoryOfUsOptionalSectionId | null>(null);
 
   const totalSteps = STORYOFUS_SETUP_STEPS.length;
   const currentStep = STORYOFUS_SETUP_STEPS[currentStepIndex];
@@ -152,6 +157,9 @@ function StoryOfUsSetupRoute() {
   useEffect(() => {
     return () => {
       revokeCurrentPreviewUrls();
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -252,11 +260,13 @@ function StoryOfUsSetupRoute() {
   function goToPreviousStep() {
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
     setValidationNotice(null);
+    scheduleStepCardScroll();
   }
 
   function proceedToNextStep() {
     setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
     setValidationNotice(null);
+    scheduleStepCardScroll();
   }
 
   function goToNextStep() {
@@ -267,6 +277,7 @@ function StoryOfUsSetupRoute() {
       getValidationWarnings(nextValidationNotice).length > 0
     ) {
       setValidationNotice(nextValidationNotice);
+      scheduleValidationScroll(nextValidationNotice);
       return;
     }
 
@@ -278,6 +289,8 @@ function StoryOfUsSetupRoute() {
 
     if (nextStepIndex !== -1) {
       setCurrentStepIndex(nextStepIndex);
+      setValidationNotice(null);
+      scheduleStepCardScroll();
     }
   }
 
@@ -316,6 +329,7 @@ function StoryOfUsSetupRoute() {
       setValidationNotice(contactValidation);
       setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
       setCurrentStepIndex(0);
+      scheduleValidationScroll(contactValidation, 120);
       return;
     }
 
@@ -331,6 +345,7 @@ function StoryOfUsSetupRoute() {
         "Devam etmeden önce eksik bırakılan bölümleri tamamlamanız veya istemediğinizi onaylamanız gerekiyor.",
       );
       setCurrentStepIndex(totalSteps - 1);
+      scheduleWarningScroll(setupWarnings[0].sectionId, 120);
       return;
     }
 
@@ -398,7 +413,7 @@ function StoryOfUsSetupRoute() {
   }
 
   function confirmSectionSkip(sectionId: StoryOfUsOptionalSectionId, shouldProceed = true) {
-    const currentWarnings = getValidationWarnings(validationNotice);
+    const currentWarnings = getRenderableValidationWarnings(validationNotice);
     const remainingWarnings = currentWarnings.filter((warning) => warning.sectionId !== sectionId);
 
     setFormData((current) => ({
@@ -437,6 +452,7 @@ function StoryOfUsSetupRoute() {
               warnings: remainingWarnings,
             },
       );
+      scheduleWarningScroll(remainingWarnings[0].sectionId);
       return;
     }
 
@@ -490,6 +506,110 @@ function StoryOfUsSetupRoute() {
   function cancelValidationWarning(sectionId: StoryOfUsOptionalSectionId) {
     undoSectionSkip(sectionId);
     goToStepById(getStepIdForOptionalSection(sectionId));
+    scheduleOptionalSectionScroll(sectionId, 120);
+  }
+
+  function scheduleStepCardScroll(delayMs = 80) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      scrollElementIntoView(stepCardRef.current);
+    }, delayMs);
+  }
+
+  function scheduleValidationScroll(notice: StepValidationNotice, delayMs = 60) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const blockingTarget = getFirstBlockingValidationTarget(notice);
+
+      if (blockingTarget) {
+        scrollToSelector(blockingTarget, true);
+        return;
+      }
+
+      const firstWarning = getRenderableValidationWarnings(notice)[0];
+
+      if (firstWarning) {
+        scrollToWarning(firstWarning.sectionId);
+        return;
+      }
+
+      scrollElementIntoView(validationPanelRef.current);
+    }, delayMs);
+  }
+
+  function scheduleWarningScroll(sectionId: StoryOfUsOptionalSectionId, delayMs = 60) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      scrollToWarning(sectionId);
+    }, delayMs);
+  }
+
+  function scheduleOptionalSectionScroll(sectionId: StoryOfUsOptionalSectionId, delayMs = 60) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const selector = getOptionalSectionTargetSelector(sectionId);
+      scrollToSelector(selector, shouldFocusOptionalSection(sectionId));
+    }, delayMs);
+  }
+
+  function scrollToWarning(sectionId: StoryOfUsOptionalSectionId) {
+    const warningElement = document.querySelector<HTMLElement>(
+      `[data-setup-warning="${sectionId}"]`,
+    );
+
+    scrollElementIntoView(warningElement ?? validationPanelRef.current);
+    setHighlightedWarningId(sectionId);
+
+    if (highlightTimeoutRef.current) {
+      window.clearTimeout(highlightTimeoutRef.current);
+    }
+
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedWarningId(null);
+    }, 1400);
+  }
+
+  function scrollToSelector(selector: string, shouldFocus = false) {
+    const element = document.querySelector<HTMLElement>(selector);
+    scrollElementIntoView(element ?? stepCardRef.current, shouldFocus);
+  }
+
+  function scrollElementIntoView(element: HTMLElement | null, shouldFocus = false) {
+    if (!element || typeof window === "undefined") {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const scrollTop = window.scrollY + element.getBoundingClientRect().top - 88;
+
+    window.scrollTo({
+      top: Math.max(scrollTop, 0),
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+
+    if (!shouldFocus) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const focusTarget = element.matches("input, textarea, select, button")
+        ? element
+        : element.querySelector<HTMLElement>("input:not([type='file']), textarea, select, button");
+
+      focusTarget?.focus({ preventScroll: true });
+    }, prefersReducedMotion ? 0 : 220);
   }
 
   function clearSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
@@ -1088,7 +1208,7 @@ function StoryOfUsSetupRoute() {
           </p>
         </header>
 
-        <section className="rounded-[2rem] border border-white/80 bg-white/70 p-4 shadow-2xl shadow-rose-100/60 backdrop-blur sm:p-6 lg:p-8">
+        <section className="rounded-[2rem] border border-white/80 bg-white/70 p-4 pb-24 shadow-2xl shadow-rose-100/60 backdrop-blur sm:p-6 lg:p-8">
           <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
@@ -1143,23 +1263,29 @@ function StoryOfUsSetupRoute() {
           )}
 
           <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="rounded-[1.5rem] border border-rose-100 bg-[#fffaf8] p-3 shadow-sm shadow-rose-100/50">
-              <nav className="grid gap-2" aria-label="StoryOfUs setup adımları">
+            <aside className="rounded-[1.5rem] border border-rose-100 bg-[#fffaf8] p-2 shadow-sm shadow-rose-100/50 sm:p-3">
+              <nav
+                className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0"
+                aria-label="StoryOfUs setup adımları"
+              >
                 {STORYOFUS_SETUP_STEPS.map((step, index) => {
                   const isActive = index === currentStepIndex;
                   const isCompleted = index < currentStepIndex;
+                  const isLocked = index > currentStepIndex;
 
                   return (
                     <button
                       key={step.id}
                       type="button"
-                      onClick={() => setCurrentStepIndex(index)}
-                      className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200 ${
+                      onClick={() => goToStepById(step.id)}
+                      disabled={isLocked}
+                      aria-current={isActive ? "step" : undefined}
+                      className={`flex min-w-[10rem] items-start gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200 disabled:cursor-not-allowed lg:w-full ${
                         isActive
                           ? "border-rose-300 bg-white text-rose-950 shadow-md shadow-rose-100"
                           : isCompleted
                             ? "border-rose-100 bg-rose-50/80 text-rose-900 hover:border-rose-200 hover:bg-white"
-                            : "border-transparent bg-transparent text-rose-950/60 hover:border-rose-100 hover:bg-white/70"
+                            : "border-transparent bg-transparent text-rose-950/40"
                       }`}
                     >
                       <span
@@ -1173,9 +1299,9 @@ function StoryOfUsSetupRoute() {
                       >
                         {isCompleted ? "✓" : index + 1}
                       </span>
-                      <span>
+                      <span className="min-w-0">
                         <span className="block text-sm font-semibold">{step.title}</span>
-                        <span className="mt-1 block text-xs leading-5 text-current opacity-70">
+                        <span className="mt-1 hidden text-xs leading-5 text-current opacity-70 sm:block">
                           {step.description}
                         </span>
                       </span>
@@ -1185,7 +1311,10 @@ function StoryOfUsSetupRoute() {
               </nav>
             </aside>
 
-            <section className="rounded-[1.5rem] border border-rose-100 bg-white/85 p-5 shadow-lg shadow-rose-100/45 sm:p-7">
+            <section
+              ref={stepCardRef}
+              className="rounded-[1.5rem] border border-rose-100 bg-white/85 p-4 shadow-lg shadow-rose-100/45 sm:p-7"
+            >
               <div className="mb-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
                   {currentStep.title}
@@ -1199,7 +1328,9 @@ function StoryOfUsSetupRoute() {
               </div>
 
               <StepValidationPanel
+                panelRef={validationPanelRef}
                 notice={displayedValidationNotice}
+                highlightedWarningId={highlightedWarningId}
                 onConfirmSkip={(sectionId) =>
                   confirmSectionSkip(sectionId, currentStep.id !== "review")
                 }
@@ -1290,12 +1421,12 @@ function StoryOfUsSetupRoute() {
                 {JSON.stringify(formData, null, 2)}
               </pre>
 
-              <div className="mt-8 border-t border-rose-100 pt-5">
+              <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-rose-100 bg-white/95 px-4 py-4 shadow-[0_-12px_28px_rgba(244,63,94,0.08)] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none">
                 <div className="mb-4 flex justify-end">
                   <button
                     type="button"
                     onClick={handleClearDraft}
-                    className="rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                    className="min-h-11 rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
                   >
                     Taslağı temizle
                   </button>
@@ -1305,7 +1436,7 @@ function StoryOfUsSetupRoute() {
                     type="button"
                     onClick={goToPreviousStep}
                     disabled={isFirstStep}
-                    className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="min-h-12 rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Geri
                   </button>
@@ -1313,7 +1444,7 @@ function StoryOfUsSetupRoute() {
                     type="button"
                     onClick={goToNextStep}
                     disabled={isLastStep}
-                    className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="min-h-12 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Devam et
                   </button>
@@ -1347,17 +1478,17 @@ function getStepHeading(stepId: StoryOfUsSetupStepId) {
 function getStepIntro(stepId: StoryOfUsSetupStepId) {
   switch (stepId) {
     case "contactCouple":
-      return "Bu adımda sipariş sahibi, çift isimleri, özel tarih ve kısa hikaye alanları yer alacak.";
+      return "Önce size ulaşacağımız bilgileri ve sitenin romantik metinlerinde kullanılacak çift detaylarını alıyoruz.";
     case "photosPuzzle":
-      return "Galeri fotoğrafları ve mini puzzle için kullanılacak görseller burada hazırlanacak.";
+      return "Galeri fotoğrafları ve puzzle fotoğrafı ayrı ayrı seçilebilir. İsterseniz aynı görseli iki yerde de kullanabilirsiniz.";
     case "musicVoice":
-      return "Spotify şarkısı ve isteğe bağlı ses notu için alanlar bu bölümde toplanacak.";
+      return "Şarkı ve ses notu birbirinden bağımsızdır. İkisini de ekleyebilir, sadece birini seçebilir veya istemediğinizi onaylayabilirsiniz.";
     case "timeline":
-      return "İlk tanışma, ilk buluşma ve özel anlar gibi hikaye kartları burada düzenlenecek.";
+      return "İlişkinizdeki özel anları kısa başlık, tarih ve birkaç cümleyle sıralayın.";
     case "letters":
-      return "Ana aşk mektubu ve open-when notları bu adımda yazılacak.";
+      return "Ana aşk mektubunuzu ve ihtiyaç anlarında açılacak küçük notları burada hazırlayın.";
     case "review":
-      return "Gönderimden önce tüm bilgiler burada özetlenecek. Şimdilik gerçek gönderim yapılmıyor.";
+      return "Göndermeden önce her şeyi sakince kontrol edin. Gönderimden sonra 3 saatlik düzenleme süreniz başlar.";
   }
 }
 
@@ -1744,13 +1875,69 @@ function getStepIdForOptionalSection(sectionId: StoryOfUsOptionalSectionId): Sto
   }
 }
 
+function getOptionalSectionTargetSelector(sectionId: StoryOfUsOptionalSectionId) {
+  switch (sectionId) {
+    case "relationshipStartDate":
+    case "relationshipStory":
+    case "recipientNickname":
+    case "specialDateLabel":
+      return `[data-setup-field="${sectionId}"]`;
+    case "photos":
+    case "puzzle":
+    case "music":
+    case "voiceNote":
+    case "timeline":
+    case "letters":
+      return `[data-setup-section="${sectionId}"]`;
+  }
+}
+
+function shouldFocusOptionalSection(sectionId: StoryOfUsOptionalSectionId) {
+  return [
+    "relationshipStartDate",
+    "relationshipStory",
+    "recipientNickname",
+    "specialDateLabel",
+    "music",
+    "timeline",
+    "letters",
+  ].includes(sectionId);
+}
+
+function getFirstBlockingValidationTarget(notice: StepValidationNotice) {
+  const contactFieldOrder: Array<keyof StoryOfUsContactCoupleData> = [
+    "customerName",
+    "customerEmail",
+    "contactPhone",
+    "partnerName",
+  ];
+  const siteAccessFieldOrder: Array<keyof StoryOfUsSiteAccessData> = [
+    "passcode",
+    "confirmPasscode",
+    "passcodeHint",
+  ];
+  const contactField = contactFieldOrder.find((field) => notice.contactFieldErrors?.[field]);
+
+  if (contactField) {
+    return `[data-setup-field="${contactField}"]`;
+  }
+
+  const siteAccessField = siteAccessFieldOrder.find((field) => notice.siteAccessFieldErrors?.[field]);
+
+  if (siteAccessField) {
+    return `[data-setup-field="${siteAccessField}"]`;
+  }
+
+  return "";
+}
+
 function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): OptionalSectionWarning {
   switch (sectionId) {
     case "photos":
       return {
         sectionId,
         message:
-          "Fotoğraf eklemezseniz final site çok daha sade görünür. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Fotoğraflar sitenizi daha kişisel hale getirir. Eklemek istemiyorsanız galeri bölümünü atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1758,7 +1945,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Puzzle fotoğrafı eklemezseniz interaktif puzzle bölümü gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Puzzle bölümü küçük ve interaktif bir sürprizdir. Kullanmak istemiyorsanız bu bölümü atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1766,7 +1953,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Şarkı eklemezseniz final sitede müzik bölümü gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Şarkı bölümü hikayenize duygu katar. Eklemek istemiyorsanız müzik bölümünü atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1774,7 +1961,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Ses notu eklemezseniz bu kişisel bölüm final sitede yer almaz. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Ses notu tamamen isteğe bağlıdır. Eklemek istemiyorsanız bu bölümü web sitesinde göstermeyiz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1782,7 +1969,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Timeline eklemezseniz ilişkinizin önemli anları ayrı bir bölüm olarak gösterilmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Zaman çizelgesi özel anlarınızı sıralar. Kullanmak istemiyorsanız bu bölümü atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1790,7 +1977,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Mektup eklemezseniz final sitede aşk mektubu / open when bölümü görünmez. Bu bölüm final siteyi daha kişisel yapar. Eğer gerçekten istemiyorsanız kaldırabiliriz.",
+          "Mektuplar siteyi daha duygusal yapar. Yazmak istemiyorsanız mektup bölümünü atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1798,7 +1985,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "İlişki başlangıç tarihini eklemezseniz, final sitede ne kadar süredir birlikte olduğunuz hesaplanamaz.",
+          "Başlangıç tarihi, birlikte geçen zamanı göstermek için kullanılır. Eklemek istemiyorsanız bu detayı atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1806,7 +1993,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Hikayenizi eklemezseniz, final site daha kişisel ve duygusal hissettirmeyebilir.",
+          "Kısa hikayeniz romantik metinleri kişiselleştirir. Yazmak istemiyorsanız bu detayı atlayabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1814,7 +2001,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Hitap ismini eklemezseniz, bazı metinler daha genel görünebilir.",
+          "Hitap şekli metinleri daha doğal hissettirir. Eklemek istemiyorsanız genel hitap kullanabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -1822,7 +2009,7 @@ function getOptionalSectionWarning(sectionId: StoryOfUsOptionalSectionId): Optio
       return {
         sectionId,
         message:
-          "Özel tarih başlığı eklemezseniz, final sitede bu detay daha sade görünebilir.",
+          "Tarih başlığı bu anı daha anlamlı gösterir. Eklemek istemiyorsanız sade bırakabiliriz.",
         confirmLabel: "Bunu istemiyorum",
         cancelLabel: "Eksikleri tamamlayacağım",
       };
@@ -2311,11 +2498,15 @@ function getOpenWhenTitlePlaceholder(index: number) {
 }
 
 function StepValidationPanel({
+  panelRef,
   notice,
+  highlightedWarningId,
   onConfirmSkip,
   onCancelSkip,
 }: {
+  panelRef: RefObject<HTMLElement | null>;
   notice: StepValidationNotice | null;
+  highlightedWarningId: StoryOfUsOptionalSectionId | null;
   onConfirmSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
   onCancelSkip: (sectionId: StoryOfUsOptionalSectionId) => void;
 }) {
@@ -2329,6 +2520,8 @@ function StepValidationPanel({
 
   return (
     <section
+      ref={panelRef}
+      aria-live="polite"
       className={`mb-5 rounded-3xl border p-4 shadow-sm ${
         hasBlockingErrors
           ? "border-red-200 bg-red-50/80 shadow-red-100/60"
@@ -2365,7 +2558,12 @@ function StepValidationPanel({
             {warnings.map((warning) => (
               <div
                 key={warning.sectionId}
-                className="rounded-2xl border border-rose-100 bg-white/80 p-3 shadow-sm shadow-rose-100/50"
+                data-setup-warning={warning.sectionId}
+                className={`rounded-2xl border bg-white/80 p-3 shadow-sm transition duration-300 ${
+                  highlightedWarningId === warning.sectionId
+                    ? "border-rose-300 shadow-lg shadow-rose-200/70 ring-4 ring-rose-100"
+                    : "border-rose-100 shadow-rose-100/50"
+                }`}
               >
                 <p className="text-sm leading-6 text-rose-950/70">{warning.message}</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -2480,15 +2678,19 @@ function PhotosPuzzleStep({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="photos"
+        className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
             <h4 className="text-base font-semibold text-rose-950">Galeri fotoğrafları</h4>
             <p className="mt-1 text-sm leading-6 text-rose-950/60">
-              Bu fotoğraflar hazırlanan web sitesindeki fotoğraf alanında kullanılacak.
+              Galeri fotoğrafları sitenin anı bölümlerinde kullanılır. Puzzle için ayrıca seçim
+              yapabilirsiniz.
             </p>
           </div>
-          <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300">
+          <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300">
             Fotoğraflarınızı ekleyin
             <input
               type="file"
@@ -2578,16 +2780,19 @@ function PhotosPuzzleStep({
         </section>
       )}
 
-      <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="puzzle"
+        className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
             <h4 className="text-base font-semibold text-rose-950">Puzzle fotoğrafı</h4>
             <p className="mt-1 text-sm leading-6 text-rose-950/60">
-              Puzzle oyununda kullanılacak fotoğrafı ayrıca seçebilirsiniz. İsterseniz galeri
-              fotoğraflarından birini de puzzle için kullanabilirsiniz.
+              Puzzle ayrı bir mini oyun olarak hazırlanır. Galeriden bir fotoğraf seçebilir veya
+              sadece puzzle için ayrı bir görsel yükleyebilirsiniz.
             </p>
           </div>
-          <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 shadow-sm shadow-rose-100 transition hover:bg-rose-50">
+          <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 shadow-sm shadow-rose-100 transition hover:bg-rose-50">
             Puzzle için ayrı fotoğraf yükle
             <input
               type="file"
@@ -2709,12 +2914,15 @@ function MusicVoiceStep({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="music"
+        className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="mb-4">
           <h4 className="text-base font-semibold text-rose-950">Şarkınızı ekleyin</h4>
           <p className="mt-1 text-sm leading-6 text-rose-950/60">
-            Spotify bölümünde görünecek şarkı bilgilerini burada hazırlıyoruz. Şimdilik linki
-            otomatik okumuyoruz; başlık ve sanatçıyı siz yazabilirsiniz.
+            Spotify şarkısı ayrı bir bölüm olarak görünür. Linki, şarkı adını ve sanatçıyı
+            eklemeniz yeterli.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -2724,6 +2932,7 @@ function MusicVoiceStep({
             onChange={(nextValue) => onUpdateMusicField("spotifyUrl", nextValue)}
             placeholder="https://open.spotify.com/track/..."
             helperText="Şarkı linkini Spotify’dan kopyalayıp buraya yapıştırabilirsiniz."
+            fieldKey="music"
             className="sm:col-span-2"
           />
           <SetupTextField
@@ -2750,12 +2959,14 @@ function MusicVoiceStep({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="voiceNote"
+        className="rounded-3xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="mb-4">
           <h4 className="text-base font-semibold text-rose-950">Ses notu</h4>
           <p className="mt-1 text-sm leading-6 text-rose-950/60">
-            İsterseniz sevgilinize özel kısa bir ses notu ekleyebilirsiniz. Dosya sadece bu ekranda
-            yerel önizleme için tutulur.
+            Ses notu tamamen isteğe bağlıdır. Eklemek isterseniz kısa ve içten bir kayıt yeterli.
           </p>
         </div>
 
@@ -2887,7 +3098,10 @@ function TimelineStep({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="timeline"
+        className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <div>
             <h4 className="text-base font-semibold text-rose-950">
@@ -2901,7 +3115,7 @@ function TimelineStep({
           <button
             type="button"
             onClick={onAddItem}
-            className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+            className="min-h-12 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
           >
             Yeni anı ekle
           </button>
@@ -2949,7 +3163,7 @@ function TimelineStep({
                       type="button"
                       onClick={() => onMoveItem(item.id, "up")}
                       disabled={isFirstItem}
-                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="min-h-11 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Yukarı taşı
                     </button>
@@ -2957,14 +3171,14 @@ function TimelineStep({
                       type="button"
                       onClick={() => onMoveItem(item.id, "down")}
                       disabled={isLastItem}
-                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="min-h-11 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Aşağı taşı
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveItem(item.id)}
-                      className="rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                      className="min-h-11 rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                     >
                       Anıyı kaldır
                     </button>
@@ -3072,7 +3286,10 @@ function LettersStep({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+      <section
+        data-setup-section="letters"
+        className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
+      >
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h4 className="text-base font-semibold text-rose-950">
@@ -3088,14 +3305,14 @@ function LettersStep({
               type="button"
               onClick={onAddLoveLetter}
               disabled={hasLoveLetter}
-              className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
+              className="min-h-12 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
             >
               Aşk mektubu ekle
             </button>
             <button
               type="button"
               onClick={onAddOpenWhenLetter}
-              className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+              className="min-h-12 rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
             >
               Open-when mektubu ekle
             </button>
@@ -3144,7 +3361,7 @@ function LettersStep({
                       type="button"
                       onClick={() => onMoveLetter(letter.id, "up")}
                       disabled={isFirstLetter}
-                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="min-h-11 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Yukarı taşı
                     </button>
@@ -3152,14 +3369,14 @@ function LettersStep({
                       type="button"
                       onClick={() => onMoveLetter(letter.id, "down")}
                       disabled={isLastLetter}
-                      className="rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="min-h-11 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Aşağı taşı
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveLetter(letter.id)}
-                      className="rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                      className="min-h-11 rounded-full border border-rose-200 bg-rose-50/70 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                     >
                       Mektubu kaldır
                     </button>
@@ -3342,9 +3559,15 @@ function StoryOfUsSetupSuccessScreen({
                 Bilgileriniz başarıyla alındı 💌
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
-                StoryOfUs web sitenizi hazırlamak için ihtiyacımız olan bilgileri aldık. Eğer ek
-                bir detaya ihtiyaç olursa sizinle e-posta veya telefon üzerinden iletişime
-                geçeceğiz.
+                Bilgilerinizi aldık 💌 Herhangi bir konuda bize ulaşmanız gerekirse veya eklemek
+                istediğiniz bir şey olursa{" "}
+                <a
+                  href="mailto:contact@leony.tech"
+                  className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
+                >
+                  contact@leony.tech
+                </a>{" "}
+                adresinden bize yazabilirsiniz.
               </p>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/60 sm:text-base">
                 Bu bağlantı üzerinden bilgilerinizi 3 saat içinde düzenleyebilirsiniz.
@@ -3974,6 +4197,7 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("customerName", nextValue)}
             placeholder="Örn: Cavanşir"
             errorText={fieldErrors.customerName}
+            fieldKey="customerName"
           />
           <SetupTextField
             label="E-posta adresiniz *"
@@ -3982,6 +4206,7 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("customerEmail", nextValue)}
             placeholder="ornek@mail.com"
             errorText={fieldErrors.customerEmail}
+            fieldKey="customerEmail"
           />
           <SetupTextField
             label="Telefon numaranız *"
@@ -3990,6 +4215,7 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("contactPhone", nextValue)}
             placeholder="05xx xxx xx xx"
             errorText={fieldErrors.contactPhone}
+            fieldKey="contactPhone"
             className="sm:col-span-2"
           />
         </div>
@@ -4009,6 +4235,7 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("partnerName", nextValue)}
             placeholder="Örn: Derya"
             errorText={fieldErrors.partnerName}
+            fieldKey="partnerName"
           />
           <SetupTextField
             label="Sitede nasıl görünsün?"
@@ -4016,12 +4243,14 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("coupleDisplayName", nextValue)}
             placeholder="Derya & Cavanşir"
             helperText="Örn: Derya & Cavanşir"
+            fieldKey="coupleDisplayName"
           />
           <SetupTextField
             label="İlişki başlangıç tarihiniz"
             type="date"
             value={value.relationshipStartDate}
             onChange={(nextValue) => onChange("relationshipStartDate", nextValue)}
+            fieldKey="relationshipStartDate"
           />
           <SetupTextField
             label="Bu tarihe ne diyelim?"
@@ -4029,12 +4258,14 @@ function ContactCoupleStep({
             onChange={(nextValue) => onChange("specialDateLabel", nextValue)}
             placeholder="Tanıştığımız gün"
             helperText="Örn: Tanıştığımız gün, ilk buluşmamız, yıl dönümümüz"
+            fieldKey="specialDateLabel"
           />
           <SetupTextField
             label="Partnerinize hitap şekliniz"
             value={value.recipientNickname}
             onChange={(nextValue) => onChange("recipientNickname", nextValue)}
             placeholder="Aşkım, sevgilim, bitanem..."
+            fieldKey="recipientNickname"
             className="sm:col-span-2"
           />
         </div>
@@ -4047,6 +4278,7 @@ function ContactCoupleStep({
           onChange={(nextValue) => onChange("relationshipStory", nextValue)}
           placeholder="Nasıl tanıştınız, ilişkinizi özel yapan küçük detaylar neler?"
           helperText="Birkaç cümle yeterli; bunu romantik metinlerde referans olarak kullanacağız."
+          fieldKey="relationshipStory"
         />
       </section>
 
@@ -4054,8 +4286,8 @@ function ContactCoupleStep({
         <div className="mb-4">
           <h4 className="text-base font-semibold text-rose-950">Website giriş şifresi</h4>
           <p className="mt-1 text-sm leading-6 text-rose-950/60">
-            Final site linki size gönderildiğinde, siteyi açmak için bu 4 rakamlı şifre
-            istenecek. Bu şifre sevgilinizin siteye girişte kullanacağı özel koddur.
+            Final site bu 4 rakamlı kodla açılacak. Kodunuz ekranda görünür şekilde
+            saklanmaz; sadece giriş kontrolü için güvenli şekilde hazırlanır.
           </p>
           {siteAccess.hasExistingPasscode && (
             <div className="mt-3 rounded-2xl border border-fuchsia-100 bg-white/80 px-4 py-3 text-sm leading-6 text-fuchsia-800">
@@ -4072,6 +4304,7 @@ function ContactCoupleStep({
             placeholder="4 rakamlı şifre"
             inputMode="numeric"
             errorText={siteAccessErrors.passcode}
+            fieldKey="passcode"
           />
           <SetupTextField
             label="Şifre tekrar *"
@@ -4080,6 +4313,7 @@ function ContactCoupleStep({
             placeholder="Şifrenizi tekrar girin"
             inputMode="numeric"
             errorText={siteAccessErrors.confirmPasscode}
+            fieldKey="confirmPasscode"
           />
           <SetupTextField
             label="Şifre ipucu *"
@@ -4088,6 +4322,7 @@ function ContactCoupleStep({
             placeholder="Örn. ilk buluştuğumuz yer"
             helperText="Sevgiliniz şifreyi hatırlamak için bu ipucunu görebilir."
             errorText={siteAccessErrors.passcodeHint}
+            fieldKey="passcodeHint"
             className="sm:col-span-2"
           />
         </div>
@@ -4105,6 +4340,7 @@ function SetupTextField({
   helperText,
   errorText,
   inputMode,
+  fieldKey,
   className = "",
 }: {
   label: string;
@@ -4115,28 +4351,42 @@ function SetupTextField({
   helperText?: string;
   errorText?: string;
   inputMode?: "numeric" | "text" | "email" | "tel";
+  fieldKey?: string;
   className?: string;
 }) {
+  const fieldId = fieldKey ? `storyofus-${fieldKey}` : undefined;
+  const helperId = fieldKey ? `${fieldId}-helper` : undefined;
+  const errorId = fieldKey ? `${fieldId}-error` : undefined;
+  const describedBy = errorText ? errorId : helperText ? helperId : undefined;
+
   return (
-    <label className={`block ${className}`}>
+    <label className={`block ${className}`} data-setup-field={fieldKey}>
       <span className="text-sm font-semibold text-rose-950">{label}</span>
       <input
+        id={fieldId}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         inputMode={inputMode}
         aria-invalid={errorText ? true : undefined}
-        className={`mt-2 w-full rounded-2xl border bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm outline-none transition placeholder:text-rose-950/35 focus:ring-4 ${
+        aria-describedby={describedBy}
+        className={`mt-2 min-h-12 w-full rounded-2xl border bg-white/90 px-4 py-3 text-sm text-rose-950 shadow-sm outline-none transition placeholder:text-rose-950/35 focus:ring-4 ${
           errorText
             ? "border-red-300 shadow-red-100/40 focus:border-red-400 focus:ring-red-100"
             : "border-rose-100 shadow-rose-100/40 focus:border-rose-300 focus:ring-rose-100"
         }`}
       />
       {errorText ? (
-        <span className="mt-1.5 block text-xs leading-5 text-red-600">{errorText}</span>
+        <span id={errorId} className="mt-1.5 block text-xs leading-5 text-red-600">
+          {errorText}
+        </span>
       ) : (
-        helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>
+        helperText && (
+          <span id={helperId} className="mt-1.5 block text-xs leading-5 text-rose-950/50">
+            {helperText}
+          </span>
+        )
       )}
     </label>
   );
@@ -4148,24 +4398,35 @@ function SetupTextArea({
   onChange,
   placeholder,
   helperText,
+  fieldKey,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   helperText?: string;
+  fieldKey?: string;
 }) {
+  const fieldId = fieldKey ? `storyofus-${fieldKey}` : undefined;
+  const helperId = fieldKey ? `${fieldId}-helper` : undefined;
+
   return (
-    <label className="block">
+    <label className="block" data-setup-field={fieldKey}>
       <span className="text-sm font-semibold text-rose-950">{label}</span>
       <textarea
+        id={fieldId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         rows={5}
+        aria-describedby={helperText ? helperId : undefined}
         className="mt-2 w-full resize-y rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm leading-6 text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
       />
-      {helperText && <span className="mt-1.5 block text-xs leading-5 text-rose-950/50">{helperText}</span>}
+      {helperText && (
+        <span id={helperId} className="mt-1.5 block text-xs leading-5 text-rose-950/50">
+          {helperText}
+        </span>
+      )}
     </label>
   );
 }
