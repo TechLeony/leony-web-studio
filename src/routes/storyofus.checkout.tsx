@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Heart, Mail, ShieldCheck, Sparkles } from "lucide-react";
 
+import { GlobalPending } from "../components/leony/GlobalPending";
 import {
   type StoryOfUsCheckoutContactErrors,
   type StoryOfUsCheckoutContactInput,
@@ -49,11 +50,16 @@ const initialCheckoutContactForm: StoryOfUsCheckoutContactInput = {
 
 function StoryOfUsCheckout() {
   const createCheckoutOrder = useServerFn(createStoryOfUsCheckoutOrder);
+  const [isClientReady, setIsClientReady] = useState(false);
   const [formValue, setFormValue] = useState(initialCheckoutContactForm);
   const [fieldErrors, setFieldErrors] = useState<StoryOfUsCheckoutContactErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<CheckoutOrderResult | null>(null);
+
+  useEffect(() => {
+    setIsClientReady(true);
+  }, []);
 
   function updateField<K extends keyof StoryOfUsCheckoutContactInput>(
     field: K,
@@ -102,6 +108,10 @@ function StoryOfUsCheckout() {
     } finally {
       setIsCreatingOrder(false);
     }
+  }
+
+  if (!isClientReady) {
+    return <GlobalPending />;
   }
 
   return (
