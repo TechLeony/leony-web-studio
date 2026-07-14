@@ -31,7 +31,7 @@ export async function enqueueStoryOfUsEmail({
   submissionId,
   emailType,
 }: EnqueueStoryOfUsEmailInput): Promise<EnqueueStoryOfUsEmailResult> {
-  const normalizedSubmissionId = submissionId.trim();
+  const normalizedSubmissionId = submissionId.trim().toLowerCase();
 
   if (!UUID_PATTERN.test(normalizedSubmissionId) || !storyOfUsEmailTypes.has(emailType)) {
     return {
