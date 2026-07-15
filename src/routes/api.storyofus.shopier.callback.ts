@@ -5,6 +5,7 @@ import {
   parseShopierCallbackPayload,
   verifyShopierCallback,
 } from "../lib/storyofus/shopierPayment.server";
+import { enqueueStoryOfUsEmail } from "../lib/storyofus/emailOutbox.server";
 import { storyOfUsSupabaseAdmin } from "../lib/storyofus/supabaseAdmin.server";
 
 export const Route = createFileRoute("/api/storyofus/shopier/callback")({
@@ -52,6 +53,23 @@ export const Route = createFileRoute("/api/storyofus/shopier/callback")({
             })
             .eq("id", submission.id);
 
+          if (payload.status === "success") {
+            const amountError = getAmountOrCurrencyError(submission, payload);
+
+            if (amountError) {
+              await updatePaymentFailure(
+                submission.id as string,
+                amountError,
+                payload.raw,
+                receivedAt,
+              );
+
+              return jsonResponse({ ok: false, error: amountError }, 400);
+            }
+
+            await ensureOrderCreatedEmailQueued(submission.id);
+          }
+
           return jsonResponse({ ok: true });
         }
 
@@ -59,12 +77,17 @@ export const Route = createFileRoute("/api/storyofus/shopier/callback")({
           const amountError = getAmountOrCurrencyError(submission, payload);
 
           if (amountError) {
-            await updatePaymentFailure(submission.id as string, amountError, payload.raw, receivedAt);
+            await updatePaymentFailure(
+              submission.id as string,
+              amountError,
+              payload.raw,
+              receivedAt,
+            );
             return jsonResponse({ ok: false, error: amountError }, 400);
           }
 
           await markSubmissionPaid(submission, payload, receivedAt);
-          // TODO Phase 4B: send setup link email to customer_email.
+          await ensureOrderCreatedEmailQueued(submission.id);
           return jsonResponse({ ok: true });
         }
 
@@ -82,12 +105,32 @@ export const Route = createFileRoute("/api/storyofus/shopier/callback")({
           return jsonResponse({ ok: true });
         }
 
-        await updatePaymentFailure(submission.id as string, "unhandled_payment_status", payload.raw, receivedAt);
+        await updatePaymentFailure(
+          submission.id as string,
+          "unhandled_payment_status",
+          payload.raw,
+          receivedAt,
+        );
         return jsonResponse({ ok: false, error: "unhandled_payment_status" }, 400);
       },
     },
   },
 });
+
+async function ensureOrderCreatedEmailQueued(submissionId: unknown) {
+  if (typeof submissionId !== "string") {
+    throw new Error("StoryOfUs order-created email could not be enqueued.");
+  }
+
+  const result = await enqueueStoryOfUsEmail({
+    submissionId,
+    emailType: "order_created",
+  });
+
+  if (!result.ok) {
+    throw new Error("StoryOfUs order-created email could not be enqueued.");
+  }
+}
 
 function parseRawCallbackBody(rawBody: string, headers: Headers) {
   const contentType = headers.get("content-type") ?? "";
@@ -112,7 +155,11 @@ function getAmountOrCurrencyError(
   const storedAmount = numberValue(submission.payment_amount);
   const storedCurrency = stringValue(submission.payment_currency).toUpperCase();
 
-  if (storedAmount !== null && payload.amount !== null && Math.abs(storedAmount - payload.amount) > 0.01) {
+  if (
+    storedAmount !== null &&
+    payload.amount !== null &&
+    Math.abs(storedAmount - payload.amount) > 0.01
+  ) {
     return "amount_mismatch";
   }
 
