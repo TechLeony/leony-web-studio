@@ -16,13 +16,19 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as StoryofusTrackOrderRouteImport } from './routes/storyofus.track-order'
+import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
+import { Route as StoryofusRefundPolicyRouteImport } from './routes/storyofus.refund-policy'
 import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
+import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
+import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
+import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -59,9 +65,29 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const StoryofusTrackOrderRoute = StoryofusTrackOrderRouteImport.update({
+  id: '/storyofus/track-order',
+  path: '/storyofus/track-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
+  id: '/storyofus/setup',
+  path: '/storyofus/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusRefundPolicyRoute = StoryofusRefundPolicyRouteImport.update({
+  id: '/storyofus/refund-policy',
+  path: '/storyofus/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
   id: '/storyofus/demo',
   path: '/storyofus/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusCheckoutRoute = StoryofusCheckoutRouteImport.update({
+  id: '/storyofus/checkout',
+  path: '/storyofus/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SektorSlugRoute = SektorSlugRouteImport.update({
@@ -90,10 +116,22 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
-  id: '/storyofus/setup/demo',
-  path: '/storyofus/setup/demo',
-  getParentRoute: () => rootRouteImport,
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => StoryofusSetupRoute,
 } as any)
+const ApiStoryofusShopierCallbackRoute =
+  ApiStoryofusShopierCallbackRouteImport.update({
+    id: '/api/storyofus/shopier/callback',
+    path: '/api/storyofus/shopier/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiInternalStoryofusEmailWorkerRoute =
+  ApiInternalStoryofusEmailWorkerRouteImport.update({
+    id: '/api/internal/storyofus/email-worker',
+    path: '/api/internal/storyofus/email-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -105,11 +143,17 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,11 +164,17 @@ export interface FileRoutesByTo {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,11 +187,17 @@ export interface FileRoutesById {
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
+  '/storyofus/checkout': typeof StoryofusCheckoutRoute
   '/storyofus/demo': typeof StoryofusDemoRoute
+  '/storyofus/refund-policy': typeof StoryofusRefundPolicyRoute
+  '/storyofus/setup': typeof StoryofusSetupRouteWithChildren
+  '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,11 +211,17 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
+    | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/internal/storyofus/email-worker'
+    | '/api/storyofus/shopier/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -170,11 +232,17 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
+    | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin'
     | '/storyofus'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/internal/storyofus/email-worker'
+    | '/api/storyofus/shopier/callback'
   id:
     | '__root__'
     | '/'
@@ -186,11 +254,17 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
+    | '/storyofus/checkout'
     | '/storyofus/demo'
+    | '/storyofus/refund-policy'
+    | '/storyofus/setup'
+    | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
+    | '/api/internal/storyofus/email-worker'
+    | '/api/storyofus/shopier/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -201,10 +275,15 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
+  StoryofusCheckoutRoute: typeof StoryofusCheckoutRoute
   StoryofusDemoRoute: typeof StoryofusDemoRoute
+  StoryofusRefundPolicyRoute: typeof StoryofusRefundPolicyRoute
+  StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
+  StoryofusTrackOrderRoute: typeof StoryofusTrackOrderRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
-  StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
+  ApiInternalStoryofusEmailWorkerRoute: typeof ApiInternalStoryofusEmailWorkerRoute
+  ApiStoryofusShopierCallbackRoute: typeof ApiStoryofusShopierCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -258,11 +337,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/storyofus/track-order': {
+      id: '/storyofus/track-order'
+      path: '/storyofus/track-order'
+      fullPath: '/storyofus/track-order'
+      preLoaderRoute: typeof StoryofusTrackOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/setup': {
+      id: '/storyofus/setup'
+      path: '/storyofus/setup'
+      fullPath: '/storyofus/setup'
+      preLoaderRoute: typeof StoryofusSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/refund-policy': {
+      id: '/storyofus/refund-policy'
+      path: '/storyofus/refund-policy'
+      fullPath: '/storyofus/refund-policy'
+      preLoaderRoute: typeof StoryofusRefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/storyofus/demo': {
       id: '/storyofus/demo'
       path: '/storyofus/demo'
       fullPath: '/storyofus/demo'
       preLoaderRoute: typeof StoryofusDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/checkout': {
+      id: '/storyofus/checkout'
+      path: '/storyofus/checkout'
+      fullPath: '/storyofus/checkout'
+      preLoaderRoute: typeof StoryofusCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sektor/$slug': {
@@ -302,9 +409,23 @@ declare module '@tanstack/react-router' {
     }
     '/storyofus/setup/demo': {
       id: '/storyofus/setup/demo'
-      path: '/storyofus/setup/demo'
+      path: '/demo'
       fullPath: '/storyofus/setup/demo'
       preLoaderRoute: typeof StoryofusSetupDemoRouteImport
+      parentRoute: typeof StoryofusSetupRoute
+    }
+    '/api/storyofus/shopier/callback': {
+      id: '/api/storyofus/shopier/callback'
+      path: '/api/storyofus/shopier/callback'
+      fullPath: '/api/storyofus/shopier/callback'
+      preLoaderRoute: typeof ApiStoryofusShopierCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/storyofus/email-worker': {
+      id: '/api/internal/storyofus/email-worker'
+      path: '/api/internal/storyofus/email-worker'
+      fullPath: '/api/internal/storyofus/email-worker'
+      preLoaderRoute: typeof ApiInternalStoryofusEmailWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -324,6 +445,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface StoryofusSetupRouteChildren {
+  StoryofusSetupDemoRoute: typeof StoryofusSetupDemoRoute
+}
+
+const StoryofusSetupRouteChildren: StoryofusSetupRouteChildren = {
+  StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
+}
+
+const StoryofusSetupRouteWithChildren = StoryofusSetupRoute._addFileChildren(
+  StoryofusSetupRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -332,10 +465,15 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
+  StoryofusCheckoutRoute: StoryofusCheckoutRoute,
   StoryofusDemoRoute: StoryofusDemoRoute,
+  StoryofusRefundPolicyRoute: StoryofusRefundPolicyRoute,
+  StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
+  StoryofusTrackOrderRoute: StoryofusTrackOrderRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
-  StoryofusSetupDemoRoute: StoryofusSetupDemoRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
+  ApiInternalStoryofusEmailWorkerRoute: ApiInternalStoryofusEmailWorkerRoute,
+  ApiStoryofusShopierCallbackRoute: ApiStoryofusShopierCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

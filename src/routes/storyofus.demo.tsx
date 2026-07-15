@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-react";
 
+import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
+
 export const Route = createFileRoute("/storyofus/demo")({
   head: () => ({
     meta: [
@@ -614,6 +616,10 @@ function StoryDemo() {
         intro={story.intro}
         accessPin={story.accessPin}
         accessPinHint={story.accessPinHint}
+        criticalImageUrls={[
+          story.relationship.heroLeftPhoto.src,
+          story.relationship.heroRightPhoto.src,
+        ]}
         themeStyle={themeStyle}
         decor={story.decor}
         onEnter={() => setEntered(true)}
@@ -627,6 +633,8 @@ function StoryDemo() {
       className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.92),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(244,114,182,0.24),transparent_34%),linear-gradient(180deg,var(--sou-bg)_0%,#ffe4ec_50%,var(--sou-bg-end)_100%)] text-[color:var(--sou-text)]"
     >
       <FloatingDecor decor={story.decor} />
+
+      <DemoDisclaimerBanner />
 
       <section className="relative z-10 px-4 pb-12 pt-16 text-center sm:px-6 sm:pb-16 sm:pt-20">
         {story.decor.showHeroSparkles && (
@@ -1722,10 +1730,81 @@ function PuzzlePiece({ imageUrl, position }: { imageUrl: string; position: strin
   );
 }
 
+function DemoDisclaimerBanner() {
+  return (
+    <section className="relative z-10 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
+      <div className="rounded-[1.25rem] border border-white/70 bg-white/65 px-4 py-3 text-center text-xs leading-5 text-[color:var(--sou-text)]/70 shadow-lg shadow-rose-100/35 backdrop-blur sm:rounded-[1.5rem] sm:px-5 sm:py-4 sm:text-sm sm:leading-6">
+        <p>
+          <span className="font-semibold text-[color:var(--sou-primary)]">Demo notu: </span>
+          {storyOfUsDemoCtaConfig.disclaimerText}
+        </p>
+        <a
+          href={storyOfUsDemoCtaConfig.checkoutPath}
+          className="mt-3 inline-flex items-center justify-center rounded-full bg-[color:var(--sou-primary)] px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-rose-200/50 transition hover:scale-[1.02] sm:text-sm"
+        >
+          {storyOfUsDemoCtaConfig.demoPaymentCtaLabel}
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function clearRevealTimers(timers: Array<ReturnType<typeof window.setTimeout>>) {
+  timers.forEach((timer) => window.clearTimeout(timer));
+}
+
+function preloadCriticalImages(urls: string[]) {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+
+  const uniqueUrls = Array.from(
+    new Set(urls.map((url) => url.trim()).filter((url) => url.length > 0)),
+  );
+
+  if (uniqueUrls.length === 0) {
+    return Promise.resolve();
+  }
+
+  return Promise.allSettled(uniqueUrls.map((url) => preloadCriticalImage(url))).then(() => {});
+}
+
+function preloadCriticalImage(url: string) {
+  return new Promise<void>((resolve) => {
+    const image = new Image();
+    let settled = false;
+
+    function settle() {
+      if (settled) return;
+      settled = true;
+      resolve();
+    }
+
+    function settleAfterDecode() {
+      if (typeof image.decode !== "function") {
+        settle();
+        return;
+      }
+
+      void image.decode().then(settle).catch(settle);
+    }
+
+    image.onload = settleAfterDecode;
+    image.onerror = settle;
+    image.decoding = "async";
+    image.src = url;
+
+    if (image.complete) {
+      settleAfterDecode();
+    }
+  });
+}
+
 function IntroGate({
   intro,
   accessPin,
   accessPinHint,
+  criticalImageUrls,
   themeStyle,
   decor,
   onEnter,
@@ -1733,6 +1812,7 @@ function IntroGate({
   intro: typeof demoStoryData.intro;
   accessPin?: string;
   accessPinHint?: string;
+  criticalImageUrls: string[];
   themeStyle: CSSProperties;
   decor: typeof demoStoryData.decor;
   onEnter: () => void;
@@ -1743,14 +1823,63 @@ function IntroGate({
   const [pinError, setPinError] = useState(false);
   const pinInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const heartRevealDurationMs = 2400;
+  const maximumRevealWaitMs = 5000;
+  const revealStartedRef = useRef(false);
+  const revealCompletedRef = useRef(false);
+  const mountedRef = useRef(false);
+  const revealTimersRef = useRef<Array<ReturnType<typeof window.setTimeout>>>([]);
   const normalizedAccessPin = accessPin?.replace(/\D/g, "").slice(0, 4) ?? "";
   const hasAccessPin = normalizedAccessPin.length === 4;
 
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      clearRevealTimers(revealTimersRef.current);
+      revealTimersRef.current = [];
+    };
+  }, []);
+
+  function waitForRevealTimer(delayMs: number) {
+    return new Promise<void>((resolve) => {
+      const timer = window.setTimeout(() => {
+        revealTimersRef.current = revealTimersRef.current.filter(
+          (activeTimer) => activeTimer !== timer,
+        );
+        resolve();
+      }, delayMs);
+
+      revealTimersRef.current.push(timer);
+    });
+  }
+
+  function finishHeartReveal() {
+    if (revealCompletedRef.current || !mountedRef.current) return;
+
+    revealCompletedRef.current = true;
+    clearRevealTimers(revealTimersRef.current);
+    revealTimersRef.current = [];
+    onEnter();
+  }
+
   function startHeartReveal() {
-    if (opening) return;
+    if (revealStartedRef.current) return;
+
+    revealStartedRef.current = true;
     setPinModalOpen(false);
     setOpening(true);
-    window.setTimeout(onEnter, Math.max(intro.openingDoneDelayMs, heartRevealDurationMs));
+
+    const minimumRevealWait = waitForRevealTimer(
+      Math.max(intro.openingDoneDelayMs, heartRevealDurationMs),
+    );
+    const maximumRevealWait = waitForRevealTimer(maximumRevealWaitMs);
+    const criticalImagePreload = preloadCriticalImages(criticalImageUrls);
+
+    void Promise.all([
+      minimumRevealWait,
+      Promise.race([criticalImagePreload, maximumRevealWait]),
+    ]).then(finishHeartReveal);
   }
 
   function openGift() {
