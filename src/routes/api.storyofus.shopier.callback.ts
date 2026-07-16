@@ -224,6 +224,13 @@ async function applyVerifiedShopierPayment({
   );
 
   if (error) {
+    console.error("[StoryOfUs Shopier RPC]", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
     return { status: "error" };
   }
 
