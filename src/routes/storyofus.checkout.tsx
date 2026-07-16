@@ -36,7 +36,6 @@ type CheckoutOrderResult = {
   paymentAmount: number;
   paymentCurrency: string;
   shopierPaymentUrl: string;
-  needsManualShopierConfig: boolean;
 };
 
 const initialCheckoutContactForm: StoryOfUsCheckoutContactInput = {
@@ -186,9 +185,9 @@ function StoryOfUsCheckout() {
                     gönderileceğini onaylıyorum.
                   </CheckoutCheckbox>
                   <p className="rounded-2xl border border-rose-100 bg-white/70 px-4 py-3 text-xs leading-6 text-rose-950/55">
-                    Ödeme sonrasında kurulum formunuzu doldurursunuz. Kişiselleştirilmiş
-                    hazırlık, formu göndermenizin ardından verilen 3 saatlik düzenleme süresi sona
-                    erdiğinde başlar.{" "}
+                    Ödeme sonrasında kurulum formunuzu doldurursunuz. Kişiselleştirilmiş hazırlık,
+                    formu göndermenizin ardından verilen 3 saatlik düzenleme süresi sona erdiğinde
+                    başlar.{" "}
                     <Link
                       to={storyOfUsDemoCtaConfig.refundPolicyPath}
                       className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 hover:text-rose-700"
@@ -260,7 +259,8 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
           Ödeme adımınız hazır
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
-          Sipariş referansınız: <span className="font-bold text-rose-700">{order.orderReference}</span>
+          Sipariş referansınız:{" "}
+          <span className="font-bold text-rose-700">{order.orderReference}</span>
         </p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
           Sipariş takip numarası:{" "}
@@ -316,14 +316,6 @@ function CheckoutPaymentCard({ order }: { order: CheckoutOrderResult }) {
         E-posta adresiniz yanlışsa lütfen ödeme yapmadan önce bu sayfayı yenileyip bilgilerinizi
         tekrar girin.
       </p>
-
-      {import.meta.env.DEV && order.needsManualShopierConfig && (
-        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800">
-          Geliştirme notu: Shopier merchant order id entegrasyonu henüz gerçek panel bilgileriyle
-          bağlanmadı. Sipariş referansının Shopier tarafına otomatik aktarılması için merchant
-          dokümanındaki alan eşlemesi doğrulanmalı.
-        </p>
-      )}
     </div>
   );
 }
