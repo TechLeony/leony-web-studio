@@ -1222,13 +1222,13 @@ function StoryOfUsSetupRoute() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-6 text-[#3d2323] sm:px-6 sm:py-10">
-      <section className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
-        <header className="overflow-hidden rounded-[2rem] border border-rose-100 bg-white/75 px-5 py-7 text-center shadow-xl shadow-rose-100/50 backdrop-blur sm:px-8 sm:py-10">
+    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-3 py-5 text-[#3d2323] sm:px-6 sm:py-10">
+      <section className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-5 sm:gap-8">
+        <header className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-rose-100 bg-white/75 px-4 py-6 text-center shadow-xl shadow-rose-100/50 backdrop-blur sm:rounded-[2rem] sm:px-8 sm:py-10">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500 sm:tracking-[0.35em]">
             StoryOfUs Setup
           </p>
-          <h1 className="mx-auto mt-3 max-w-3xl text-3xl font-bold tracking-tight text-rose-950 sm:text-5xl">
+          <h1 className="mx-auto mt-3 max-w-3xl text-2xl font-bold tracking-tight text-rose-950 sm:text-5xl">
             Hikayenizi birlikte hazırlayalım
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-rose-950/65 sm:text-base">
@@ -1237,20 +1237,20 @@ function StoryOfUsSetupRoute() {
           </p>
         </header>
 
-        <section className="rounded-[2rem] border border-white/80 bg-white/70 p-4 pb-24 shadow-2xl shadow-rose-100/60 backdrop-blur sm:p-6 lg:p-8">
-          <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
+        <section className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/70 p-3 pb-24 shadow-2xl shadow-rose-100/60 backdrop-blur sm:rounded-[2rem] sm:p-6 lg:p-8">
+          <div className="mb-5 grid min-w-0 gap-3 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
                 Adım {currentStepIndex + 1} / {totalSteps}
               </p>
-              <h2 className="mt-2 text-2xl font-bold text-rose-950 sm:text-3xl">
+              <h2 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-3xl">
                 {currentStep.title}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-rose-950/60">
                 {currentStep.description}
               </p>
             </div>
-            <div className="rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-left shadow-sm shadow-rose-100/50 sm:text-right">
+            <div className="min-w-0 rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-left shadow-sm shadow-rose-100/50 sm:text-right">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
                 İlerleme
               </p>
@@ -1265,10 +1265,8 @@ function StoryOfUsSetupRoute() {
             />
           </div>
 
-          <div className="mb-6 rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8">
-            <p className="font-semibold text-rose-700">
-              Taslak bu cihazda otomatik kaydediliyor.
-            </p>
+          <div className="mb-5 min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8 sm:rounded-3xl sm:p-4">
+            <p className="font-semibold text-rose-700">Taslak bu cihazda otomatik kaydediliyor.</p>
             {wasDraftRestored && (
               <p className="mt-1 text-rose-950/65">Kaydedilmiş taslağınız yüklendi.</p>
             )}
@@ -1278,7 +1276,7 @@ function StoryOfUsSetupRoute() {
           </div>
 
           {setupAccess.mode === "edit" && (
-            <div className="mb-6 rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-4 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8">
+            <div className="mb-5 min-w-0 rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-3 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8 sm:rounded-3xl sm:p-4">
               <p className="font-semibold text-fuchsia-700">
                 Bilgilerinizi düzenleme modundasınız.
               </p>
@@ -1291,10 +1289,10 @@ function StoryOfUsSetupRoute() {
             </div>
           )}
 
-          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="rounded-[1.5rem] border border-rose-100 bg-[#fffaf8] p-2 shadow-sm shadow-rose-100/50 sm:p-3">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-5">
+            <aside className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-[#fffaf8] p-2 shadow-sm shadow-rose-100/50 sm:rounded-[1.5rem] sm:p-3">
               <nav
-                className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0"
+                className="flex w-full min-w-0 snap-x gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] lg:grid lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
                 aria-label="StoryOfUs setup adımları"
               >
                 {STORYOFUS_SETUP_STEPS.map((step, index) => {
@@ -1309,7 +1307,7 @@ function StoryOfUsSetupRoute() {
                       onClick={() => goToStepById(step.id)}
                       disabled={isLocked}
                       aria-current={isActive ? "step" : undefined}
-                      className={`flex min-w-[10rem] items-start gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200 disabled:cursor-not-allowed lg:w-full ${
+                      className={`flex w-[8.75rem] shrink-0 snap-start items-start gap-2 rounded-2xl border px-3 py-3 text-left transition duration-200 disabled:cursor-not-allowed sm:w-[10rem] sm:gap-3 lg:w-full ${
                         isActive
                           ? "border-rose-300 bg-white text-rose-950 shadow-md shadow-rose-100"
                           : isCompleted
@@ -1318,7 +1316,7 @@ function StoryOfUsSetupRoute() {
                       }`}
                     >
                       <span
-                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold sm:h-8 sm:w-8 ${
                           isActive
                             ? "bg-rose-500 text-white"
                             : isCompleted
@@ -1329,7 +1327,9 @@ function StoryOfUsSetupRoute() {
                         {isCompleted ? "✓" : index + 1}
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold">{step.title}</span>
+                        <span className="block break-words text-xs font-semibold leading-4 sm:text-sm sm:leading-5">
+                          {step.title}
+                        </span>
                         <span className="mt-1 hidden text-xs leading-5 text-current opacity-70 sm:block">
                           {step.description}
                         </span>
@@ -1342,13 +1342,13 @@ function StoryOfUsSetupRoute() {
 
             <section
               ref={stepCardRef}
-              className="rounded-[1.5rem] border border-rose-100 bg-white/85 p-4 shadow-lg shadow-rose-100/45 sm:p-7"
+              className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-white/85 p-3 shadow-lg shadow-rose-100/45 sm:rounded-[1.5rem] sm:p-7"
             >
-              <div className="mb-6">
+              <div className="mb-5 min-w-0 sm:mb-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
                   {currentStep.title}
                 </p>
-                <h3 className="mt-2 text-2xl font-bold text-rose-950">
+                <h3 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-2xl">
                   {getStepHeading(currentStep.id)}
                 </h3>
                 <p className="mt-3 text-sm leading-7 text-rose-950/65">
@@ -1450,12 +1450,12 @@ function StoryOfUsSetupRoute() {
                 {JSON.stringify(formData, null, 2)}
               </pre>
 
-              <div className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-rose-100 bg-white/95 px-4 py-4 shadow-[0_-12px_28px_rgba(244,63,94,0.08)] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none">
-                <div className="mb-4 flex justify-end">
+              <div className="sticky bottom-0 z-20 -mx-3 mt-8 border-t border-rose-100 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(244,63,94,0.08)] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none">
+                <div className="mb-3 flex justify-end">
                   <button
                     type="button"
                     onClick={handleClearDraft}
-                    className="min-h-11 rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                    className="min-h-10 max-w-full rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
                   >
                     Taslağı temizle
                   </button>
@@ -1465,7 +1465,7 @@ function StoryOfUsSetupRoute() {
                     type="button"
                     onClick={goToPreviousStep}
                     disabled={isFirstStep}
-                    className="min-h-12 rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="min-h-12 w-full rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                   >
                     Geri
                   </button>
@@ -1473,7 +1473,7 @@ function StoryOfUsSetupRoute() {
                     type="button"
                     onClick={goToNextStep}
                     disabled={isLastStep}
-                    className="min-h-12 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="min-h-12 w-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                   >
                     Devam et
                   </button>
