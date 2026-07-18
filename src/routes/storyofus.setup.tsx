@@ -93,6 +93,8 @@ type StoryOfUsSubmissionResult = {
   editableUntil: string | null;
 };
 
+type DraftSaveStatus = "idle" | "saving" | "saved" | "error";
+
 type SetupAccessUiState =
   | {
       status: "missing_token";
@@ -124,10 +126,13 @@ function StoryOfUsSetupRoute() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
   const [hasEnteredSubmittedEditMode, setHasEnteredSubmittedEditMode] = useState(false);
+  const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("idle");
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
+  const draftSaveSequenceRef = useRef(0);
+  const draftSaveTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const stepCardRef = useRef<HTMLElement | null>(null);
   const validationPanelRef = useRef<HTMLElement | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
@@ -146,6 +151,22 @@ function StoryOfUsSetupRoute() {
           validationNotice,
         )
       : validationNotice;
+  const draftSaveStatusLabel =
+    draftSaveStatus === "saving"
+      ? "Kaydediliyor..."
+      : draftSaveStatus === "saved"
+        ? "Kaydedildi"
+        : draftSaveStatus === "error"
+          ? "Kaydetme başarısız"
+          : "Hazır";
+  const draftSaveStatusClassName =
+    draftSaveStatus === "saving"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : draftSaveStatus === "saved"
+        ? "border-rose-200 bg-rose-50 text-rose-700"
+        : draftSaveStatus === "error"
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-rose-100 bg-white text-rose-600";
 
   function revokeCurrentPreviewUrls() {
     photoPreviewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
@@ -161,6 +182,9 @@ function StoryOfUsSetupRoute() {
       revokeCurrentPreviewUrls();
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
+      }
+      if (draftSaveTimeoutRef.current) {
+        window.clearTimeout(draftSaveTimeoutRef.current);
       }
     };
   }, []);
@@ -256,10 +280,37 @@ function StoryOfUsSetupRoute() {
     if (skipNextDraftSaveRef.current) {
       skipNextDraftSaveRef.current = false;
       clearSetupDraft(setupToken);
+      setDraftSaveStatus("idle");
       return;
     }
 
-    saveSetupDraft(formData, setupToken);
+    const saveSequence = draftSaveSequenceRef.current + 1;
+    draftSaveSequenceRef.current = saveSequence;
+    setDraftSaveStatus("saving");
+
+    if (draftSaveTimeoutRef.current) {
+      window.clearTimeout(draftSaveTimeoutRef.current);
+    }
+
+    draftSaveTimeoutRef.current = window.setTimeout(() => {
+      try {
+        saveSetupDraft(formData, setupToken);
+
+        if (draftSaveSequenceRef.current === saveSequence) {
+          setDraftSaveStatus("saved");
+        }
+      } catch {
+        if (draftSaveSequenceRef.current === saveSequence) {
+          setDraftSaveStatus("error");
+        }
+      }
+    }, 350);
+
+    return () => {
+      if (draftSaveTimeoutRef.current) {
+        window.clearTimeout(draftSaveTimeoutRef.current);
+      }
+    };
   }, [formData, setupAccess.status, setupToken]);
 
   function goToPreviousStep() {
@@ -1266,7 +1317,17 @@ function StoryOfUsSetupRoute() {
           </div>
 
           <div className="mb-5 min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8 sm:rounded-3xl sm:p-4">
-            <p className="font-semibold text-rose-700">Taslak bu cihazda otomatik kaydediliyor.</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-semibold text-rose-700">
+                Taslak bu cihazda otomatik kaydedilir.
+              </p>
+              <span
+                className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${draftSaveStatusClassName}`}
+                aria-live="polite"
+              >
+                {draftSaveStatusLabel}
+              </span>
+            </div>
             {wasDraftRestored && (
               <p className="mt-1 text-rose-950/65">Kaydedilmiş taslağınız yüklendi.</p>
             )}
@@ -4377,7 +4438,7 @@ function ContactCoupleStep({
             label="Adınız *"
             value={value.customerName}
             onChange={(nextValue) => onChange("customerName", nextValue)}
-            placeholder="Örn: Cavanşir"
+            placeholder="Örn. Elif"
             errorText={fieldErrors.customerName}
             fieldKey="customerName"
           />
@@ -4415,7 +4476,7 @@ function ContactCoupleStep({
             label="Partnerinizin adı *"
             value={value.partnerName}
             onChange={(nextValue) => onChange("partnerName", nextValue)}
-            placeholder="Örn: Derya"
+            placeholder="Örn. Mert"
             errorText={fieldErrors.partnerName}
             fieldKey="partnerName"
           />
@@ -4423,8 +4484,8 @@ function ContactCoupleStep({
             label="Sitede nasıl görünsün?"
             value={value.coupleDisplayName}
             onChange={(nextValue) => onChange("coupleDisplayName", nextValue)}
-            placeholder="Derya & Cavanşir"
-            helperText="Örn: Derya & Cavanşir"
+            placeholder="Örn. Elif & Mert"
+            helperText="Örn. Elif & Mert"
             fieldKey="coupleDisplayName"
           />
           <SetupTextField
