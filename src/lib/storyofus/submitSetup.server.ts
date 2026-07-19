@@ -37,6 +37,8 @@ type SubmitPhotoMetadata = {
   sizeBytes: number;
   semanticKey?: string;
   sectionItemId?: string;
+  mediaId?: string;
+  storagePath?: string;
 };
 
 type StoryOfUsMediaSection =
@@ -260,6 +262,7 @@ async function submitStoryOfUsSetupData(
   await insertMusicIfNeeded(submissionId, payload);
   await uploadPhotosIfNeeded(submissionId, payload, formData);
   await uploadVoiceNoteIfNeeded(submissionId, payload, formData);
+  await updatePuzzleSourceSelection(submissionId, payload);
   await insertTimelineIfNeeded(submissionId, payload);
   await insertLettersIfNeeded(submissionId, payload);
 
@@ -324,15 +327,6 @@ async function prepareExistingMediaForSubmit(
   isFirstSubmit: boolean,
 ) {
   if (isFirstSubmit) {
-    const { error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .delete()
-      .eq("submission_id", submissionId);
-
-    if (error) {
-      throw new Error(`StoryOfUs existing media rows could not be cleared: ${error.message}`);
-    }
-
     return;
   }
 
@@ -472,6 +466,15 @@ async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload
       const file = getFileFromFormData(formData, `photoFile:${photo.id}`);
 
       if (!file) {
+        await updateExistingMediaMetadata({
+          submissionId,
+          photo,
+          fallbackSection: "gallery",
+          fallbackSemanticKey: photo.semanticKey || "gallery_photo",
+          fallbackSectionItemId: photo.sectionItemId || photo.id,
+          fallbackSortOrder: photo.sortOrder,
+          isPuzzleSource: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
+        });
         continue;
       }
 
@@ -564,6 +567,15 @@ async function uploadSemanticPhotoIfNeeded({
   const file = getFileFromFormData(formData, formDataKey);
 
   if (!file) {
+    await updateExistingMediaMetadata({
+      submissionId,
+      photo,
+      fallbackSection: section,
+      fallbackSemanticKey: semanticKey,
+      fallbackSectionItemId: sectionItemId,
+      fallbackSortOrder: sortOrder,
+      isPuzzleSource: false,
+    });
     return;
   }
 
@@ -631,6 +643,15 @@ async function uploadSeparatePuzzlePhotoIfNeeded(
   const file = getFileFromFormData(formData, "puzzlePhotoFile");
 
   if (!file) {
+    await updateExistingMediaMetadata({
+      submissionId,
+      photo: puzzlePhoto,
+      fallbackSection: "puzzle",
+      fallbackSemanticKey: "puzzle_source",
+      fallbackSectionItemId: "puzzlePhoto",
+      fallbackSortOrder: 0,
+      isPuzzleSource: true,
+    });
     return;
   }
 
@@ -659,6 +680,90 @@ async function uploadSeparatePuzzlePhotoIfNeeded(
 
   if (error) {
     throw new Error(`StoryOfUs puzzle photo metadata could not be saved: ${error.message}`);
+  }
+}
+
+async function updateExistingMediaMetadata({
+  submissionId,
+  photo,
+  fallbackSection,
+  fallbackSemanticKey,
+  fallbackSectionItemId,
+  fallbackSortOrder,
+  isPuzzleSource,
+}: {
+  submissionId: string;
+  photo: SubmitPhotoMetadata;
+  fallbackSection: StoryOfUsMediaSection;
+  fallbackSemanticKey: string;
+  fallbackSectionItemId: string;
+  fallbackSortOrder: number;
+  isPuzzleSource: boolean;
+}) {
+  if (!photo.mediaId) {
+    return;
+  }
+
+  const { error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_media")
+    .update({
+      caption: emptyToNull(photo.caption),
+      sort_order: photo.sortOrder ?? fallbackSortOrder,
+      semantic_key: emptyToNull(photo.semanticKey || fallbackSemanticKey),
+      section_item_id: emptyToNull(photo.sectionItemId || fallbackSectionItemId),
+      is_puzzle_source: isPuzzleSource,
+    })
+    .eq("id", photo.mediaId)
+    .eq("submission_id", submissionId)
+    .eq("section", fallbackSection);
+
+  if (error) {
+    throw new Error(`StoryOfUs uploaded media metadata could not be updated: ${error.message}`);
+  }
+}
+
+async function updatePuzzleSourceSelection(submissionId: string, payload: SubmitPayload) {
+  const { error: resetError } = await storyOfUsSupabaseAdmin
+    .from("storyofus_media")
+    .update({ is_puzzle_source: false })
+    .eq("submission_id", submissionId)
+    .eq("is_puzzle_source", true);
+
+  if (resetError) {
+    throw new Error(`StoryOfUs puzzle source could not be reset: ${resetError.message}`);
+  }
+
+  if (isConfirmedSkipped(payload.confirmedSkips, "puzzle")) {
+    return;
+  }
+
+  if (payload.media.puzzle.sourceType === "separate") {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .update({ is_puzzle_source: true })
+      .eq("submission_id", submissionId)
+      .eq("section", "puzzle")
+      .eq("semantic_key", "puzzle_source")
+      .eq("section_item_id", "puzzlePhoto");
+
+    if (error) {
+      throw new Error(`StoryOfUs separate puzzle source could not be marked: ${error.message}`);
+    }
+
+    return;
+  }
+
+  if (payload.media.puzzle.sourceType === "gallery" && payload.media.puzzle.selectedPhotoId) {
+    const { error } = await storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .update({ is_puzzle_source: true })
+      .eq("submission_id", submissionId)
+      .eq("section", "gallery")
+      .eq("section_item_id", payload.media.puzzle.selectedPhotoId);
+
+    if (error) {
+      throw new Error(`StoryOfUs gallery puzzle source could not be marked: ${error.message}`);
+    }
   }
 }
 

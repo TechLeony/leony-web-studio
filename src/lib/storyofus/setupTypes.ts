@@ -46,6 +46,15 @@ export type StoryOfUsPhotoDraftItem = {
   previewUrl: string;
   caption: string;
   sortOrder: number;
+  uploadStatus?: "idle" | "uploading" | "uploaded" | "failed";
+  uploadError?: string;
+  mediaId?: string;
+  storagePath?: string;
+  semanticKey?: string;
+  sectionItemId?: string;
+  originalFilename?: string;
+  mimeType?: string;
+  sizeBytes?: number;
 
   /**
    * File is kept in memory while the user is on the setup page.
@@ -97,6 +106,12 @@ export type StoryOfUsVoiceNoteData = {
   originalFilename: string;
   mimeType: string;
   sizeBytes: number;
+  uploadStatus?: "idle" | "uploading" | "uploaded" | "failed";
+  uploadError?: string;
+  mediaId?: string;
+  storagePath?: string;
+  semanticKey?: string;
+  sectionItemId?: string;
 
   /**
    * File is kept in memory while the user is on the setup page.

@@ -8,6 +8,10 @@ import {
   type StoryOfUsSetupAccessInitialData,
   type StoryOfUsSetupAccessResult,
 } from "../lib/storyofus/setupAccess.server";
+import {
+  removeStoryOfUsSetupMedia,
+  uploadStoryOfUsSetupMedia,
+} from "../lib/storyofus/mediaUpload.server";
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
 import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
 import {
@@ -153,6 +157,8 @@ function StoryOfUsSetupRoute() {
   const setupToken = typeof search.token === "string" ? search.token.trim() : "";
   const checkSetupAccess = useServerFn(getStoryOfUsSetupAccess);
   const submitSetup = useServerFn(submitStoryOfUsSetup);
+  const uploadSetupMedia = useServerFn(uploadStoryOfUsSetupMedia);
+  const removeSetupMedia = useServerFn(removeStoryOfUsSetupMedia);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [formData, setFormData] = useState(() => createEmptyStoryOfUsSetupFormData());
   const [wasDraftRestored, setWasDraftRestored] = useState(false);
@@ -435,6 +441,15 @@ function StoryOfUsSetupRoute() {
       setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
       setCurrentStepIndex(0);
       scheduleValidationScroll(contactValidation, 120);
+      return;
+    }
+
+    const mediaUploadBlocker = getMediaUploadBlocker(formData);
+
+    if (mediaUploadBlocker) {
+      setSubmitError(mediaUploadBlocker);
+      setCurrentStepIndex(mediaUploadBlocker.includes("Ses notu") ? 2 : 1);
+      scheduleStepCardScroll(120);
       return;
     }
 
@@ -810,6 +825,7 @@ function StoryOfUsSetupRoute() {
         previewUrl,
         caption: "",
         sortOrder: 0,
+        uploadStatus: "uploading" as const,
         file,
       };
     });
@@ -829,6 +845,16 @@ function StoryOfUsSetupRoute() {
       confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "photos"),
     }));
     setValidationNotice(null);
+
+    photoDrafts.forEach((photo, index) => {
+      void uploadPhotoDraft(photo, {
+        section: "gallery",
+        mediaType: "photo",
+        semanticKey: "gallery_photo",
+        sectionItemId: photo.id,
+        sortOrder: formData.media.photos.length + index,
+      });
+    });
   }
 
   function createImageDraft(file: File, caption = ""): StoryOfUsPhotoDraftItem | null {
@@ -844,6 +870,7 @@ function StoryOfUsSetupRoute() {
       previewUrl,
       caption,
       sortOrder: 0,
+      uploadStatus: "uploading",
       file,
     };
   }
@@ -856,6 +883,217 @@ function StoryOfUsSetupRoute() {
     URL.revokeObjectURL(photo.previewUrl);
     photoPreviewUrlsRef.current.delete(photo.previewUrl);
     puzzlePhotoPreviewUrlsRef.current.delete(photo.previewUrl);
+  }
+
+  async function uploadPhotoDraft(
+    photo: StoryOfUsPhotoDraftItem,
+    options: {
+      section: "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle";
+      mediaType: "photo" | "puzzle_photo";
+      semanticKey: string;
+      sectionItemId: string;
+      sortOrder: number;
+    },
+  ) {
+    if (!photo.file) {
+      return;
+    }
+
+    const uploadData = new FormData();
+    uploadData.append("setupToken", setupToken);
+    uploadData.append("section", options.section);
+    uploadData.append("mediaType", options.mediaType);
+    uploadData.append("semanticKey", options.semanticKey);
+    uploadData.append("sectionItemId", options.sectionItemId);
+    uploadData.append("caption", photo.caption);
+    uploadData.append("sortOrder", String(options.sortOrder));
+    uploadData.append("file", photo.file, photo.file.name);
+
+    try {
+      const result = await uploadSetupMedia({ data: uploadData });
+      applyUploadedPhotoResult(photo.id, {
+        ...result,
+        semanticKey: options.semanticKey,
+        sectionItemId: options.sectionItemId,
+      });
+    } catch (error) {
+      markPhotoUploadFailed(
+        photo.id,
+        error instanceof Error ? error.message : "Yükleme başarısız oldu.",
+      );
+    }
+  }
+
+  async function uploadVoiceNoteDraft(file: File, previewUrl: string) {
+    const uploadData = new FormData();
+    uploadData.append("setupToken", setupToken);
+    uploadData.append("section", "voice_note");
+    uploadData.append("mediaType", "voice_note");
+    uploadData.append("semanticKey", "voice_note");
+    uploadData.append("sectionItemId", "voiceNote");
+    uploadData.append("sortOrder", "0");
+    uploadData.append("file", file, file.name);
+
+    try {
+      const result = await uploadSetupMedia({ data: uploadData });
+      setFormData((current) => {
+        if (current.musicVoice.voiceNote?.previewUrl !== previewUrl) {
+          return current;
+        }
+
+        return {
+          ...current,
+          musicVoice: {
+            ...current.musicVoice,
+            voiceNote: {
+              ...current.musicVoice.voiceNote,
+              previewUrl: result.previewUrl || current.musicVoice.voiceNote.previewUrl,
+              originalFilename: result.originalFilename,
+              mimeType: result.mimeType,
+              sizeBytes: result.sizeBytes,
+              uploadStatus: "uploaded",
+              uploadError: undefined,
+              mediaId: result.mediaId,
+              storagePath: result.storagePath,
+              semanticKey: "voice_note",
+              sectionItemId: "voiceNote",
+              file: undefined,
+            },
+          },
+        };
+      });
+    } catch (error) {
+      setFormData((current) => {
+        if (current.musicVoice.voiceNote?.previewUrl !== previewUrl) {
+          return current;
+        }
+
+        return {
+          ...current,
+          musicVoice: {
+            ...current.musicVoice,
+            voiceNote: current.musicVoice.voiceNote
+              ? {
+                  ...current.musicVoice.voiceNote,
+                  uploadStatus: "failed",
+                  uploadError:
+                    error instanceof Error ? error.message : "Ses notu yüklenemedi.",
+                }
+              : null,
+          },
+        };
+      });
+    }
+  }
+
+  function applyUploadedPhotoResult(
+    photoId: string,
+    result: {
+      mediaId: string;
+      previewUrl: string;
+      storagePath: string;
+      originalFilename: string;
+      mimeType: string;
+      sizeBytes: number;
+      semanticKey: string;
+      sectionItemId: string;
+    },
+  ) {
+    const updatePhoto = (photo: StoryOfUsPhotoDraftItem | null) =>
+      photo?.id === photoId
+        ? {
+            ...photo,
+            previewUrl: result.previewUrl || photo.previewUrl,
+            uploadStatus: "uploaded" as const,
+            uploadError: undefined,
+            mediaId: result.mediaId,
+            storagePath: result.storagePath,
+            semanticKey: result.semanticKey,
+            sectionItemId: result.sectionItemId,
+            originalFilename: result.originalFilename,
+            mimeType: result.mimeType,
+            sizeBytes: result.sizeBytes,
+            file: undefined,
+          }
+        : photo;
+
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        openingPhotos: {
+          firstPerson: updatePhoto(current.media.openingPhotos.firstPerson),
+          secondPerson: updatePhoto(current.media.openingPhotos.secondPerson),
+        },
+        promptPhotos: current.media.promptPhotos.map((prompt) => ({
+          ...prompt,
+          photo: updatePhoto(prompt.photo),
+        })),
+        photos: current.media.photos.map((photo) => updatePhoto(photo) ?? photo),
+        puzzle: {
+          ...current.media.puzzle,
+          puzzlePhoto: updatePhoto(current.media.puzzle.puzzlePhoto),
+        },
+        loveLetterPhoto: updatePhoto(current.media.loveLetterPhoto),
+      },
+      timeline: current.timeline.map((item) => ({
+        ...item,
+        photo: updatePhoto(item.photo),
+      })),
+    }));
+  }
+
+  function markPhotoUploadFailed(photoId: string, message: string) {
+    const updatePhoto = (photo: StoryOfUsPhotoDraftItem | null) =>
+      photo?.id === photoId ? { ...photo, uploadStatus: "failed" as const, uploadError: message } : photo;
+
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        openingPhotos: {
+          firstPerson: updatePhoto(current.media.openingPhotos.firstPerson),
+          secondPerson: updatePhoto(current.media.openingPhotos.secondPerson),
+        },
+        promptPhotos: current.media.promptPhotos.map((prompt) => ({
+          ...prompt,
+          photo: updatePhoto(prompt.photo),
+        })),
+        photos: current.media.photos.map((photo) => updatePhoto(photo) ?? photo),
+        puzzle: {
+          ...current.media.puzzle,
+          puzzlePhoto: updatePhoto(current.media.puzzle.puzzlePhoto),
+        },
+        loveLetterPhoto: updatePhoto(current.media.loveLetterPhoto),
+      },
+      timeline: current.timeline.map((item) => ({
+        ...item,
+        photo: updatePhoto(item.photo),
+      })),
+    }));
+  }
+
+  async function removePersistedMedia({
+    section,
+    semanticKey,
+    sectionItemId,
+  }: {
+    section: "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
+    semanticKey: string;
+    sectionItemId: string;
+  }) {
+    try {
+      await removeSetupMedia({
+        data: {
+          setupToken,
+          section,
+          semanticKey,
+          sectionItemId,
+        },
+      });
+    } catch {
+      setSubmitError("Dosya kaldırılırken sorun oluştu. Lütfen tekrar deneyin.");
+    }
   }
 
   function updateOpeningPhoto(position: keyof StoryOfUsOpeningPhotosData, file: File) {
@@ -879,9 +1117,23 @@ function StoryOfUsSetupRoute() {
         },
       };
     });
+
+    void uploadPhotoDraft(nextPhoto, {
+      section: "opening",
+      mediaType: "photo",
+      semanticKey: position === "firstPerson" ? "hero_left" : "hero_right",
+      sectionItemId: position,
+      sortOrder: position === "firstPerson" ? 0 : 1,
+    });
   }
 
   function removeOpeningPhoto(position: keyof StoryOfUsOpeningPhotosData) {
+    void removePersistedMedia({
+      section: "opening",
+      semanticKey: position === "firstPerson" ? "hero_left" : "hero_right",
+      sectionItemId: position,
+    });
+
     setFormData((current) => {
       revokePhotoDraft(current.media.openingPhotos[position]);
 
@@ -926,6 +1178,14 @@ function StoryOfUsSetupRoute() {
       confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "photos"),
     }));
     setValidationNotice(null);
+
+    void uploadPhotoDraft(nextPhoto, {
+      section: "memory_prompt",
+      mediaType: "photo",
+      semanticKey: promptId,
+      sectionItemId: promptId,
+      sortOrder: prompt?.sortOrder ?? 0,
+    });
   }
 
   function updatePromptPhotoCaption(promptId: string, caption: string) {
@@ -943,6 +1203,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function removePromptPhoto(promptId: string) {
+    void removePersistedMedia({
+      section: "memory_prompt",
+      semanticKey: promptId,
+      sectionItemId: promptId,
+    });
+
     setFormData((current) => ({
       ...current,
       media: {
@@ -972,6 +1238,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function removePhoto(photoId: string) {
+    void removePersistedMedia({
+      section: "gallery",
+      semanticKey: "gallery_photo",
+      sectionItemId: photoId,
+    });
+
     setFormData((current) => {
       const photoToRemove = current.media.photos.find((photo) => photo.id === photoId);
 
@@ -1035,12 +1307,13 @@ function StoryOfUsSetupRoute() {
     puzzlePhotoPreviewUrlsRef.current.add(previewUrl);
 
     const puzzlePhoto: StoryOfUsPhotoDraftItem = {
-      id: createPhotoDraftId(),
-      previewUrl,
-      caption: "",
-      sortOrder: 0,
-      file,
-    };
+        id: createPhotoDraftId(),
+        previewUrl,
+        caption: "",
+        sortOrder: 0,
+        uploadStatus: "uploading",
+        file,
+      };
 
     setFormData((current) => {
       if (current.media.puzzle.puzzlePhoto) {
@@ -1064,6 +1337,14 @@ function StoryOfUsSetupRoute() {
       };
     });
     setValidationNotice(null);
+
+    void uploadPhotoDraft(puzzlePhoto, {
+      section: "puzzle",
+      mediaType: "puzzle_photo",
+      semanticKey: "puzzle_source",
+      sectionItemId: "puzzlePhoto",
+      sortOrder: 0,
+    });
   }
 
   function updatePuzzlePhotoCaption(caption: string) {
@@ -1085,6 +1366,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function removeSeparatePuzzlePhoto() {
+    void removePersistedMedia({
+      section: "puzzle",
+      semanticKey: "puzzle_source",
+      sectionItemId: "puzzlePhoto",
+    });
+
     setFormData((current) => {
       if (current.media.puzzle.puzzlePhoto) {
         URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
@@ -1108,6 +1395,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function clearPuzzleSelection() {
+    void removePersistedMedia({
+      section: "puzzle",
+      semanticKey: "puzzle_source",
+      sectionItemId: "puzzlePhoto",
+    });
+
     setFormData((current) => {
       if (current.media.puzzle.puzzlePhoto) {
         URL.revokeObjectURL(current.media.puzzle.puzzlePhoto.previewUrl);
@@ -1199,6 +1492,7 @@ function StoryOfUsSetupRoute() {
             originalFilename: file.name,
             mimeType: file.type,
             sizeBytes: file.size,
+            uploadStatus: "uploading",
             file,
           },
         },
@@ -1206,9 +1500,17 @@ function StoryOfUsSetupRoute() {
       };
     });
     setValidationNotice(null);
+
+    void uploadVoiceNoteDraft(file, previewUrl);
   }
 
   function removeVoiceNote() {
+    void removePersistedMedia({
+      section: "voice_note",
+      semanticKey: "voice_note",
+      sectionItemId: "voiceNote",
+    });
+
     setFormData((current) => {
       if (current.musicVoice.voiceNote) {
         URL.revokeObjectURL(current.musicVoice.voiceNote.previewUrl);
@@ -1230,6 +1532,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function confirmVoiceNoteSkip() {
+    void removePersistedMedia({
+      section: "voice_note",
+      semanticKey: "voice_note",
+      sectionItemId: "voiceNote",
+    });
+
     setFormData((current) => {
       if (current.musicVoice.voiceNote) {
         URL.revokeObjectURL(current.musicVoice.voiceNote.previewUrl);
@@ -1311,9 +1619,23 @@ function StoryOfUsSetupRoute() {
       confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "timeline"),
     }));
     setValidationNotice(null);
+
+    void uploadPhotoDraft(nextPhoto, {
+      section: "timeline",
+      mediaType: "photo",
+      semanticKey: "timeline_item",
+      sectionItemId: itemId,
+      sortOrder: formData.timeline.find((item) => item.id === itemId)?.sortOrder ?? 0,
+    });
   }
 
   function removeTimelineItemPhoto(itemId: string) {
+    void removePersistedMedia({
+      section: "timeline",
+      semanticKey: "timeline_item",
+      sectionItemId: itemId,
+    });
+
     setFormData((current) => ({
       ...current,
       timeline: current.timeline.map((item) => {
@@ -1328,6 +1650,12 @@ function StoryOfUsSetupRoute() {
   }
 
   function removeTimelineItem(itemId: string) {
+    void removePersistedMedia({
+      section: "timeline",
+      semanticKey: "timeline_item",
+      sectionItemId: itemId,
+    });
+
     setFormData((current) => {
       const removedItem = current.timeline.find((item) => item.id === itemId);
       revokePhotoDraft(removedItem?.photo ?? null);
@@ -1453,9 +1781,23 @@ function StoryOfUsSetupRoute() {
         },
       };
     });
+
+    void uploadPhotoDraft(nextPhoto, {
+      section: "letter",
+      mediaType: "photo",
+      semanticKey: "love_letter_side_photo",
+      sectionItemId: "loveLetterPhoto",
+      sortOrder: 0,
+    });
   }
 
   function removeLoveLetterPhoto() {
+    void removePersistedMedia({
+      section: "letter",
+      semanticKey: "love_letter_side_photo",
+      sectionItemId: "loveLetterPhoto",
+    });
+
     setFormData((current) => {
       revokePhotoDraft(current.media.loveLetterPhoto);
 
@@ -2416,6 +2758,22 @@ function createSetupFormDataFromAccessInitialData(
           body: letter.body,
           sortOrder: index,
         }));
+  const existingMedia = initialData.existingMedia;
+  const firstPersonPhoto = existingMediaToPhoto(
+    existingMedia.find((media) => media.section === "opening" && media.sectionItemId === "firstPerson"),
+  );
+  const secondPersonPhoto = existingMediaToPhoto(
+    existingMedia.find((media) => media.section === "opening" && media.sectionItemId === "secondPerson"),
+  );
+  const galleryPhotos = existingMedia
+    .filter((media) => media.section === "gallery" && media.mediaType === "photo")
+    .map(existingMediaToPhoto)
+    .filter((photo): photo is StoryOfUsPhotoDraftItem => Boolean(photo))
+    .map((photo, index) => ({ ...photo, sortOrder: index }));
+  const puzzlePhoto = existingMediaToPhoto(
+    existingMedia.find((media) => media.section === "puzzle" && media.mediaType === "puzzle_photo"),
+  );
+  const voiceNoteMedia = existingMedia.find((media) => media.section === "voice_note");
 
   return {
     ...formData,
@@ -2433,9 +2791,48 @@ function createSetupFormDataFromAccessInitialData(
       recipientNickname: initialData.contactCouple.recipientNickname,
       relationshipStory: initialData.contactCouple.relationshipStory,
     },
+    media: {
+      ...formData.media,
+      openingPhotos: {
+        firstPerson: firstPersonPhoto,
+        secondPerson: secondPersonPhoto,
+      },
+      promptPhotos: formData.media.promptPhotos.map((prompt) => ({
+        ...prompt,
+        photo: existingMediaToPhoto(
+          existingMedia.find(
+            (media) => media.section === "memory_prompt" && media.sectionItemId === prompt.id,
+          ),
+        ),
+      })),
+      photos: galleryPhotos,
+      puzzle: {
+        ...formData.media.puzzle,
+        selectedPhotoId: null,
+        puzzlePhoto,
+        sourceType: puzzlePhoto ? "separate" : null,
+      },
+      loveLetterPhoto: existingMediaToPhoto(
+        existingMedia.find((media) => media.section === "letter"),
+      ),
+    },
     musicVoice: {
       ...formData.musicVoice,
       music: initialData.music,
+      voiceNote:
+        voiceNoteMedia && voiceNoteMedia.previewUrl
+          ? {
+              previewUrl: voiceNoteMedia.previewUrl,
+              originalFilename: voiceNoteMedia.originalFilename,
+              mimeType: voiceNoteMedia.mimeType,
+              sizeBytes: voiceNoteMedia.sizeBytes,
+              uploadStatus: "uploaded",
+              mediaId: voiceNoteMedia.id,
+              storagePath: voiceNoteMedia.storagePath,
+              semanticKey: voiceNoteMedia.semanticKey,
+              sectionItemId: voiceNoteMedia.sectionItemId,
+            }
+          : null,
     },
     siteAccess: {
       passcode: "",
@@ -2443,7 +2840,15 @@ function createSetupFormDataFromAccessInitialData(
       passcodeHint: initialData.siteAccess.passcodeHint,
       hasExistingPasscode: initialData.siteAccess.hasExistingPasscode,
     },
-    timeline: initialData.timeline.map((item, index) => ({ ...item, photo: null, sortOrder: index })),
+    timeline: initialData.timeline.map((item, index) => ({
+      ...item,
+      photo: existingMediaToPhoto(
+        existingMedia.find(
+          (media) => media.section === "timeline" && media.sectionItemId === item.id,
+        ),
+      ),
+      sortOrder: index,
+    })),
     letters: initialLetters.map((letter, index) => ({ ...letter, sortOrder: index })),
     confirmedSkips: initialData.confirmedSkips,
     legalConsents: initialData.legalConsents ?? formData.legalConsents,
@@ -2452,6 +2857,30 @@ function createSetupFormDataFromAccessInitialData(
 
 function isStoryOfUsSubmissionStatus(value: string): value is StoryOfUsSetupFormData["status"] {
   return ["draft", "submitted", "in_review", "published", "archived"].includes(value);
+}
+
+function existingMediaToPhoto(
+  media: StoryOfUsSetupAccessExistingMediaItem | undefined,
+): StoryOfUsPhotoDraftItem | null {
+  if (!media) {
+    return null;
+  }
+
+  return {
+    id: media.sectionItemId || media.id,
+    previewUrl: media.previewUrl,
+    caption: media.caption,
+    sortOrder: media.sortOrder,
+    uploadStatus: media.previewUrl ? "uploaded" : "failed",
+    uploadError: media.previewUrl ? undefined : "Bu dosya henüz yüklenmemiş.",
+    mediaId: media.id,
+    storagePath: media.storagePath,
+    semanticKey: media.semanticKey,
+    sectionItemId: media.sectionItemId,
+    originalFilename: media.originalFilename,
+    mimeType: media.mimeType,
+    sizeBytes: media.sizeBytes,
+  };
 }
 
 function removeConfirmedSkip(
@@ -2527,11 +2956,13 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     media: {
       openingPhotos: {
         firstPerson: createPhotoPayload(formData.media.openingPhotos.firstPerson, {
-          semanticKey: "first_person",
+          semanticKey: "hero_left",
+          sectionItemId: "firstPerson",
           sortOrder: 0,
         }),
         secondPerson: createPhotoPayload(formData.media.openingPhotos.secondPerson, {
-          semanticKey: "second_person",
+          semanticKey: "hero_right",
+          sectionItemId: "secondPerson",
           sortOrder: 1,
         }),
       },
@@ -2545,33 +2976,31 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
           sortOrder: index,
         }),
       })),
-      photos: photos.map((photo) => ({
-        id: photo.id,
-        caption: photo.caption,
-        sortOrder: photo.sortOrder,
-        originalFilename: photo.file?.name ?? "",
-        mimeType: photo.file?.type ?? "",
-        sizeBytes: photo.file?.size ?? 0,
-      })),
+      photos: photos
+        .map((photo) =>
+          createPhotoPayload(photo, {
+            semanticKey: "gallery_photo",
+            sectionItemId: photo.id,
+            sortOrder: photo.sortOrder,
+          }),
+        )
+        .filter((photo): photo is NonNullable<typeof photo> => Boolean(photo)),
       puzzle: {
         selectedPhotoId: formData.media.puzzle.selectedPhotoId,
         puzzlePhoto:
-          formData.media.puzzle.sourceType === "separate" &&
-          formData.media.puzzle.puzzlePhoto?.file
-            ? {
-                id: formData.media.puzzle.puzzlePhoto.id,
-                caption: formData.media.puzzle.puzzlePhoto.caption,
+          formData.media.puzzle.sourceType === "separate"
+            ? createPhotoPayload(formData.media.puzzle.puzzlePhoto, {
+                semanticKey: "puzzle_source",
+                sectionItemId: "puzzlePhoto",
                 sortOrder: 0,
-                originalFilename: formData.media.puzzle.puzzlePhoto.file.name,
-                mimeType: formData.media.puzzle.puzzlePhoto.file.type,
-                sizeBytes: formData.media.puzzle.puzzlePhoto.file.size,
-              }
+              })
             : null,
         sourceType: formData.media.puzzle.sourceType,
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
       loveLetterPhoto: createPhotoPayload(formData.media.loveLetterPhoto, {
-        semanticKey: "love_letter_side",
+        semanticKey: "love_letter_side_photo",
+        sectionItemId: "loveLetterPhoto",
         sortOrder: 0,
       }),
     },
@@ -2645,7 +3074,22 @@ function createPhotoPayload(
   options: { semanticKey?: string; sectionItemId?: string; sortOrder?: number } = {},
 ) {
   if (!photo?.file) {
-    return null;
+    if (!photo?.mediaId) {
+      return null;
+    }
+
+    return {
+      id: photo.id,
+      caption: photo.caption,
+      sortOrder: options.sortOrder ?? photo.sortOrder,
+      originalFilename: photo.originalFilename ?? "",
+      mimeType: photo.mimeType ?? "",
+      sizeBytes: photo.sizeBytes ?? 0,
+      semanticKey: options.semanticKey ?? photo.semanticKey ?? "",
+      sectionItemId: options.sectionItemId ?? photo.sectionItemId ?? "",
+      mediaId: photo.mediaId,
+      storagePath: photo.storagePath ?? "",
+    };
   }
 
   return {
@@ -2657,6 +3101,8 @@ function createPhotoPayload(
     sizeBytes: photo.file.size,
     semanticKey: options.semanticKey ?? "",
     sectionItemId: options.sectionItemId ?? "",
+    mediaId: photo.mediaId,
+    storagePath: photo.storagePath,
   };
 }
 
@@ -2664,6 +3110,39 @@ function appendPhotoFile(formData: FormData, key: string, photo: StoryOfUsPhotoD
   if (photo?.file) {
     formData.append(key, photo.file, photo.file.name);
   }
+}
+
+function getMediaUploadBlocker(formData: StoryOfUsSetupFormData) {
+  const photoItems = collectPhotoItems(formData);
+  const hasUploadingPhoto = photoItems.some((photo) => photo.uploadStatus === "uploading");
+  const hasFailedPhoto = photoItems.some((photo) => photo.uploadStatus === "failed");
+  const voiceStatus = formData.musicVoice.voiceNote?.uploadStatus;
+
+  if (hasUploadingPhoto || voiceStatus === "uploading") {
+    return "Dosya yüklemeleri devam ediyor. Lütfen yüklemeler tamamlandıktan sonra gönderin.";
+  }
+
+  if (hasFailedPhoto) {
+    return "Bazı fotoğraflar yüklenemedi. Lütfen başarısız dosyaları tekrar yükleyin veya kaldırın.";
+  }
+
+  if (voiceStatus === "failed") {
+    return "Ses notu yüklenemedi. Lütfen tekrar yükleyin veya ses notu bölümünü istemediğinizi onaylayın.";
+  }
+
+  return null;
+}
+
+function collectPhotoItems(formData: StoryOfUsSetupFormData) {
+  return [
+    formData.media.openingPhotos.firstPerson,
+    formData.media.openingPhotos.secondPerson,
+    ...formData.media.promptPhotos.map((prompt) => prompt.photo),
+    ...formData.media.photos,
+    formData.media.puzzle.puzzlePhoto,
+    formData.media.loveLetterPhoto,
+    ...formData.timeline.map((item) => item.photo),
+  ].filter((photo): photo is StoryOfUsPhotoDraftItem => Boolean(photo));
 }
 
 function saveSetupDraft(formData: StoryOfUsSetupFormData, setupToken: string) {
@@ -3358,6 +3837,7 @@ function PhotosPuzzleStep({
                     onChange={(caption) => onUpdatePhotoCaption(photo.id, caption)}
                     placeholder="Bu anı birkaç kelimeyle anlatın"
                   />
+                  <MediaUploadStatus status={photo.uploadStatus} error={photo.uploadError} />
                   <div className="grid gap-2">
                     <button
                       type="button"
@@ -3444,6 +3924,10 @@ function PhotosPuzzleStep({
                 onChange={onUpdatePuzzlePhotoCaption}
                 placeholder="Bu puzzle fotoğrafı için kısa bir not"
               />
+              <MediaUploadStatus
+                status={puzzle.puzzlePhoto.uploadStatus}
+                error={puzzle.puzzlePhoto.uploadError}
+              />
             </div>
             <button
               type="button"
@@ -3474,6 +3958,10 @@ function PhotosPuzzleStep({
                   {selectedGalleryPuzzlePhoto.caption}
                 </p>
               )}
+              <MediaUploadStatus
+                status={selectedGalleryPuzzlePhoto.uploadStatus}
+                error={selectedGalleryPuzzlePhoto.uploadError}
+              />
             </div>
             <button
               type="button"
@@ -3604,6 +4092,9 @@ function MusicVoiceStep({
             >
               Tarayıcınız ses önizlemeyi desteklemiyor.
             </audio>
+            <div className="mt-3">
+              <MediaUploadStatus status={voiceNote.uploadStatus} error={voiceNote.uploadError} />
+            </div>
           </div>
         ) : isVoiceNoteSkipped ? (
           <div className="rounded-3xl border border-rose-100 bg-rose-50/80 p-4 shadow-sm shadow-rose-100/40">
@@ -5081,6 +5572,7 @@ function SinglePhotoPicker({
           >
             Fotoğrafı kaldır
           </button>
+          <MediaUploadStatus status={photo.uploadStatus} error={photo.uploadError} />
         </div>
       ) : (
         <div className="mt-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50/60 p-3 text-sm leading-6 text-rose-950/55">
@@ -5103,6 +5595,40 @@ function SinglePhotoPicker({
           }}
         />
       </label>
+    </div>
+  );
+}
+
+function MediaUploadStatus({
+  status,
+  error,
+}: {
+  status?: "idle" | "uploading" | "uploaded" | "failed";
+  error?: string;
+}) {
+  if (!status || status === "idle") {
+    return null;
+  }
+
+  const content =
+    status === "uploading"
+      ? "Yükleniyor..."
+      : status === "uploaded"
+        ? "Yüklendi"
+        : "Yükleme başarısız";
+  const className =
+    status === "uploading"
+      ? "border-amber-100 bg-amber-50 text-amber-800"
+      : status === "uploaded"
+        ? "border-emerald-100 bg-emerald-50 text-emerald-800"
+        : "border-rose-200 bg-rose-50 text-rose-700";
+
+  return (
+    <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${className}`}>
+      {content}
+      {status === "failed" && error && (
+        <span className="mt-1 block font-normal leading-5">{error}</span>
+      )}
     </div>
   );
 }
