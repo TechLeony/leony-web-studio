@@ -54,6 +54,19 @@ export type StoryOfUsPhotoDraftItem = {
   file?: File;
 };
 
+export type StoryOfUsOpeningPhotosData = {
+  firstPerson: StoryOfUsPhotoDraftItem | null;
+  secondPerson: StoryOfUsPhotoDraftItem | null;
+};
+
+export type StoryOfUsPromptPhotoItem = {
+  id: string;
+  title: string;
+  helperText: string;
+  photo: StoryOfUsPhotoDraftItem | null;
+  sortOrder: number;
+};
+
 export type StoryOfUsPuzzleSourceType = "gallery" | "separate";
 
 export type StoryOfUsPuzzleData = {
@@ -64,8 +77,11 @@ export type StoryOfUsPuzzleData = {
 };
 
 export type StoryOfUsMediaData = {
+  openingPhotos: StoryOfUsOpeningPhotosData;
+  promptPhotos: StoryOfUsPromptPhotoItem[];
   photos: StoryOfUsPhotoDraftItem[];
   puzzle: StoryOfUsPuzzleData;
+  loveLetterPhoto: StoryOfUsPhotoDraftItem | null;
 };
 
 export type StoryOfUsMusicData = {
@@ -99,6 +115,7 @@ export type StoryOfUsTimelineItem = {
   title: string;
   eventDate: string;
   description: string;
+  photo: StoryOfUsPhotoDraftItem | null;
   sortOrder: number;
 };
 
@@ -155,10 +172,18 @@ export type StoryOfUsSerializableSetupFormData = Omit<
   "media" | "musicVoice"
 > & {
   media: {
+    openingPhotos: {
+      firstPerson: StoryOfUsSerializablePhotoDraftItem | null;
+      secondPerson: StoryOfUsSerializablePhotoDraftItem | null;
+    };
+    promptPhotos: Array<Omit<StoryOfUsPromptPhotoItem, "photo"> & {
+      photo: StoryOfUsSerializablePhotoDraftItem | null;
+    }>;
     photos: StoryOfUsSerializablePhotoDraftItem[];
     puzzle: Omit<StoryOfUsPuzzleData, "puzzlePhoto"> & {
       puzzlePhoto: StoryOfUsSerializablePhotoDraftItem | null;
     };
+    loveLetterPhoto: StoryOfUsSerializablePhotoDraftItem | null;
   };
   musicVoice: {
     music: StoryOfUsMusicData;
@@ -229,6 +254,47 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
   },
 
   media: {
+    openingPhotos: {
+      firstPerson: null,
+      secondPerson: null,
+    },
+    promptPhotos: [
+      {
+        id: "sweetest",
+        title: "En tatlı sen",
+        helperText: "Sevgilinizi en tatlı haliyle gösteren bir fotoğraf seçin.",
+        photo: null,
+        sortOrder: 0,
+      },
+      {
+        id: "funniest",
+        title: "En komik halin",
+        helperText: "Gülümseten, doğal ve komik bir kare seçin.",
+        photo: null,
+        sortOrder: 1,
+      },
+      {
+        id: "most-attractive",
+        title: "En çekici sen",
+        helperText: "Onu en etkileyici bulduğunuz kareyi yükleyin.",
+        photo: null,
+        sortOrder: 2,
+      },
+      {
+        id: "baby-face",
+        title: "En bebek halin",
+        helperText: "Tatlı, masum veya çok sevdiğiniz minik bir halini seçin.",
+        photo: null,
+        sortOrder: 3,
+      },
+      {
+        id: "best-smile",
+        title: "En güzel gülüşün",
+        helperText: "Gülüşünü en güzel anlatan fotoğrafı ekleyin.",
+        photo: null,
+        sortOrder: 4,
+      },
+    ],
     photos: [],
     puzzle: {
       selectedPhotoId: null,
@@ -236,6 +302,7 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
       sourceType: null,
       confirmedNoPuzzle: false,
     },
+    loveLetterPhoto: null,
   },
 
   musicVoice: {

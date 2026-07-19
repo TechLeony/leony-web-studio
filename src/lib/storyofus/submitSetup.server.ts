@@ -35,7 +35,18 @@ type SubmitPhotoMetadata = {
   originalFilename: string;
   mimeType: string;
   sizeBytes: number;
+  semanticKey?: string;
+  sectionItemId?: string;
 };
+
+type StoryOfUsMediaSection =
+  | "opening"
+  | "memory_prompt"
+  | "gallery"
+  | "timeline"
+  | "letter"
+  | "puzzle"
+  | "voice_note";
 
 type SubmitPuzzleSourceType = "gallery" | "separate";
 
@@ -60,6 +71,17 @@ type SubmitPayload = {
     relationshipStory: string;
   };
   media: {
+    openingPhotos?: {
+      firstPerson: SubmitPhotoMetadata | null;
+      secondPerson: SubmitPhotoMetadata | null;
+    };
+    promptPhotos?: Array<{
+      id: string;
+      title: string;
+      helperText: string;
+      sortOrder: number;
+      photo: SubmitPhotoMetadata | null;
+    }>;
     photos: SubmitPhotoMetadata[];
     puzzle: {
       selectedPhotoId: string | null;
@@ -67,6 +89,7 @@ type SubmitPayload = {
       sourceType: SubmitPuzzleSourceType | null;
       confirmedNoPuzzle: boolean;
     };
+    loveLetterPhoto?: SubmitPhotoMetadata | null;
   };
   musicVoice: {
     music: {
@@ -109,6 +132,7 @@ type SubmitPayload = {
     eventDate: string;
     description: string;
     sortOrder: number;
+    photo?: SubmitPhotoMetadata | null;
   }>;
   letters: Array<{
     id: string;
@@ -232,6 +256,12 @@ async function submitStoryOfUsSetupData(
 
   await deleteExistingTextDetails(submissionId);
   await prepareExistingMediaForSubmit(submissionId, payload, isFirstSubmit);
+  await insertCoupleDetails(submissionId, payload);
+  await insertMusicIfNeeded(submissionId, payload);
+  await uploadPhotosIfNeeded(submissionId, payload, formData);
+  await uploadVoiceNoteIfNeeded(submissionId, payload, formData);
+  await insertTimelineIfNeeded(submissionId, payload);
+  await insertLettersIfNeeded(submissionId, payload);
 
   const { data: updatedSubmission, error: updateError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
@@ -257,15 +287,8 @@ async function submitStoryOfUsSetupData(
     .single();
 
   if (updateError || !updatedSubmission) {
-    throw new Error(`StoryOfUs submission could not be updated: ${updateError?.message}`);
+    throw new Error(`StoryOfUs submission could not be finalized: ${updateError?.message}`);
   }
-
-  await insertCoupleDetails(submissionId, payload);
-  await insertMusicIfNeeded(submissionId, payload);
-  await uploadPhotosIfNeeded(submissionId, payload, formData);
-  await uploadVoiceNoteIfNeeded(submissionId, payload, formData);
-  await insertTimelineIfNeeded(submissionId, payload);
-  await insertLettersIfNeeded(submissionId, payload);
 
   return {
     submissionId,
@@ -404,6 +427,46 @@ async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload
     payload.media.puzzle.sourceType === "gallery" &&
     Boolean(payload.media.puzzle.selectedPhotoId);
 
+  await uploadSemanticPhotoIfNeeded({
+    submissionId,
+    formData,
+    formDataKey: "openingPhoto:firstPerson",
+    photo: payload.media.openingPhotos?.firstPerson ?? null,
+    section: "opening",
+    mediaType: "photo",
+    storageFolder: "opening",
+    semanticKey: "hero_left",
+    sectionItemId: "firstPerson",
+    sortOrder: 0,
+  });
+  await uploadSemanticPhotoIfNeeded({
+    submissionId,
+    formData,
+    formDataKey: "openingPhoto:secondPerson",
+    photo: payload.media.openingPhotos?.secondPerson ?? null,
+    section: "opening",
+    mediaType: "photo",
+    storageFolder: "opening",
+    semanticKey: "hero_right",
+    sectionItemId: "secondPerson",
+    sortOrder: 1,
+  });
+
+  for (const prompt of payload.media.promptPhotos ?? []) {
+    await uploadSemanticPhotoIfNeeded({
+      submissionId,
+      formData,
+      formDataKey: `promptPhoto:${prompt.id}`,
+      photo: prompt.photo,
+      section: "memory_prompt",
+      mediaType: "photo",
+      storageFolder: "memory-prompts",
+      semanticKey: prompt.id,
+      sectionItemId: prompt.id,
+      sortOrder: prompt.sortOrder,
+    });
+  }
+
   if (!isConfirmedSkipped(payload.confirmedSkips, "photos")) {
     for (const photo of payload.media.photos) {
       const file = getFileFromFormData(formData, `photoFile:${photo.id}`);
@@ -422,6 +485,8 @@ async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload
         submission_id: submissionId,
         media_type: "photo",
         section: "gallery",
+        semantic_key: emptyToNull(photo.semanticKey),
+        section_item_id: emptyToNull(photo.sectionItemId),
         storage_bucket: STORYOFUS_MEDIA_BUCKET,
         storage_path: storagePath,
         original_filename: emptyToNull(photo.originalFilename || file.name),
@@ -438,7 +503,116 @@ async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload
     }
   }
 
+  await uploadSemanticPhotoIfNeeded({
+    submissionId,
+    formData,
+    formDataKey: "loveLetterPhoto",
+    photo: payload.media.loveLetterPhoto ?? null,
+    section: "letter",
+    mediaType: "photo",
+    storageFolder: "letter",
+    semanticKey: "love_letter_side_photo",
+    sectionItemId: "loveLetterPhoto",
+    sortOrder: 0,
+  });
+
+  for (const item of payload.timeline) {
+    await uploadSemanticPhotoIfNeeded({
+      submissionId,
+      formData,
+      formDataKey: `timelinePhoto:${item.id}`,
+      photo: item.photo ?? null,
+      section: "timeline",
+      mediaType: "photo",
+      storageFolder: "timeline",
+      semanticKey: "timeline_item",
+      sectionItemId: item.id,
+      sortOrder: item.sortOrder,
+    });
+  }
+
   await uploadSeparatePuzzlePhotoIfNeeded(submissionId, payload, formData);
+}
+
+async function uploadSemanticPhotoIfNeeded({
+  submissionId,
+  formData,
+  formDataKey,
+  photo,
+  section,
+  mediaType,
+  storageFolder,
+  semanticKey,
+  sectionItemId,
+  sortOrder,
+}: {
+  submissionId: string;
+  formData: FormData;
+  formDataKey: string;
+  photo: SubmitPhotoMetadata | null;
+  section: StoryOfUsMediaSection;
+  mediaType: "photo" | "puzzle_photo";
+  storageFolder: string;
+  semanticKey: string;
+  sectionItemId: string;
+  sortOrder: number;
+}) {
+  if (!photo) {
+    return;
+  }
+
+  const file = getFileFromFormData(formData, formDataKey);
+
+  if (!file) {
+    return;
+  }
+
+  await deleteExistingSemanticMedia(submissionId, section, semanticKey, sectionItemId);
+
+  const storagePath = `submissions/${submissionId}/${storageFolder}/${createSafeStorageFileName(
+    photo.originalFilename || file.name,
+  )}`;
+
+  await uploadFileToStorage(storagePath, file);
+
+  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
+    submission_id: submissionId,
+    media_type: mediaType,
+    section,
+    semantic_key: semanticKey,
+    section_item_id: sectionItemId,
+    storage_bucket: STORYOFUS_MEDIA_BUCKET,
+    storage_path: storagePath,
+    original_filename: emptyToNull(photo.originalFilename || file.name),
+    mime_type: emptyToNull(photo.mimeType || file.type),
+    size_bytes: photo.sizeBytes || file.size,
+    caption: emptyToNull(photo.caption),
+    sort_order: sortOrder,
+    is_puzzle_source: false,
+  });
+
+  if (error) {
+    throw new Error(`StoryOfUs ${section} photo metadata could not be saved: ${error.message}`);
+  }
+}
+
+async function deleteExistingSemanticMedia(
+  submissionId: string,
+  section: StoryOfUsMediaSection,
+  semanticKey: string,
+  sectionItemId: string,
+) {
+  const { error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_media")
+    .delete()
+    .eq("submission_id", submissionId)
+    .eq("section", section)
+    .eq("semantic_key", semanticKey)
+    .eq("section_item_id", sectionItemId);
+
+  if (error) {
+    throw new Error(`StoryOfUs existing ${section} photo could not be replaced: ${error.message}`);
+  }
 }
 
 async function uploadSeparatePuzzlePhotoIfNeeded(
@@ -471,6 +645,8 @@ async function uploadSeparatePuzzlePhotoIfNeeded(
     submission_id: submissionId,
     media_type: "puzzle_photo",
     section: "puzzle",
+    semantic_key: "puzzle_source",
+    section_item_id: "puzzlePhoto",
     storage_bucket: STORYOFUS_MEDIA_BUCKET,
     storage_path: storagePath,
     original_filename: emptyToNull(puzzlePhoto.originalFilename || file.name),
@@ -511,6 +687,8 @@ async function uploadVoiceNoteIfNeeded(
     submission_id: submissionId,
     media_type: "voice_note",
     section: "voice_note",
+    semantic_key: "voice_note",
+    section_item_id: "voiceNote",
     storage_bucket: STORYOFUS_MEDIA_BUCKET,
     storage_path: storagePath,
     original_filename: emptyToNull(payload.musicVoice.voiceNote.originalFilename || file.name),
@@ -598,8 +776,11 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
     orderReference: payload.orderReference,
     contactCouple: payload.contactCouple,
     media: {
+      openingPhotos: payload.media.openingPhotos,
+      promptPhotos: payload.media.promptPhotos,
       photos: payload.media.photos,
       puzzle: payload.media.puzzle,
+      loveLetterPhoto: payload.media.loveLetterPhoto,
     },
     musicVoice: {
       music: payload.musicVoice.music,

@@ -46,7 +46,7 @@ function StoryOfUsLanding() {
 
       {/* Nav */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-        <Link to="/" className="inline-flex items-center">
+        <Link to="/storyofus" className="inline-flex items-center">
           <img
             src="/logos/leony-logo-ask-sitesi.png"
             alt="Leony"

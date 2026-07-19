@@ -17,7 +17,9 @@ import {
   type StoryOfUsLetterItem,
   type StoryOfUsLegalConsents,
   type StoryOfUsMusicData,
+  type StoryOfUsOpeningPhotosData,
   type StoryOfUsPhotoDraftItem,
+  type StoryOfUsPromptPhotoItem,
   type StoryOfUsPuzzleData,
   type StoryOfUsOptionalSectionId,
   type StoryOfUsSkipState,
@@ -42,6 +44,36 @@ type PlaceholderCard = {
 
 const STORYOFUS_SETUP_DRAFT_STORAGE_KEY = "storyofus.setup.draft.v1";
 
+const DEFAULT_LOVE_LETTER_TITLE = "Kalbimden sana birkaç satır";
+
+const DEFAULT_OPEN_WHEN_LETTERS: Array<Pick<StoryOfUsLetterItem, "type" | "title" | "body">> = [
+  {
+    type: "open_when",
+    title: "Beni özlediğinde aç",
+    body: "Gözlerini kapat ve beni yanında düşün. Kalbim tam orada, sana sarılıyor.",
+  },
+  {
+    type: "open_when",
+    title: "Üzgün olduğunda aç",
+    body: "Bugün zor geçmiş olabilir ama sen hala benim en güzel iyi ki'msin.",
+  },
+  {
+    type: "open_when",
+    title: "Seni ne kadar sevdiğimi hatırlamak için aç",
+    body: "Seni kelimelere sığmayacak kadar, her gün daha daha çokkk seviyorumm bitanemm.",
+  },
+  {
+    type: "open_when",
+    title: "Gülümsemeye ihtiyacın olduğunda aç",
+    body: "Şu an yüzünde küçücük bir gülümseme varsa, ben kazandım demekkk.",
+  },
+  {
+    type: "open_when",
+    title: "Kendini yalnız hissettiğinde aç",
+    body: "Mesafeler ne olursa olsun, sen benim en yakın yerimsinn.",
+  },
+];
+
 type StoryOfUsSetupDraft = Pick<
   StoryOfUsSetupFormData,
   | "orderReference"
@@ -54,12 +86,20 @@ type StoryOfUsSetupDraft = Pick<
 > & {
   siteAccess: Pick<StoryOfUsSiteAccessData, "passcodeHint" | "hasExistingPasscode">;
   media: {
+    openingPhotos: {
+      firstPerson: null;
+      secondPerson: null;
+    };
+    promptPhotos: Array<Omit<StoryOfUsPromptPhotoItem, "photo"> & {
+      photo: null;
+    }>;
     puzzle: {
       selectedPhotoId: null;
       puzzlePhoto: null;
       sourceType: null;
       confirmedNoPuzzle: boolean;
     };
+    loveLetterPhoto: null;
   };
   musicVoice: {
     music: StoryOfUsMusicData;
@@ -791,6 +831,134 @@ function StoryOfUsSetupRoute() {
     setValidationNotice(null);
   }
 
+  function createImageDraft(file: File, caption = ""): StoryOfUsPhotoDraftItem | null {
+    if (!file.type.startsWith("image/")) {
+      return null;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    photoPreviewUrlsRef.current.add(previewUrl);
+
+    return {
+      id: createPhotoDraftId(),
+      previewUrl,
+      caption,
+      sortOrder: 0,
+      file,
+    };
+  }
+
+  function revokePhotoDraft(photo: StoryOfUsPhotoDraftItem | null) {
+    if (!photo) {
+      return;
+    }
+
+    URL.revokeObjectURL(photo.previewUrl);
+    photoPreviewUrlsRef.current.delete(photo.previewUrl);
+    puzzlePhotoPreviewUrlsRef.current.delete(photo.previewUrl);
+  }
+
+  function updateOpeningPhoto(position: keyof StoryOfUsOpeningPhotosData, file: File) {
+    const nextPhoto = createImageDraft(file);
+
+    if (!nextPhoto) {
+      return;
+    }
+
+    setFormData((current) => {
+      revokePhotoDraft(current.media.openingPhotos[position]);
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          openingPhotos: {
+            ...current.media.openingPhotos,
+            [position]: nextPhoto,
+          },
+        },
+      };
+    });
+  }
+
+  function removeOpeningPhoto(position: keyof StoryOfUsOpeningPhotosData) {
+    setFormData((current) => {
+      revokePhotoDraft(current.media.openingPhotos[position]);
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          openingPhotos: {
+            ...current.media.openingPhotos,
+            [position]: null,
+          },
+        },
+      };
+    });
+  }
+
+  function updatePromptPhoto(promptId: string, file: File) {
+    const prompt = formData.media.promptPhotos.find((item) => item.id === promptId);
+    const nextPhoto = createImageDraft(file, prompt?.title ?? "");
+
+    if (!nextPhoto) {
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        promptPhotos: current.media.promptPhotos.map((item) => {
+          if (item.id !== promptId) {
+            return item;
+          }
+
+          revokePhotoDraft(item.photo);
+
+          return {
+            ...item,
+            photo: nextPhoto,
+          };
+        }),
+      },
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "photos"),
+    }));
+    setValidationNotice(null);
+  }
+
+  function updatePromptPhotoCaption(promptId: string, caption: string) {
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        promptPhotos: current.media.promptPhotos.map((item) =>
+          item.id === promptId && item.photo
+            ? { ...item, photo: { ...item.photo, caption } }
+            : item,
+        ),
+      },
+    }));
+  }
+
+  function removePromptPhoto(promptId: string) {
+    setFormData((current) => ({
+      ...current,
+      media: {
+        ...current.media,
+        promptPhotos: current.media.promptPhotos.map((item) => {
+          if (item.id !== promptId) {
+            return item;
+          }
+
+          revokePhotoDraft(item.photo);
+          return { ...item, photo: null };
+        }),
+      },
+    }));
+  }
+
   function updatePhotoCaption(photoId: string, caption: string) {
     setFormData((current) => ({
       ...current,
@@ -1101,6 +1269,7 @@ function StoryOfUsSetupRoute() {
           title: "",
           eventDate: "",
           description: "",
+          photo: null,
           sortOrder: current.timeline.length,
         },
       ],
@@ -1122,13 +1291,54 @@ function StoryOfUsSetupRoute() {
     }));
   }
 
-  function removeTimelineItem(itemId: string) {
+  function updateTimelineItemPhoto(itemId: string, file: File) {
+    const nextPhoto = createImageDraft(file);
+
+    if (!nextPhoto) {
+      return;
+    }
+
     setFormData((current) => ({
       ...current,
-      timeline: current.timeline
-        .filter((item) => item.id !== itemId)
-        .map((item, index) => ({ ...item, sortOrder: index })),
+      timeline: current.timeline.map((item) => {
+        if (item.id !== itemId) {
+          return item;
+        }
+
+        revokePhotoDraft(item.photo);
+        return { ...item, photo: nextPhoto };
+      }),
+      confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "timeline"),
     }));
+    setValidationNotice(null);
+  }
+
+  function removeTimelineItemPhoto(itemId: string) {
+    setFormData((current) => ({
+      ...current,
+      timeline: current.timeline.map((item) => {
+        if (item.id !== itemId) {
+          return item;
+        }
+
+        revokePhotoDraft(item.photo);
+        return { ...item, photo: null };
+      }),
+    }));
+  }
+
+  function removeTimelineItem(itemId: string) {
+    setFormData((current) => {
+      const removedItem = current.timeline.find((item) => item.id === itemId);
+      revokePhotoDraft(removedItem?.photo ?? null);
+
+      return {
+        ...current,
+        timeline: current.timeline
+          .filter((item) => item.id !== itemId)
+          .map((item, index) => ({ ...item, sortOrder: index })),
+      };
+    });
   }
 
   function moveTimelineItem(itemId: string, direction: "up" | "down") {
@@ -1170,7 +1380,7 @@ function StoryOfUsSetupRoute() {
           {
             id: createLetterItemId(),
             type: "love_letter",
-            title: "Aşk mektubum",
+            title: DEFAULT_LOVE_LETTER_TITLE,
             body: "",
             sortOrder: current.letters.length,
           },
@@ -1197,6 +1407,66 @@ function StoryOfUsSetupRoute() {
       confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "letters"),
     }));
     setValidationNotice(null);
+  }
+
+  function addDefaultOpenWhenLetters() {
+    setFormData((current) => {
+      const currentOpenWhenCount = current.letters.filter((letter) => letter.type === "open_when").length;
+
+      if (currentOpenWhenCount > 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        letters: [
+          ...current.letters,
+          ...DEFAULT_OPEN_WHEN_LETTERS.map((letter, index) => ({
+            id: createLetterItemId(),
+            type: letter.type,
+            title: letter.title,
+            body: letter.body,
+            sortOrder: current.letters.length + index,
+          })),
+        ],
+        confirmedSkips: removeConfirmedSkip(current.confirmedSkips, "letters"),
+      };
+    });
+    setValidationNotice(null);
+  }
+
+  function updateLoveLetterPhoto(file: File) {
+    const nextPhoto = createImageDraft(file, "Kalbimden sana birkaç satır");
+
+    if (!nextPhoto) {
+      return;
+    }
+
+    setFormData((current) => {
+      revokePhotoDraft(current.media.loveLetterPhoto);
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          loveLetterPhoto: nextPhoto,
+        },
+      };
+    });
+  }
+
+  function removeLoveLetterPhoto() {
+    setFormData((current) => {
+      revokePhotoDraft(current.media.loveLetterPhoto);
+
+      return {
+        ...current,
+        media: {
+          ...current.media,
+          loveLetterPhoto: null,
+        },
+      };
+    });
   }
 
   function updateLetterItem(
@@ -1444,8 +1714,17 @@ function StoryOfUsSetupRoute() {
                 />
               ) : currentStep.id === "photosPuzzle" ? (
                 <PhotosPuzzleStep
+                  contactCouple={formData.contactCouple}
+                  openingPhotos={formData.media.openingPhotos}
+                  promptPhotos={formData.media.promptPhotos}
                   photos={formData.media.photos}
                   puzzle={formData.media.puzzle}
+                  existingMedia={existingMedia}
+                  onUpdateOpeningPhoto={updateOpeningPhoto}
+                  onRemoveOpeningPhoto={removeOpeningPhoto}
+                  onUpdatePromptPhoto={updatePromptPhoto}
+                  onUpdatePromptPhotoCaption={updatePromptPhotoCaption}
+                  onRemovePromptPhoto={removePromptPhoto}
                   onAddPhotoFiles={addPhotoFiles}
                   onUpdatePhotoCaption={updatePhotoCaption}
                   onRemovePhoto={removePhoto}
@@ -1472,15 +1751,21 @@ function StoryOfUsSetupRoute() {
                   items={formData.timeline}
                   onAddItem={addTimelineItem}
                   onUpdateItem={updateTimelineItem}
+                  onUpdateItemPhoto={updateTimelineItemPhoto}
+                  onRemoveItemPhoto={removeTimelineItemPhoto}
                   onRemoveItem={removeTimelineItem}
                   onMoveItem={moveTimelineItem}
                 />
               ) : currentStep.id === "letters" ? (
                 <LettersStep
                   letters={formData.letters}
+                  loveLetterPhoto={formData.media.loveLetterPhoto}
                   onAddLoveLetter={addLoveLetter}
                   onAddOpenWhenLetter={addOpenWhenLetter}
+                  onAddDefaultOpenWhenLetters={addDefaultOpenWhenLetters}
                   onUpdateLetter={updateLetterItem}
+                  onUpdateLoveLetterPhoto={updateLoveLetterPhoto}
+                  onRemoveLoveLetterPhoto={removeLoveLetterPhoto}
                   onRemoveLetter={removeLetterItem}
                   onMoveLetter={moveLetterItem}
                 />
@@ -2121,6 +2406,16 @@ function createSetupFormDataFromAccessInitialData(
   initialData: StoryOfUsSetupAccessInitialData,
 ): StoryOfUsSetupFormData {
   const formData = createEmptyStoryOfUsSetupFormData();
+  const initialLetters =
+    initialData.letters.length > 0
+      ? initialData.letters
+      : DEFAULT_OPEN_WHEN_LETTERS.map((letter, index) => ({
+          id: createLetterItemId(),
+          type: letter.type,
+          title: letter.title,
+          body: letter.body,
+          sortOrder: index,
+        }));
 
   return {
     ...formData,
@@ -2148,8 +2443,8 @@ function createSetupFormDataFromAccessInitialData(
       passcodeHint: initialData.siteAccess.passcodeHint,
       hasExistingPasscode: initialData.siteAccess.hasExistingPasscode,
     },
-    timeline: initialData.timeline.map((item, index) => ({ ...item, sortOrder: index })),
-    letters: initialData.letters.map((letter, index) => ({ ...letter, sortOrder: index })),
+    timeline: initialData.timeline.map((item, index) => ({ ...item, photo: null, sortOrder: index })),
+    letters: initialLetters.map((letter, index) => ({ ...letter, sortOrder: index })),
     confirmedSkips: initialData.confirmedSkips,
     legalConsents: initialData.legalConsents ?? formData.legalConsents,
   };
@@ -2178,12 +2473,24 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
       hasExistingPasscode: formData.siteAccess.hasExistingPasscode,
     },
     media: {
+      openingPhotos: {
+        firstPerson: null,
+        secondPerson: null,
+      },
+      promptPhotos: formData.media.promptPhotos.map((prompt) => ({
+        id: prompt.id,
+        title: prompt.title,
+        helperText: prompt.helperText,
+        photo: null,
+        sortOrder: prompt.sortOrder,
+      })),
       puzzle: {
         selectedPhotoId: null,
         puzzlePhoto: null,
         sourceType: null,
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
+      loveLetterPhoto: null,
     },
     musicVoice: {
       music: formData.musicVoice.music,
@@ -2193,6 +2500,7 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
     legalConsents: formData.legalConsents,
     timeline: getOrderedTimelineItems(formData.timeline).map((item, index) => ({
       ...item,
+      photo: null,
       sortOrder: index,
     })),
     letters: getOrderedLetters(formData.letters).map((letter, index) => ({
@@ -2205,6 +2513,8 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
 function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, setupToken: string) {
   const submissionFormData = new FormData();
   const photos = getOrderedPhotos(formData.media.photos);
+  const promptPhotos = [...formData.media.promptPhotos].sort((a, b) => a.sortOrder - b.sortOrder);
+  const timelineItems = getOrderedTimelineItems(formData.timeline);
   const normalizedContactPhone = normalizeTurkeyMobilePhone(formData.contactCouple.contactPhone);
   const payload = {
     setupToken,
@@ -2215,6 +2525,26 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     },
     siteAccess: formData.siteAccess,
     media: {
+      openingPhotos: {
+        firstPerson: createPhotoPayload(formData.media.openingPhotos.firstPerson, {
+          semanticKey: "first_person",
+          sortOrder: 0,
+        }),
+        secondPerson: createPhotoPayload(formData.media.openingPhotos.secondPerson, {
+          semanticKey: "second_person",
+          sortOrder: 1,
+        }),
+      },
+      promptPhotos: promptPhotos.map((prompt, index) => ({
+        id: prompt.id,
+        title: prompt.title,
+        helperText: prompt.helperText,
+        sortOrder: index,
+        photo: createPhotoPayload(prompt.photo, {
+          semanticKey: prompt.id,
+          sortOrder: index,
+        }),
+      })),
       photos: photos.map((photo) => ({
         id: photo.id,
         caption: photo.caption,
@@ -2240,6 +2570,10 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
         sourceType: formData.media.puzzle.sourceType,
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
+      loveLetterPhoto: createPhotoPayload(formData.media.loveLetterPhoto, {
+        semanticKey: "love_letter_side",
+        sortOrder: 0,
+      }),
     },
     musicVoice: {
       music: formData.musicVoice.music,
@@ -2254,7 +2588,15 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     },
     confirmedSkips: formData.confirmedSkips,
     legalConsents: formData.legalConsents,
-    timeline: getOrderedTimelineItems(formData.timeline),
+    timeline: timelineItems.map((item, index) => ({
+      ...item,
+      sortOrder: index,
+      photo: createPhotoPayload(item.photo, {
+        semanticKey: "timeline_item",
+        sectionItemId: item.id,
+        sortOrder: index,
+      }),
+    })),
     letters: getOrderedLetters(formData.letters),
   };
 
@@ -2265,6 +2607,16 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
       submissionFormData.append(`photoFile:${photo.id}`, photo.file, photo.file.name);
     }
   });
+
+  appendPhotoFile(submissionFormData, "openingPhoto:firstPerson", formData.media.openingPhotos.firstPerson);
+  appendPhotoFile(submissionFormData, "openingPhoto:secondPerson", formData.media.openingPhotos.secondPerson);
+  promptPhotos.forEach((prompt) => {
+    appendPhotoFile(submissionFormData, `promptPhoto:${prompt.id}`, prompt.photo);
+  });
+  timelineItems.forEach((item) => {
+    appendPhotoFile(submissionFormData, `timelinePhoto:${item.id}`, item.photo);
+  });
+  appendPhotoFile(submissionFormData, "loveLetterPhoto", formData.media.loveLetterPhoto);
 
   if (formData.musicVoice.voiceNote?.file) {
     submissionFormData.append(
@@ -2286,6 +2638,32 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
   }
 
   return submissionFormData;
+}
+
+function createPhotoPayload(
+  photo: StoryOfUsPhotoDraftItem | null,
+  options: { semanticKey?: string; sectionItemId?: string; sortOrder?: number } = {},
+) {
+  if (!photo?.file) {
+    return null;
+  }
+
+  return {
+    id: photo.id,
+    caption: photo.caption,
+    sortOrder: options.sortOrder ?? photo.sortOrder,
+    originalFilename: photo.file.name,
+    mimeType: photo.file.type,
+    sizeBytes: photo.file.size,
+    semanticKey: options.semanticKey ?? "",
+    sectionItemId: options.sectionItemId ?? "",
+  };
+}
+
+function appendPhotoFile(formData: FormData, key: string, photo: StoryOfUsPhotoDraftItem | null) {
+  if (photo?.file) {
+    formData.append(key, photo.file, photo.file.name);
+  }
 }
 
 function saveSetupDraft(formData: StoryOfUsSetupFormData, setupToken: string) {
@@ -2331,6 +2709,7 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
           title: typeof item.title === "string" ? item.title : "",
           eventDate: typeof item.eventDate === "string" ? item.eventDate : "",
           description: typeof item.description === "string" ? item.description : "",
+          photo: null,
           sortOrder: index,
         }))
       : [];
@@ -2356,6 +2735,11 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
         ...(parsedDraft.contactCouple ?? {}),
       },
       media: {
+        openingPhotos: {
+          firstPerson: null,
+          secondPerson: null,
+        },
+        promptPhotos: createEmptyStoryOfUsSetupFormData().media.promptPhotos,
         photos: [],
         puzzle: {
           selectedPhotoId: null,
@@ -2363,6 +2747,7 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
           sourceType: null,
           confirmedNoPuzzle: Boolean(parsedDraft.media?.puzzle?.confirmedNoPuzzle),
         },
+        loveLetterPhoto: null,
       },
       musicVoice: {
         music: {
@@ -2576,6 +2961,24 @@ function getSelectedPuzzlePhoto(photos: StoryOfUsPhotoDraftItem[], selectedPhoto
   return photos.find((photo) => photo.id === selectedPhotoId);
 }
 
+function getFirstPersonDisplayName(contactCouple: StoryOfUsContactCoupleData) {
+  const coupleNames = contactCouple.coupleDisplayName
+    .split("&")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return coupleNames[0] || contactCouple.customerName.trim() || "İlk kişi";
+}
+
+function getSecondPersonDisplayName(contactCouple: StoryOfUsContactCoupleData) {
+  const coupleNames = contactCouple.coupleDisplayName
+    .split("&")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return coupleNames[1] || contactCouple.partnerName.trim() || "İkinci kişi";
+}
+
 function displayValue(value: string | number | null | undefined, fallback = "Belirtilmedi") {
   if (value === null || value === undefined) {
     return fallback;
@@ -2753,8 +3156,17 @@ function getOptionalSectionTitle(sectionId: StoryOfUsOptionalSectionId) {
 }
 
 function PhotosPuzzleStep({
+  contactCouple,
+  openingPhotos,
+  promptPhotos,
   photos,
   puzzle,
+  existingMedia,
+  onUpdateOpeningPhoto,
+  onRemoveOpeningPhoto,
+  onUpdatePromptPhoto,
+  onUpdatePromptPhotoCaption,
+  onRemovePromptPhoto,
   onAddPhotoFiles,
   onUpdatePhotoCaption,
   onRemovePhoto,
@@ -2764,8 +3176,17 @@ function PhotosPuzzleStep({
   onRemoveSeparatePuzzlePhoto,
   onClearPuzzleSelection,
 }: {
+  contactCouple: StoryOfUsContactCoupleData;
+  openingPhotos: StoryOfUsOpeningPhotosData;
+  promptPhotos: StoryOfUsPromptPhotoItem[];
   photos: StoryOfUsPhotoDraftItem[];
   puzzle: StoryOfUsPuzzleData;
+  existingMedia: StoryOfUsSetupAccessExistingMediaItem[];
+  onUpdateOpeningPhoto: (position: keyof StoryOfUsOpeningPhotosData, file: File) => void;
+  onRemoveOpeningPhoto: (position: keyof StoryOfUsOpeningPhotosData) => void;
+  onUpdatePromptPhoto: (promptId: string, file: File) => void;
+  onUpdatePromptPhotoCaption: (promptId: string, caption: string) => void;
+  onRemovePromptPhoto: (promptId: string) => void;
   onAddPhotoFiles: (files: FileList | File[]) => void;
   onUpdatePhotoCaption: (photoId: string, caption: string) => void;
   onRemovePhoto: (photoId: string) => void;
@@ -2776,9 +3197,92 @@ function PhotosPuzzleStep({
   onClearPuzzleSelection: () => void;
 }) {
   const selectedGalleryPuzzlePhoto = photos.find((photo) => photo.id === puzzle.selectedPhotoId);
+  const firstPersonName = getFirstPersonDisplayName(contactCouple);
+  const secondPersonName = getSecondPersonDisplayName(contactCouple);
+  const existingOpeningMedia = existingMedia.filter((media) => media.section === "opening");
+  const existingPromptMedia = existingMedia.filter((media) => media.section === "memory_prompt");
 
   return (
     <div className="grid gap-5">
+      <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">
+            Sayfanızın açılışında görünecek fotoğraflar
+          </h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Sayfanızın açılışında, isimlerinizin yanında ikinize ait ayrı fotoğraflar yer alacak.
+            Lütfen her biriniz için birer tek kişilik fotoğraf yükleyin.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <SinglePhotoPicker
+            title={`${firstPersonName} için fotoğraf`}
+            description="İsim sıralamasında solda görünen kişinin yanında yer alır."
+            photo={openingPhotos.firstPerson}
+            buttonText="Fotoğraf seç"
+            emptyText="Henüz fotoğraf seçilmedi."
+            onSelect={(file) => onUpdateOpeningPhoto("firstPerson", file)}
+            onRemove={() => onRemoveOpeningPhoto("firstPerson")}
+          />
+          <SinglePhotoPicker
+            title={`${secondPersonName} için fotoğraf`}
+            description="İsim sıralamasında sağda görünen kişinin yanında yer alır."
+            photo={openingPhotos.secondPerson}
+            buttonText="Fotoğraf seç"
+            emptyText="Henüz fotoğraf seçilmedi."
+            onSelect={(file) => onUpdateOpeningPhoto("secondPerson", file)}
+            onRemove={() => onRemoveOpeningPhoto("secondPerson")}
+          />
+        </div>
+        {existingOpeningMedia.length > 0 && (
+          <div className="mt-4">
+            <ExistingMediaList title="Mevcut açılış fotoğrafları korunacak" items={existingOpeningMedia} />
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <div className="mb-4">
+          <h4 className="text-base font-semibold text-rose-950">Benim gözümde sen fotoğrafları</h4>
+          <p className="mt-1 text-sm leading-6 text-rose-950/60">
+            Bu bölümde her karta, başlıktaki duyguya uygun bir fotoğraf seçiyorsunuz.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {promptPhotos.map((prompt) => (
+            <article
+              key={prompt.id}
+              className="min-w-0 rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/45"
+            >
+              <SinglePhotoPicker
+                title={prompt.title}
+                description={prompt.helperText}
+                photo={prompt.photo}
+                buttonText="Bu karta fotoğraf seç"
+                emptyText="Bu karta henüz fotoğraf seçilmedi."
+                onSelect={(file) => onUpdatePromptPhoto(prompt.id, file)}
+                onRemove={() => onRemovePromptPhoto(prompt.id)}
+              />
+              {prompt.photo && (
+                <div className="mt-3">
+                  <SetupTextField
+                    label="Kart başlığı / notu"
+                    value={prompt.photo.caption}
+                    onChange={(caption) => onUpdatePromptPhotoCaption(prompt.id, caption)}
+                    placeholder={`Örn. ${prompt.title}`}
+                  />
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+        {existingPromptMedia.length > 0 && (
+          <div className="mt-4">
+            <ExistingMediaList title="Mevcut Benim gözümde sen fotoğrafları korunacak" items={existingPromptMedia} />
+          </div>
+        )}
+      </section>
+
       <section
         data-setup-section="photos"
         className="rounded-3xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/60 p-4 shadow-sm shadow-rose-100/50 sm:p-5"
@@ -3040,13 +3544,13 @@ function MusicVoiceStep({
             label="Şarkı adı"
             value={music.songTitle}
             onChange={(nextValue) => onUpdateMusicField("songTitle", nextValue)}
-            placeholder="Örn: Şarkımız"
+            placeholder="Ahu"
           />
           <SetupTextField
             label="Sanatçı"
             value={music.artistName}
             onChange={(nextValue) => onUpdateMusicField("artistName", nextValue)}
-            placeholder="Örn: Bize özel"
+            placeholder="Mabel Matiz"
           />
           <SetupTextField
             label="Başlangıç saniyesi"
@@ -3182,6 +3686,8 @@ function TimelineStep({
   items,
   onAddItem,
   onUpdateItem,
+  onUpdateItemPhoto,
+  onRemoveItemPhoto,
   onRemoveItem,
   onMoveItem,
 }: {
@@ -3192,6 +3698,8 @@ function TimelineStep({
     field: keyof Pick<StoryOfUsTimelineItem, "title" | "eventDate" | "description">,
     value: string,
   ) => void;
+  onUpdateItemPhoto: (itemId: string, file: File) => void;
+  onRemoveItemPhoto: (itemId: string) => void;
   onRemoveItem: (itemId: string) => void;
   onMoveItem: (itemId: string, direction: "up" | "down") => void;
 }) {
@@ -3308,6 +3816,17 @@ function TimelineStep({
                       placeholder="O gün ne olmuştu, neden özeldi?"
                     />
                   </div>
+                  <div className="sm:col-span-2">
+                    <SinglePhotoPicker
+                      title="Bu anıya ait fotoğraf"
+                      description="Bu fotoğraf yalnızca bu zaman çizelgesi anısıyla eşleşir."
+                      photo={item.photo}
+                      buttonText="Anı fotoğrafı seç"
+                      emptyText="Bu anıya henüz fotoğraf eklenmedi."
+                      onSelect={(file) => onUpdateItemPhoto(item.id, file)}
+                      onRemove={() => onRemoveItemPhoto(item.id)}
+                    />
+                  </div>
                 </div>
               </article>
             );
@@ -3365,25 +3884,34 @@ function TimelineStep({
 
 function LettersStep({
   letters,
+  loveLetterPhoto,
   onAddLoveLetter,
   onAddOpenWhenLetter,
+  onAddDefaultOpenWhenLetters,
   onUpdateLetter,
+  onUpdateLoveLetterPhoto,
+  onRemoveLoveLetterPhoto,
   onRemoveLetter,
   onMoveLetter,
 }: {
   letters: StoryOfUsLetterItem[];
+  loveLetterPhoto: StoryOfUsPhotoDraftItem | null;
   onAddLoveLetter: () => void;
   onAddOpenWhenLetter: () => void;
+  onAddDefaultOpenWhenLetters: () => void;
   onUpdateLetter: (
     letterId: string,
     field: keyof Pick<StoryOfUsLetterItem, "title" | "body">,
     value: string,
   ) => void;
+  onUpdateLoveLetterPhoto: (file: File) => void;
+  onRemoveLoveLetterPhoto: () => void;
   onRemoveLetter: (letterId: string) => void;
   onMoveLetter: (letterId: string, direction: "up" | "down") => void;
 }) {
   const orderedLetters = [...letters].sort((a, b) => a.sortOrder - b.sortOrder);
   const hasLoveLetter = orderedLetters.some((letter) => letter.type === "love_letter");
+  const hasOpenWhenLetters = orderedLetters.some((letter) => letter.type === "open_when");
 
   return (
     <div className="grid gap-5">
@@ -3417,6 +3945,14 @@ function LettersStep({
             >
               Open-when mektubu ekle
             </button>
+            <button
+              type="button"
+              onClick={onAddDefaultOpenWhenLetters}
+              disabled={hasOpenWhenLetters}
+              className="min-h-12 rounded-full border border-pink-200 bg-pink-50/70 px-5 py-3 text-sm font-semibold text-pink-700 transition hover:bg-pink-100 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Demo open-when notlarını kullan
+            </button>
           </div>
         </div>
         {hasLoveLetter && (
@@ -3424,6 +3960,18 @@ function LettersStep({
             Ana aşk mektubu eklendiği için ikinci bir aşk mektubu eklenemez.
           </p>
         )}
+      </section>
+
+      <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+        <SinglePhotoPicker
+          title="Mektubunuzun yanında görünecek fotoğraf"
+          description="Kalbimden sana bölümünde mektubun yanında yer alacak özel fotoğrafı seçin."
+          photo={loveLetterPhoto}
+          buttonText="Mektup fotoğrafı seç"
+          emptyText="Mektup bölümüne henüz fotoğraf eklenmedi."
+          onSelect={onUpdateLoveLetterPhoto}
+          onRemove={onRemoveLoveLetterPhoto}
+        />
       </section>
 
       {orderedLetters.length === 0 ? (
@@ -3490,7 +4038,7 @@ function LettersStep({
                     value={letter.title}
                     onChange={(nextValue) => onUpdateLetter(letter.id, "title", nextValue)}
                     placeholder={
-                      isLoveLetter ? "Aşk mektubum" : getOpenWhenTitlePlaceholder(index)
+                      isLoveLetter ? DEFAULT_LOVE_LETTER_TITLE : getOpenWhenTitlePlaceholder(index)
                     }
                   />
                   <SetupTextArea
@@ -3859,6 +4407,18 @@ function ReviewSubmitStep({
   const existingGalleryMedia = existingMedia.filter(
     (media) => media.mediaType === "photo" && media.section === "gallery",
   );
+  const existingOpeningMedia = existingMedia.filter(
+    (media) => media.mediaType === "photo" && media.section === "opening",
+  );
+  const existingPromptMedia = existingMedia.filter(
+    (media) => media.mediaType === "photo" && media.section === "memory_prompt",
+  );
+  const existingTimelineMedia = existingMedia.filter(
+    (media) => media.mediaType === "photo" && media.section === "timeline",
+  );
+  const existingLetterMedia = existingMedia.filter(
+    (media) => media.mediaType === "photo" && media.section === "letter",
+  );
   const existingPuzzleMedia = existingMedia.filter(
     (media) => media.section === "puzzle" || media.isPuzzleSource,
   );
@@ -3942,32 +4502,71 @@ function ReviewSubmitStep({
       >
         <div className="grid gap-4">
           <ReviewField
+            label="Açılış fotoğrafları"
+            value={`${[
+              formData.media.openingPhotos.firstPerson,
+              formData.media.openingPhotos.secondPerson,
+            ].filter(Boolean).length} / 2 yeni fotoğraf`}
+          />
+          {(formData.media.openingPhotos.firstPerson ||
+            formData.media.openingPhotos.secondPerson) && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[formData.media.openingPhotos.firstPerson, formData.media.openingPhotos.secondPerson]
+                .filter((photo): photo is StoryOfUsPhotoDraftItem => Boolean(photo))
+                .map((photo, index) => (
+                  <ReviewPhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    title={`Açılış fotoğrafı ${index + 1}`}
+                  />
+                ))}
+            </div>
+          )}
+          {existingOpeningMedia.length > 0 && (
+            <ExistingMediaList
+              title="Mevcut açılış fotoğrafları korunacak"
+              items={existingOpeningMedia}
+            />
+          )}
+
+          <ReviewField
+            label="Benim gözümde SEN"
+            value={`${formData.media.promptPhotos.filter((prompt) => prompt.photo).length} / ${
+              formData.media.promptPhotos.length
+            } yeni fotoğraf`}
+          />
+          {formData.media.promptPhotos.some((prompt) => prompt.photo) && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {formData.media.promptPhotos
+                .filter((prompt) => Boolean(prompt.photo))
+                .map((prompt) => (
+                  <ReviewPhotoCard
+                    key={prompt.id}
+                    photo={prompt.photo as StoryOfUsPhotoDraftItem}
+                    title={prompt.title}
+                  />
+                ))}
+            </div>
+          )}
+          {existingPromptMedia.length > 0 && (
+            <ExistingMediaList
+              title="Mevcut Benim gözümde SEN fotoğrafları korunacak"
+              items={existingPromptMedia}
+            />
+          )}
+
+          <ReviewField
             label="Toplam fotoğraf"
             value={`${formData.media.photos.length} fotoğraf`}
           />
           {formData.media.photos.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {formData.media.photos.map((photo, index) => (
-                <article
+                <ReviewPhotoCard
                   key={photo.id}
-                  className="overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm shadow-rose-100/40"
-                >
-                  <img
-                    src={photo.previewUrl}
-                    alt={`Fotoğraf önizlemesi ${index + 1}`}
-                    className="aspect-[4/3] w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <div className="p-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">
-                      Fotoğraf {index + 1}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-rose-950/60">
-                      {photo.caption || "Fotoğraf notu eklenmedi."}
-                    </p>
-                  </div>
-                </article>
+                  photo={photo}
+                  title={`Fotoğraf ${index + 1}`}
+                />
               ))}
             </div>
           ) : (
@@ -4112,13 +4711,13 @@ function ReviewSubmitStep({
             {orderedTimelineItems.map((item, index) => (
               <article
                 key={item.id}
-                className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
+                className="min-w-0 rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/40"
               >
-                <div className="flex gap-3">
+                <div className="flex min-w-0 gap-3">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
                     {index + 1}
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <h5 className="text-sm font-semibold text-rose-950">
                       {item.title || "Başlıksız anı"}
                     </h5>
@@ -4128,9 +4727,18 @@ function ReviewSubmitStep({
                       </p>
                     )}
                     {item.description && (
-                      <p className="mt-2 text-sm leading-6 text-rose-950/60">
+                      <p className="mt-2 break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">
                         {item.description}
                       </p>
+                    )}
+                    {item.photo && (
+                      <img
+                        src={item.photo.previewUrl}
+                        alt={`${item.title || "Anı"} fotoğrafı`}
+                        className="mt-3 aspect-[4/3] w-full max-w-xs rounded-2xl object-cover shadow-sm shadow-rose-100"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     )}
                   </div>
                 </div>
@@ -4144,6 +4752,11 @@ function ReviewSubmitStep({
               : "Henüz zaman çizelgesi anısı eklenmedi."}
           </ReviewSoftHint>
         )}
+        {existingTimelineMedia.length > 0 && (
+          <div className="mt-4">
+            <ExistingMediaList title="Mevcut zaman çizelgesi fotoğrafları korunacak" items={existingTimelineMedia} />
+          </div>
+        )}
       </ReviewSection>
 
       <ReviewSection
@@ -4151,6 +4764,18 @@ function ReviewSubmitStep({
         description="Aşk mektubu ve open-when sürpriz notları."
         onEdit={() => onEditStep("letters")}
       >
+        {formData.media.loveLetterPhoto ? (
+          <div className="mb-4">
+            <ReviewPhotoCard
+              photo={formData.media.loveLetterPhoto}
+              title="Kalbimden sana fotoğrafı"
+            />
+          </div>
+        ) : existingLetterMedia.length > 0 ? (
+          <div className="mb-4">
+            <ExistingMediaList title="Mevcut mektup fotoğrafı korunacak" items={existingLetterMedia} />
+          </div>
+        ) : null}
         {orderedLetters.length > 0 ? (
           <div className="grid gap-3">
             {orderedLetters.map((letter) => {
@@ -4168,7 +4793,9 @@ function ReviewSubmitStep({
                     {letter.title || "Başlıksız mektup"}
                   </h5>
                   {letter.body ? (
-                    <p className="mt-2 text-sm leading-6 text-rose-950/60">{letter.body}</p>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">
+                      {letter.body}
+                    </p>
                   ) : (
                     <p className="mt-2 text-sm leading-6 text-rose-950/45">
                       Mektup içeriği henüz yazılmadı.
@@ -4313,11 +4940,11 @@ function ReviewSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-rose-100 bg-white/90 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
+    <section className="min-w-0 rounded-3xl border border-rose-100 bg-white/90 p-4 shadow-sm shadow-rose-100/50 sm:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <h4 className="text-base font-semibold text-rose-950">{title}</h4>
-          <p className="mt-1 text-sm leading-6 text-rose-950/60">{description}</p>
+          <p className="mt-1 break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">{description}</p>
         </div>
         <button
           type="button"
@@ -4370,10 +4997,38 @@ function ReviewField({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 ${className}`}>
+    <div className={`min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 ${className}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{label}</p>
-      <p className="mt-1 break-words text-sm leading-6 text-rose-950/70">{value}</p>
+      <p className="mt-1 break-words text-sm leading-6 text-rose-950/70 [overflow-wrap:anywhere]">{value}</p>
     </div>
+  );
+}
+
+function ReviewPhotoCard({
+  photo,
+  title,
+}: {
+  photo: StoryOfUsPhotoDraftItem;
+  title: string;
+}) {
+  return (
+    <article className="min-w-0 overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm shadow-rose-100/40">
+      <img
+        src={photo.previewUrl}
+        alt={`${title} önizlemesi`}
+        className="aspect-[4/3] w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      />
+      <div className="min-w-0 p-3">
+        <p className="break-words text-xs font-semibold uppercase tracking-[0.16em] text-rose-500 [overflow-wrap:anywhere]">
+          {title}
+        </p>
+        <p className="mt-1 break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">
+          {photo.caption || "Fotoğraf notu eklenmedi."}
+        </p>
+      </div>
+    </article>
   );
 }
 
@@ -4381,6 +5036,73 @@ function ReviewSoftHint({ children }: { children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/70 p-4 text-sm leading-6 text-rose-950/55">
       {children}
+    </div>
+  );
+}
+
+function SinglePhotoPicker({
+  title,
+  description,
+  photo,
+  buttonText,
+  emptyText,
+  onSelect,
+  onRemove,
+}: {
+  title: string;
+  description?: string;
+  photo: StoryOfUsPhotoDraftItem | null;
+  buttonText: string;
+  emptyText: string;
+  onSelect: (file: File) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-rose-100 bg-white/85 p-3 shadow-sm shadow-rose-100/35">
+      <div className="min-w-0">
+        <h5 className="break-words text-sm font-semibold text-rose-950">{title}</h5>
+        {description && (
+          <p className="mt-1 break-words text-xs leading-5 text-rose-950/55">{description}</p>
+        )}
+      </div>
+      {photo ? (
+        <div className="mt-3 grid gap-3">
+          <img
+            src={photo.previewUrl}
+            alt={`${title} önizlemesi`}
+            className="aspect-[4/3] w-full rounded-2xl object-cover shadow-sm shadow-rose-100"
+            loading="lazy"
+            decoding="async"
+          />
+          <button
+            type="button"
+            onClick={onRemove}
+            className="min-h-10 rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+          >
+            Fotoğrafı kaldır
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50/60 p-3 text-sm leading-6 text-rose-950/55">
+          {emptyText}
+        </div>
+      )}
+      <label className="mt-3 inline-flex min-h-10 w-full cursor-pointer items-center justify-center rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-rose-200 transition hover:shadow-rose-300">
+        {buttonText}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+
+            if (file) {
+              onSelect(file);
+              event.target.value = "";
+            }
+          }}
+        />
+      </label>
     </div>
   );
 }
@@ -4393,15 +5115,31 @@ function ExistingMediaList({
   items: StoryOfUsSetupAccessExistingMediaItem[];
 }) {
   return (
-    <div className="rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/35">
+    <div className="min-w-0 rounded-2xl border border-rose-100 bg-white/85 p-4 shadow-sm shadow-rose-100/35">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{title}</p>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
           <div
             key={item.id}
-            className="rounded-2xl border border-rose-50 bg-[#fffaf8] px-3 py-2 text-sm leading-6 text-rose-950/65"
+            className="min-w-0 overflow-hidden rounded-2xl border border-rose-50 bg-[#fffaf8] text-sm leading-6 text-rose-950/65"
           >
-            {formatExistingMediaName(item)}
+            {item.previewUrl && item.mimeType.startsWith("image/") && (
+              <img
+                src={item.previewUrl}
+                alt={formatExistingMediaName(item)}
+                className="aspect-[4/3] w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+            <div className="min-w-0 px-3 py-2">
+              <p className="break-words [overflow-wrap:anywhere]">{formatExistingMediaName(item)}</p>
+              {item.caption && (
+                <p className="mt-1 break-words text-xs leading-5 text-rose-950/50 [overflow-wrap:anywhere]">
+                  {item.caption}
+                </p>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -4663,7 +5401,7 @@ function SetupTextArea({
         placeholder={placeholder}
         rows={5}
         aria-describedby={helperText ? helperId : undefined}
-        className="mt-2 w-full resize-y rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm leading-6 text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
+        className="mt-2 w-full min-w-0 resize-y rounded-2xl border border-rose-100 bg-white/90 px-4 py-3 text-sm leading-6 text-rose-950 shadow-sm shadow-rose-100/40 outline-none transition placeholder:text-rose-950/35 focus:border-rose-300 focus:ring-4 focus:ring-rose-100 [overflow-wrap:anywhere]"
       />
       {helperText && (
         <span id={helperId} className="mt-1.5 block text-xs leading-5 text-rose-950/50">

@@ -33,7 +33,17 @@ type LegalConsentState = {
 export type StoryOfUsSetupAccessExistingMediaItem = {
   id: string;
   mediaType: "photo" | "puzzle_photo" | "voice_note";
-  section: "gallery" | "puzzle" | "voice_note";
+  section:
+    | "opening"
+    | "memory_prompt"
+    | "gallery"
+    | "timeline"
+    | "letter"
+    | "puzzle"
+    | "voice_note";
+  semanticKey: string;
+  sectionItemId: string;
+  previewUrl: string;
   storagePath: string;
   originalFilename: string;
   mimeType: string;
@@ -293,14 +303,17 @@ async function createInitialData(submission: Record<string, unknown>) {
       body: stringValue(letter.body),
       sortOrder: typeof letter.sort_order === "number" ? letter.sort_order : index,
     })),
-    existingMedia: mediaItems.map((media, index) => ({
+    existingMedia: await Promise.all(mediaItems.map(async (media, index) => ({
       id: stringValue(media.id) || `media-${index}`,
       mediaType:
         media.media_type === "puzzle_photo" || media.media_type === "voice_note"
           ? media.media_type
           : "photo",
       section:
-        media.section === "puzzle" || media.section === "voice_note" ? media.section : "gallery",
+        typeof media.section === "string" ? normalizeMediaSection(media.section) : "gallery",
+      semanticKey: stringValue(media.semantic_key),
+      sectionItemId: stringValue(media.section_item_id),
+      previewUrl: await createMediaSignedUrl(stringValue(media.storage_path)),
       storagePath: stringValue(media.storage_path),
       originalFilename: stringValue(media.original_filename),
       mimeType: stringValue(media.mime_type),
@@ -308,7 +321,7 @@ async function createInitialData(submission: Record<string, unknown>) {
       caption: stringValue(media.caption),
       sortOrder: typeof media.sort_order === "number" ? media.sort_order : index,
       isPuzzleSource: media.is_puzzle_source === true,
-    })),
+    }))),
   };
 }
 
@@ -374,7 +387,7 @@ async function loadMediaItems(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_media")
     .select(
-      "id, media_type, section, storage_path, original_filename, mime_type, size_bytes, caption, sort_order, is_puzzle_source",
+      "id, media_type, section, semantic_key, section_item_id, storage_path, original_filename, mime_type, size_bytes, caption, sort_order, is_puzzle_source",
     )
     .eq("submission_id", submissionId)
     .order("sort_order", { ascending: true });
@@ -384,6 +397,22 @@ async function loadMediaItems(submissionId: string) {
   }
 
   return data ?? [];
+}
+
+async function createMediaSignedUrl(storagePath: string) {
+  if (!storagePath) {
+    return "";
+  }
+
+  const { data, error } = await storyOfUsSupabaseAdmin.storage
+    .from("storyofus-media")
+    .createSignedUrl(storagePath, 60 * 60);
+
+  if (error) {
+    return "";
+  }
+
+  return data.signedUrl ?? "";
 }
 
 function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: string | null) {
@@ -406,6 +435,21 @@ function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: st
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function normalizeMediaSection(value: string): StoryOfUsSetupAccessExistingMediaItem["section"] {
+  switch (value) {
+    case "opening":
+    case "memory_prompt":
+    case "timeline":
+    case "letter":
+    case "puzzle":
+    case "voice_note":
+      return value;
+    case "gallery":
+    default:
+      return "gallery";
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
