@@ -246,6 +246,47 @@ export const getStoryOfUsAdminFinalSitePreview = createServerFn({ method: "POST"
     };
   });
 
+export const verifyStoryOfUsAdminPreviewPasscode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => {
+    if (!data || typeof data !== "object") {
+      return {
+        submissionId: "",
+        passcode: "",
+      };
+    }
+
+    const input = data as Record<string, unknown>;
+
+    return {
+      submissionId: typeof input.submissionId === "string" ? input.submissionId : "",
+      passcode: typeof input.passcode === "string" ? input.passcode : "",
+    };
+  })
+  .handler(async ({ data, context }) => {
+    await assertStoryOfUsAdmin(context as AdminContext);
+
+    if (!isUuid(data.submissionId) || !/^\d{4}$/.test(data.passcode.trim())) {
+      return {
+        status: "invalid_passcode" as const,
+        message: "Şifre yanlış, tekrar dene aşkım 💌",
+      };
+    }
+
+    const submission = await loadAdminPreviewPasscodeSubmission(data.submissionId);
+
+    if (!submission || !verifySitePasscode(data.passcode.trim(), submission.sitePasscodeHash)) {
+      return {
+        status: "invalid_passcode" as const,
+        message: "Şifre yanlış, tekrar dene aşkım 💌",
+      };
+    }
+
+    return {
+      status: "unlocked" as const,
+    };
+  });
+
 export const publishStoryOfUsFinalSite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => ({
@@ -452,6 +493,28 @@ async function loadAdminPreviewSubmission(submissionId: string) {
     status: stringValue(data.status),
     finalSiteSlug: nullableString(data.final_site_slug),
     finalSiteUrl: nullableString(data.final_site_url),
+  };
+}
+
+async function loadAdminPreviewPasscodeSubmission(submissionId: string) {
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .select("id, site_passcode_hash")
+    .eq("id", submissionId)
+    .in("status", ["in_review", "published"])
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("StoryOfUs admin preview passcode could not be loaded.");
+  }
+
+  if (!data || !stringValue(data.site_passcode_hash)) {
+    return null;
+  }
+
+  return {
+    id: stringValue(data.id),
+    sitePasscodeHash: stringValue(data.site_passcode_hash),
   };
 }
 

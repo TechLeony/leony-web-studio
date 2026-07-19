@@ -13,11 +13,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { StoryOfUsFinalSiteRenderer } from "@/components/storyofus/FinalSiteRenderer";
+import { StoryOfUsExperience } from "@/components/storyofus/StoryOfUsExperience";
+import { createStoryOfUsExperienceDataFromFinalSite } from "@/components/storyofus/storyOfUsExperienceAdapter";
 import {
   getStoryOfUsAdminFinalSitePreview,
   publishStoryOfUsFinalSite,
   type StoryOfUsFinalSiteData,
+  verifyStoryOfUsAdminPreviewPasscode,
 } from "@/lib/storyofus/finalSite.server";
 import {
   getStoryOfUsAdminReviewDetail,
@@ -35,6 +37,7 @@ function StoryOfUsOrdersAdmin() {
   const loadQueue = useServerFn(listStoryOfUsAdminReviewQueue);
   const loadDetail = useServerFn(getStoryOfUsAdminReviewDetail);
   const loadPreview = useServerFn(getStoryOfUsAdminFinalSitePreview);
+  const verifyPreviewPasscode = useServerFn(verifyStoryOfUsAdminPreviewPasscode);
   const publishFinalSite = useServerFn(publishStoryOfUsFinalSite);
 
   const [orders, setOrders] = useState<StoryOfUsAdminReviewOrder[]>([]);
@@ -244,7 +247,20 @@ function StoryOfUsOrdersAdmin() {
                 Önizlemeyi kapat
               </button>
             </div>
-            <StoryOfUsFinalSiteRenderer site={previewSite} />
+            <StoryOfUsExperience
+              story={createStoryOfUsExperienceDataFromFinalSite(previewSite)}
+              accessPinHint={previewSite.passcodeHint}
+              verifyAccessPin={async (passcode) => {
+                const result = await verifyPreviewPasscode({
+                  data: {
+                    submissionId: selectedOrderId ?? "",
+                    passcode,
+                  },
+                });
+
+                return result.status === "unlocked";
+              }}
+            />
           </div>
         </div>
       )}
