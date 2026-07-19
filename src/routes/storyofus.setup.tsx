@@ -47,6 +47,19 @@ type PlaceholderCard = {
 };
 
 const STORYOFUS_SETUP_DRAFT_STORAGE_KEY = "storyofus.setup.draft.v1";
+const STORYOFUS_ALLOWED_VOICE_NOTE_MIME_TYPES = new Set([
+  "audio/aac",
+  "audio/m4a",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+  "audio/x-aac",
+  "audio/x-m4a",
+]);
+const STORYOFUS_VOICE_NOTE_ACCEPT =
+  ".m4a,audio/x-m4a,audio/m4a,audio/mp4,audio/aac,audio/x-aac,audio/mpeg,audio/wav,audio/webm,audio/ogg";
 
 const DEFAULT_LOVE_LETTER_TITLE = "Kalbimden sana birkaç satır";
 
@@ -1468,7 +1481,7 @@ function StoryOfUsSetupRoute() {
   }
 
   function addVoiceNoteFile(file: File) {
-    if (!file.type.startsWith("audio/")) {
+    if (!STORYOFUS_ALLOWED_VOICE_NOTE_MIME_TYPES.has(file.type.toLowerCase())) {
       return;
     }
 
@@ -4114,14 +4127,15 @@ function MusicVoiceStep({
             <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center transition hover:border-rose-300 hover:bg-rose-50/60">
               <span className="text-base font-semibold text-rose-950">Ses notunuzu seçin</span>
               <span className="mt-2 max-w-md text-sm leading-6 text-rose-950/60">
-                MP3, MP4, WAV, WebM veya OGG formatında tek bir ses dosyası ekleyebilirsiniz.
+                MP3, M4A, MP4, AAC, WAV, WebM veya OGG formatında tek bir ses dosyası
+                ekleyebilirsiniz.
               </span>
               <span className="mt-4 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200">
                 Ses dosyası seç
               </span>
               <input
                 type="file"
-                accept="audio/mpeg,audio/mp4,audio/wav,audio/webm,audio/ogg"
+                accept={STORYOFUS_VOICE_NOTE_ACCEPT}
                 className="sr-only"
                 onChange={(event) => {
                   const file = event.target.files?.[0];

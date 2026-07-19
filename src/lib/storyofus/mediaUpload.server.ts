@@ -6,6 +6,17 @@ import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
 const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_AUDIO_SIZE_BYTES = 30 * 1024 * 1024;
+const ALLOWED_AUDIO_MIME_TYPES = new Set([
+  "audio/aac",
+  "audio/m4a",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+  "audio/x-aac",
+  "audio/x-m4a",
+]);
 
 type StoryOfUsMediaSection =
   | "opening"
@@ -78,7 +89,7 @@ export const uploadStoryOfUsSetupMedia = createServerFn({ method: "POST" })
         storage_bucket: STORYOFUS_MEDIA_BUCKET,
         storage_path: storagePath,
         original_filename: file.name,
-        mime_type: file.type,
+        mime_type: normalizeStoredMimeType(mediaType, file.type),
         size_bytes: file.size,
         caption: caption.trim() || null,
         sort_order: sortOrder,
@@ -234,7 +245,7 @@ async function uploadFileToStorage(storagePath: string, file: File) {
   const { error } = await storyOfUsSupabaseAdmin.storage
     .from(STORYOFUS_MEDIA_BUCKET)
     .upload(storagePath, file, {
-      contentType: file.type || undefined,
+      contentType: normalizeStoredMimeTypeFromFile(file) || undefined,
       upsert: false,
     });
 
@@ -288,7 +299,37 @@ function isAllowedImageType(mimeType: string) {
 }
 
 function isAllowedAudioType(mimeType: string) {
-  return mimeType.startsWith("audio/");
+  return ALLOWED_AUDIO_MIME_TYPES.has(mimeType.toLowerCase());
+}
+
+function normalizeStoredMimeType(
+  mediaType: "photo" | "puzzle_photo" | "voice_note",
+  mimeType: string,
+) {
+  if (mediaType !== "voice_note") {
+    return mimeType;
+  }
+
+  return normalizeAudioMimeType(mimeType);
+}
+
+function normalizeStoredMimeTypeFromFile(file: File) {
+  return normalizeAudioMimeType(file.type) || file.type;
+}
+
+function normalizeAudioMimeType(mimeType: string) {
+  const normalized = mimeType.toLowerCase();
+
+  if (
+    normalized === "audio/x-m4a" ||
+    normalized === "audio/m4a" ||
+    normalized === "audio/aac" ||
+    normalized === "audio/x-aac"
+  ) {
+    return "audio/mp4";
+  }
+
+  return normalized;
 }
 
 function normalizeSection(value: string): StoryOfUsMediaSection {
