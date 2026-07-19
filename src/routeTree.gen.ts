@@ -26,6 +26,7 @@ import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
+import { Route as StoryofusSiteSiteSlugRouteImport } from './routes/storyofus.site.$siteSlug'
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
 import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
@@ -116,6 +117,11 @@ const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
   path: '/storyofus/styles/$style',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StoryofusSiteSiteSlugRoute = StoryofusSiteSiteSlugRouteImport.update({
+  id: '/storyofus/site/$siteSlug',
+  path: '/storyofus/site/$siteSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
   id: '/demo',
   path: '/demo',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
+  '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
+  '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
+  '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
+    | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/storyofus'
     | '/storyofus/setup/demo'
+    | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/storyofus/'
     | '/storyofus/setup/demo'
+    | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
@@ -294,6 +306,7 @@ export interface RootRouteChildren {
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusTrackOrderRoute: typeof StoryofusTrackOrderRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
+  StoryofusSiteSiteSlugRoute: typeof StoryofusSiteSiteSlugRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
   ApiInternalStoryofusEmailWorkerRoute: typeof ApiInternalStoryofusEmailWorkerRoute
   ApiInternalStoryofusReviewReadyWorkerRoute: typeof ApiInternalStoryofusReviewReadyWorkerRoute
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusStylesStyleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/storyofus/site/$siteSlug': {
+      id: '/storyofus/site/$siteSlug'
+      path: '/storyofus/site/$siteSlug'
+      fullPath: '/storyofus/site/$siteSlug'
+      preLoaderRoute: typeof StoryofusSiteSiteSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/storyofus/setup/demo': {
       id: '/storyofus/setup/demo'
       path: '/demo'
@@ -492,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusTrackOrderRoute: StoryofusTrackOrderRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
+  StoryofusSiteSiteSlugRoute: StoryofusSiteSiteSlugRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
   ApiInternalStoryofusEmailWorkerRoute: ApiInternalStoryofusEmailWorkerRoute,
   ApiInternalStoryofusReviewReadyWorkerRoute:

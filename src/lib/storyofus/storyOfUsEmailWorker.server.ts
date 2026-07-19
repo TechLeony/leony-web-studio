@@ -7,6 +7,7 @@ import {
   type StoryOfUsEmailAttemptOutcome,
 } from "./emailOutboxProcessing.server";
 import { sendStoryOfUsEmail, type SendStoryOfUsEmailInput } from "./storyOfUsResend.server";
+import { isValidStoryOfUsFinalSiteUrl } from "./finalSiteUtils";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 export type ProcessStoryOfUsEmailOutboxBatchInput = {
@@ -29,6 +30,9 @@ type StoryOfUsEmailSubmissionRow = {
   order_reference?: unknown;
   setup_token?: unknown;
   payment_status?: unknown;
+  status?: unknown;
+  final_site_url?: unknown;
+  delivered_at?: unknown;
 };
 
 const DEFAULT_PUBLIC_ORIGIN = "https://leony.tech";
@@ -86,13 +90,55 @@ async function processClaimedStoryOfUsEmail(
   }
 
   if (claimed.emailType === "final_site_ready") {
-    return {
-      ok: false,
-      errorCode: "invalid_input",
-    };
+    const input = await createFinalSiteReadyEmailInput(claimed);
+
+    if (!input) {
+      return {
+        ok: false,
+        errorCode: "invalid_input",
+      };
+    }
+
+    return sendStoryOfUsEmail(input);
   }
 
   return assertNeverEmailType(claimed.emailType);
+}
+
+async function createFinalSiteReadyEmailInput(
+  claimed: StoryOfUsClaimedEmailOutboxRow,
+): Promise<SendStoryOfUsEmailInput | null> {
+  const submission = await loadEmailSubmission(claimed.submissionId);
+
+  if (!submission || stringValue(submission.id) !== claimed.submissionId) {
+    return null;
+  }
+
+  if (
+    stringValue(submission.payment_status) !== "paid" ||
+    stringValue(submission.status) !== "published" ||
+    !nullableString(submission.delivered_at)
+  ) {
+    return null;
+  }
+
+  const customerEmail = normalizeEmail(submission.customer_email);
+  const customerName = normalizeRequiredText(submission.customer_name, 160);
+  const orderReference = normalizeOrderReference(submission.order_reference);
+  const finalSiteUrl = normalizeFinalSiteUrl(submission.final_site_url);
+
+  if (!customerEmail || !customerName || !orderReference || !finalSiteUrl) {
+    return null;
+  }
+
+  return {
+    emailType: "final_site_ready",
+    recipientEmail: customerEmail,
+    customerName,
+    orderReference,
+    finalSiteUrl,
+    idempotencyKey: claimed.eventKey,
+  } satisfies SendStoryOfUsEmailInput;
 }
 
 async function createOrderCreatedEmailInput(
@@ -141,6 +187,9 @@ async function loadEmailSubmission(
         "order_reference",
         "setup_token",
         "payment_status",
+        "status",
+        "final_site_url",
+        "delivered_at",
       ].join(", "),
     )
     .eq("id", submissionId)
@@ -151,6 +200,20 @@ async function loadEmailSubmission(
   }
 
   return data;
+}
+
+function normalizeFinalSiteUrl(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+
+  return isValidStoryOfUsFinalSiteUrl(normalized) ? normalized : null;
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function applyCompletionToSummary(

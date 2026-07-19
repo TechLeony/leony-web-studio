@@ -1,9 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Copy, FileText, Heart, Image as ImageIcon, Music, RefreshCw, Search } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  FileText,
+  Heart,
+  Image as ImageIcon,
+  Music,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { StoryOfUsFinalSiteRenderer } from "@/components/storyofus/FinalSiteRenderer";
+import {
+  getStoryOfUsAdminFinalSitePreview,
+  publishStoryOfUsFinalSite,
+  type StoryOfUsFinalSiteData,
+} from "@/lib/storyofus/finalSite.server";
 import {
   getStoryOfUsAdminReviewDetail,
   listStoryOfUsAdminReviewQueue,
@@ -19,14 +34,22 @@ export const Route = createFileRoute("/admin/storyofus-orders")({
 function StoryOfUsOrdersAdmin() {
   const loadQueue = useServerFn(listStoryOfUsAdminReviewQueue);
   const loadDetail = useServerFn(getStoryOfUsAdminReviewDetail);
+  const loadPreview = useServerFn(getStoryOfUsAdminFinalSitePreview);
+  const publishFinalSite = useServerFn(publishStoryOfUsFinalSite);
 
   const [orders, setOrders] = useState<StoryOfUsAdminReviewOrder[]>([]);
-  const [activeSubmittedOrders, setActiveSubmittedOrders] = useState<StoryOfUsAdminReviewOrder[]>([]);
+  const [activeSubmittedOrders, setActiveSubmittedOrders] = useState<StoryOfUsAdminReviewOrder[]>(
+    [],
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<StoryOfUsAdminReviewDetail | null>(null);
+  const [previewSite, setPreviewSite] = useState<StoryOfUsFinalSiteData | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function reloadQueue() {
@@ -47,6 +70,8 @@ function StoryOfUsOrdersAdmin() {
   async function openDetail(orderId: string) {
     setSelectedOrderId(orderId);
     setSelectedDetail(null);
+    setPreviewSite(null);
+    setPublishedUrl(null);
     setDetailLoading(true);
 
     try {
@@ -61,6 +86,54 @@ function StoryOfUsOrdersAdmin() {
       toast.error(error instanceof Error ? error.message : "Sipariş detayı yüklenemedi.");
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function openPreview(orderId: string) {
+    setPreviewLoading(true);
+    setPreviewSite(null);
+
+    try {
+      const result = await loadPreview({ data: { submissionId: orderId } });
+
+      if (result.status === "found") {
+        setPreviewSite(result.site);
+      } else {
+        toast.error("Önizleme yüklenemedi.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Önizleme yüklenemedi.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  async function publishSelectedOrder(orderId: string) {
+    const confirmed = window.confirm(
+      "Bu işlem kalıcı müşteri linkini oluşturur, siteyi müşteriye açar ve teslim e-postasını kuyruğa ekler. Devam edilsin mi?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setPublishing(true);
+
+    try {
+      const result = await publishFinalSite({ data: { submissionId: orderId } });
+
+      if (result.status === "published" || result.status === "already_published") {
+        setPublishedUrl(result.finalSiteUrl);
+        toast.success("Final site yayınlandı.");
+        await reloadQueue();
+        return;
+      }
+
+      toast.error(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Final site yayınlanamadı.");
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -86,8 +159,8 @@ function StoryOfUsOrdersAdmin() {
             İnceleme kuyruğu
           </h2>
           <p className="mt-1 max-w-2xl text-xs text-muted-foreground md:text-sm">
-            Düzenleme süresi biten ve manuel incelemeye hazır olan StoryOfUs kurulumlarını
-            güvenli şekilde kontrol edin. Yayınlama ve final e-postası Phase 1B'de eklenecek.
+            Düzenleme süresi biten ve manuel incelemeye hazır olan StoryOfUs kurulumlarını güvenli
+            şekilde kontrol edin. Yayınlama ve final e-postası Phase 1B'de eklenecek.
           </p>
         </div>
 
@@ -139,7 +212,43 @@ function StoryOfUsOrdersAdmin() {
             />
           </div>
 
-          <DetailPanel detail={selectedDetail} loading={detailLoading} />
+          <DetailPanel
+            detail={selectedDetail}
+            loading={detailLoading}
+            previewLoading={previewLoading}
+            publishing={publishing}
+            publishedUrl={publishedUrl}
+            onOpenPreview={openPreview}
+            onPublish={publishSelectedOrder}
+          />
+        </div>
+      )}
+
+      {previewSite && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-rose-950/45 p-3 backdrop-blur-sm md:p-6">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-100 bg-white px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                  Yönetici önizlemesi
+                </p>
+                <p className="text-sm font-semibold text-rose-950">
+                  Bu yalnızca yönetici önizlemesidir; site henüz müşteriye açılmadı.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewSite(null)}
+                className="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold hover:bg-muted"
+              >
+                Önizlemeyi kapat
+              </button>
+            </div>
+            <StoryOfUsFinalSiteRenderer
+              site={previewSite}
+              previewNotice="Bu yalnızca yönetici önizlemesidir; site henüz müşteriye açılmadı."
+            />
+          </div>
         </div>
       )}
     </main>
@@ -199,7 +308,8 @@ function QueueSection({
                   </div>
                   <p className="mt-1 text-sm font-semibold text-foreground">{order.customerName}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {order.customerEmailMasked || "E-posta yok"} · {order.trackingCode || "Takip kodu yok"}
+                    {order.customerEmailMasked || "E-posta yok"} ·{" "}
+                    {order.trackingCode || "Takip kodu yok"}
                   </p>
                 </div>
                 <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
@@ -224,9 +334,19 @@ function QueueSection({
 function DetailPanel({
   detail,
   loading,
+  previewLoading,
+  publishing,
+  publishedUrl,
+  onOpenPreview,
+  onPublish,
 }: {
   detail: StoryOfUsAdminReviewDetail | null;
   loading: boolean;
+  previewLoading: boolean;
+  publishing: boolean;
+  publishedUrl: string | null;
+  onOpenPreview: (orderId: string) => void;
+  onPublish: (orderId: string) => void;
 }) {
   return (
     <aside className="rounded-3xl border border-border bg-card p-4 shadow-sm md:p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
@@ -248,6 +368,46 @@ function DetailPanel({
             <p className="text-xs text-muted-foreground">
               {detail.orderReference || "Referans yok"} · {detail.trackingCode || "Takip kodu yok"}
             </p>
+          </div>
+
+          <div className="grid gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 p-3">
+            <button
+              type="button"
+              onClick={() => onOpenPreview(detail.id)}
+              disabled={previewLoading}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-rose-200 bg-white px-4 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:opacity-60"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {previewLoading ? "Önizleme açılıyor..." : "Siteyi önizle"}
+            </button>
+            {detail.status === "in_review" ? (
+              <button
+                type="button"
+                onClick={() => onPublish(detail.id)}
+                disabled={publishing}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-rose-500 px-4 text-xs font-semibold text-white shadow-lg shadow-rose-200 transition hover:bg-rose-600 disabled:opacity-60"
+              >
+                <Heart className="h-3.5 w-3.5 fill-white" />
+                {publishing ? "Yayınlanıyor..." : "Yayınla ve teslim e-postasını sıraya al"}
+              </button>
+            ) : (
+              <p className="rounded-xl bg-white px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                Bu sipariş yayınlama için aktif durumda değil.
+              </p>
+            )}
+            {publishedUrl && (
+              <div className="rounded-xl bg-white p-3 text-xs">
+                <p className="font-semibold text-rose-950">Final bağlantı oluşturuldu:</p>
+                <a
+                  href={publishedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block break-all font-semibold text-rose-600 underline-offset-4 hover:underline"
+                >
+                  {publishedUrl}
+                </a>
+              </div>
+            )}
           </div>
 
           <SummaryCard title="Müşteri & sipariş" icon={<Heart className="h-4 w-4" />}>
@@ -289,7 +449,10 @@ function DetailPanel({
             )}
           </SummaryCard>
 
-          <SummaryCard title={`Medya (${detail.media.length})`} icon={<ImageIcon className="h-4 w-4" />}>
+          <SummaryCard
+            title={`Medya (${detail.media.length})`}
+            icon={<ImageIcon className="h-4 w-4" />}
+          >
             {detail.media.length === 0 ? (
               <Muted>Medya dosyası yok.</Muted>
             ) : (
@@ -339,9 +502,17 @@ function DetailPanel({
               <div className="space-y-3">
                 {detail.timeline.map((item) => (
                   <div key={item.id} className="rounded-2xl border border-border bg-white p-3">
-                    <p className="text-sm font-semibold text-foreground">{item.title || "Başlıksız anı"}</p>
-                    <p className="text-[11px] text-muted-foreground">{formatDateTime(item.eventDate)}</p>
-                    {item.description && <p className="mt-2 whitespace-pre-wrap text-xs text-foreground">{item.description}</p>}
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.title || "Başlıksız anı"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDateTime(item.eventDate)}
+                    </p>
+                    {item.description && (
+                      <p className="mt-2 whitespace-pre-wrap text-xs text-foreground">
+                        {item.description}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -361,7 +532,11 @@ function DetailPanel({
                     <p className="mt-2 text-sm font-semibold text-foreground">
                       {letter.title || "Başlıksız mektup"}
                     </p>
-                    {letter.body && <p className="mt-2 whitespace-pre-wrap text-xs text-foreground">{letter.body}</p>}
+                    {letter.body && (
+                      <p className="mt-2 whitespace-pre-wrap text-xs text-foreground">
+                        {letter.body}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -412,7 +587,9 @@ function StatusBadge({ label, muted }: { label: string; muted?: boolean }) {
 function TimeCell({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-0.5 text-xs text-foreground">{formatDateTime(value)}</p>
     </div>
   );
@@ -448,7 +625,9 @@ function Paragraph({ label, value }: { label: string; value: string }) {
 
   return (
     <div className="mt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-white/80 p-3 text-xs leading-relaxed text-foreground">
         {value}
       </p>
