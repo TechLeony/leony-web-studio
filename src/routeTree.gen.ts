@@ -28,6 +28,7 @@ import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyof
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
 import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
+import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
 import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -126,6 +127,12 @@ const ApiStoryofusShopierCallbackRoute =
     path: '/api/storyofus/shopier/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiInternalStoryofusReviewReadyWorkerRoute =
+  ApiInternalStoryofusReviewReadyWorkerRouteImport.update({
+    id: '/api/internal/storyofus/review-ready-worker',
+    path: '/api/internal/storyofus/review-ready-worker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiInternalStoryofusEmailWorkerRoute =
   ApiInternalStoryofusEmailWorkerRouteImport.update({
     id: '/api/internal/storyofus/email-worker',
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRoutesById {
@@ -197,6 +206,7 @@ export interface FileRoutesById {
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
+  '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
 }
 export interface FileRouteTypes {
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
+    | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
+    | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
   id:
     | '__root__'
@@ -264,6 +276,7 @@ export interface FileRouteTypes {
     | '/storyofus/setup/demo'
     | '/storyofus/styles/$style'
     | '/api/internal/storyofus/email-worker'
+    | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
   fileRoutesById: FileRoutesById
 }
@@ -283,6 +296,7 @@ export interface RootRouteChildren {
   StoryofusIndexRoute: typeof StoryofusIndexRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
   ApiInternalStoryofusEmailWorkerRoute: typeof ApiInternalStoryofusEmailWorkerRoute
+  ApiInternalStoryofusReviewReadyWorkerRoute: typeof ApiInternalStoryofusReviewReadyWorkerRoute
   ApiStoryofusShopierCallbackRoute: typeof ApiStoryofusShopierCallbackRoute
 }
 
@@ -421,6 +435,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStoryofusShopierCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/storyofus/review-ready-worker': {
+      id: '/api/internal/storyofus/review-ready-worker'
+      path: '/api/internal/storyofus/review-ready-worker'
+      fullPath: '/api/internal/storyofus/review-ready-worker'
+      preLoaderRoute: typeof ApiInternalStoryofusReviewReadyWorkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/storyofus/email-worker': {
       id: '/api/internal/storyofus/email-worker'
       path: '/api/internal/storyofus/email-worker'
@@ -473,6 +494,8 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusIndexRoute: StoryofusIndexRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
   ApiInternalStoryofusEmailWorkerRoute: ApiInternalStoryofusEmailWorkerRoute,
+  ApiInternalStoryofusReviewReadyWorkerRoute:
+    ApiInternalStoryofusReviewReadyWorkerRoute,
   ApiStoryofusShopierCallbackRoute: ApiStoryofusShopierCallbackRoute,
 }
 export const routeTree = rootRouteImport
