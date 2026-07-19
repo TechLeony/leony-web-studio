@@ -61,6 +61,7 @@ function createSite({ left, right }: { left?: string; right?: string }): StoryOf
     voiceNote: null,
     timeline: [],
     letters: [],
+    editableDefaultContent: {},
     music: null,
   };
 }

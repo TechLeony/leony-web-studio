@@ -19,6 +19,7 @@ export function createStoryOfUsExperienceDataFromFinalSite(
     ? formatExperienceDate(site.relationshipStartDate)
     : "";
   const loveLetter = site.letters.find((letter) => letter.type === "love_letter");
+  const loveLetterOutcome = site.editableDefaultContent.loveLetterBody?.outcome;
   const openWhenLetters = site.letters.filter((letter) => letter.type === "open_when");
 
   return {
@@ -94,9 +95,13 @@ export function createStoryOfUsExperienceDataFromFinalSite(
       audioUrl: site.voiceNote?.previewUrl ?? "",
       src: "",
     },
+    music: {
+      ...demoStoryData.music,
+      songTitle: "",
+      songSrc: "",
+    },
     reasons: {
       ...demoStoryData.reasons,
-      items: [],
     },
     couponQuiz: {
       ...demoStoryData.couponQuiz,
@@ -104,12 +109,11 @@ export function createStoryOfUsExperienceDataFromFinalSite(
     },
     coupleWrapped: {
       ...demoStoryData.coupleWrapped,
-      stats: [],
     },
     letter: {
       ...demoStoryData.letter,
       letterTitle: loveLetter?.title || demoStoryData.letter.letterTitle,
-      letterBody: loveLetter?.body || "",
+      letterBody: getLoveLetterBody(loveLetter?.body ?? "", loveLetterOutcome),
       letterSidePhoto: mediaToExperiencePhoto(
         site.loveLetterPhoto,
         demoStoryData.letter.letterSidePhoto,
@@ -117,9 +121,20 @@ export function createStoryOfUsExperienceDataFromFinalSite(
     },
     finalSurprise: {
       ...demoStoryData.finalSurprise,
-      finalSecretNote: "",
     },
   };
+}
+
+function getLoveLetterBody(body: string, outcome: "default_accepted" | "customized" | undefined) {
+  if (outcome === "default_accepted") {
+    return demoStoryData.letter.letterBody;
+  }
+
+  if (outcome === "customized") {
+    return body.trim() || demoStoryData.letter.letterBody;
+  }
+
+  return body.trim() || demoStoryData.letter.letterBody;
 }
 
 function createMemoryPromptItems(
@@ -173,7 +188,7 @@ function mediaToExperienceHeroPhoto(
 ) {
   return {
     ...fallback,
-    src: media?.previewUrl || fallback.src,
+    src: media?.previewUrl || "",
     alt: media?.caption || media?.originalFilename || fallback.alt,
     caption: media?.caption || fallback.caption,
   };
@@ -184,7 +199,8 @@ function mediaToExperiencePhoto<
 >(media: StoryOfUsFinalSiteMedia | null, fallback: T) {
   return {
     ...fallback,
-    photoSrc: media?.previewUrl || fallback.photoSrc,
+    ...("src" in fallback ? { src: media?.previewUrl || "" } : {}),
+    photoSrc: media?.previewUrl || "",
     photoAlt: media?.caption || media?.originalFilename || fallback.photoAlt,
     caption: media?.caption || fallback.caption || "",
   };

@@ -15,9 +15,28 @@ import {
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
 import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
 import {
+  STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
+  STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+  getLoveLetterPhotoSubmitError,
+} from "../lib/storyofus/loveLetterRequirements";
+import {
+  STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
+  STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
+} from "../lib/storyofus/stableContentDefaults";
+import {
+  ensureLoveLetterDefaults,
+  getNextEditableDefaultContentState,
+  getPendingEditableDefaultConfirmation,
+  recordDefaultContentAccepted,
+  removeEditableDefaultContentState,
+  restoreEditableDefaultContent,
+  type StoryOfUsEditableDefaultConfirmation,
+} from "../lib/storyofus/editableDefaultContent";
+import {
   STORYOFUS_SETUP_STEPS,
   createEmptyStoryOfUsSetupFormData,
   type StoryOfUsContactCoupleData,
+  type StoryOfUsEditableDefaultContentId,
   type StoryOfUsLetterItem,
   type StoryOfUsLegalConsents,
   type StoryOfUsMusicData,
@@ -61,7 +80,8 @@ const STORYOFUS_ALLOWED_VOICE_NOTE_MIME_TYPES = new Set([
 const STORYOFUS_VOICE_NOTE_ACCEPT =
   ".m4a,audio/x-m4a,audio/m4a,audio/mp4,audio/aac,audio/x-aac,audio/mpeg,audio/wav,audio/webm,audio/ogg";
 
-const DEFAULT_LOVE_LETTER_TITLE = "Kalbimden sana birkaç satır";
+const DEFAULT_LOVE_LETTER_TITLE = STORYOFUS_DEFAULT_LOVE_LETTER_TITLE;
+const DEFAULT_LOVE_LETTER_BODY = STORYOFUS_DEFAULT_LOVE_LETTER_BODY;
 
 const DEFAULT_OPEN_WHEN_LETTERS: Array<Pick<StoryOfUsLetterItem, "type" | "title" | "body">> = [
   {
@@ -99,6 +119,7 @@ type StoryOfUsSetupDraft = Pick<
   | "confirmedSkips"
   | "timeline"
   | "letters"
+  | "editableDefaultContent"
   | "legalConsents"
 > & {
   siteAccess: Pick<StoryOfUsSiteAccessData, "passcodeHint" | "hasExistingPasscode">;
@@ -107,9 +128,11 @@ type StoryOfUsSetupDraft = Pick<
       firstPerson: null;
       secondPerson: null;
     };
-    promptPhotos: Array<Omit<StoryOfUsPromptPhotoItem, "photo"> & {
-      photo: null;
-    }>;
+    promptPhotos: Array<
+      Omit<StoryOfUsPromptPhotoItem, "photo"> & {
+        photo: null;
+      }
+    >;
     puzzle: {
       selectedPhotoId: null;
       puzzlePhoto: null;
@@ -142,7 +165,6 @@ type StepValidationNotice = {
 type ContactCoupleFieldErrors = Partial<Record<keyof StoryOfUsContactCoupleData, string>>;
 type SiteAccessFieldErrors = Partial<Record<keyof StoryOfUsSiteAccessData, string>>;
 type LegalConsentKey = keyof StoryOfUsLegalConsents;
-
 type StoryOfUsSubmissionResult = {
   submissionId: string;
   setupToken: string | null;
@@ -186,6 +208,8 @@ function StoryOfUsSetupRoute() {
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
   const [hasEnteredSubmittedEditMode, setHasEnteredSubmittedEditMode] = useState(false);
   const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("idle");
+  const [pendingDefaultConfirmation, setPendingDefaultConfirmation] =
+    useState<StoryOfUsEditableDefaultConfirmation | null>(null);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
@@ -289,7 +313,10 @@ function StoryOfUsSetupRoute() {
           return;
         }
 
-        const readyAccess = accessResult as Extract<StoryOfUsSetupAccessResult, { status: "ready" }>;
+        const readyAccess = accessResult as Extract<
+          StoryOfUsSetupAccessResult,
+          { status: "ready" }
+        >;
         const restoredDraft = restoreSetupDraft(setupToken);
 
         revokeCurrentPreviewUrls();
@@ -381,6 +408,7 @@ function StoryOfUsSetupRoute() {
   function proceedToNextStep() {
     setCurrentStepIndex((index) => Math.min(index + 1, totalSteps - 1));
     setValidationNotice(null);
+    setPendingDefaultConfirmation(null);
     scheduleStepCardScroll();
   }
 
@@ -396,7 +424,47 @@ function StoryOfUsSetupRoute() {
       return;
     }
 
+    const defaultConfirmation = getPendingEditableDefaultConfirmation(
+      currentStep.id,
+      formData.letters,
+      formData.editableDefaultContent,
+    );
+
+    if (defaultConfirmation) {
+      setPendingDefaultConfirmation(defaultConfirmation);
+      scheduleStepCardScroll();
+      return;
+    }
+
     proceedToNextStep();
+  }
+
+  function confirmEditableDefaultContent(contentId: StoryOfUsEditableDefaultContentId) {
+    setFormData((current) => ({
+      ...current,
+      editableDefaultContent: recordDefaultContentAccepted(
+        current.editableDefaultContent,
+        contentId,
+        new Date().toISOString(),
+      ),
+    }));
+    setPendingDefaultConfirmation(null);
+    proceedToNextStep();
+  }
+
+  function returnToEditableDefaultContent(contentId: StoryOfUsEditableDefaultContentId) {
+    setPendingDefaultConfirmation(null);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      const selector = contentId === "loveLetterBody" ? '[data-setup-field="loveLetterBody"]' : "";
+
+      if (selector) {
+        scrollToSelector(selector, true);
+      }
+    }, 60);
   }
 
   function goToStepById(stepId: StoryOfUsSetupStepId) {
@@ -462,6 +530,32 @@ function StoryOfUsSetupRoute() {
     if (mediaUploadBlocker) {
       setSubmitError(mediaUploadBlocker);
       setCurrentStepIndex(mediaUploadBlocker.includes("Ses notu") ? 2 : 1);
+      scheduleStepCardScroll(120);
+      return;
+    }
+
+    const lettersValidation = validateCurrentStep("letters", formData);
+
+    if (lettersValidation.blockingErrors.length > 0) {
+      setValidationNotice(lettersValidation);
+      setSubmitError("Devam etmeden önce mektup fotoğrafını yüklemeniz gerekiyor.");
+      setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
+      scheduleValidationScroll(lettersValidation, 120);
+      return;
+    }
+
+    const defaultConfirmation = getPendingEditableDefaultConfirmation(
+      "letters",
+      formData.letters,
+      formData.editableDefaultContent,
+    );
+
+    if (defaultConfirmation) {
+      setPendingDefaultConfirmation(defaultConfirmation);
+      setSubmitError(
+        "Devam etmeden önce varsayılan mektup metni tercihinizi onaylamanız gerekiyor.",
+      );
+      setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
       scheduleStepCardScroll(120);
       return;
     }
@@ -739,13 +833,18 @@ function StoryOfUsSetupRoute() {
       return;
     }
 
-    window.setTimeout(() => {
-      const focusTarget = element.matches("input, textarea, select, button")
-        ? element
-        : element.querySelector<HTMLElement>("input:not([type='file']), textarea, select, button");
+    window.setTimeout(
+      () => {
+        const focusTarget = element.matches("input, textarea, select, button")
+          ? element
+          : element.querySelector<HTMLElement>(
+              "input:not([type='file']), textarea, select, button",
+            );
 
-      focusTarget?.focus({ preventScroll: true });
-    }, prefersReducedMotion ? 0 : 220);
+        focusTarget?.focus({ preventScroll: true });
+      },
+      prefersReducedMotion ? 0 : 220,
+    );
   }
 
   function clearSectionSkip(sectionId: StoryOfUsOptionalSectionId) {
@@ -761,7 +860,10 @@ function StoryOfUsSetupRoute() {
         (warning) => warning.sectionId !== sectionId,
       );
 
-      if (!currentNotice || (currentNotice.blockingErrors.length === 0 && remainingWarnings.length === 0)) {
+      if (
+        !currentNotice ||
+        (currentNotice.blockingErrors.length === 0 && remainingWarnings.length === 0)
+      ) {
         return null;
       }
 
@@ -798,7 +900,10 @@ function StoryOfUsSetupRoute() {
       ...current,
       siteAccess: {
         ...current.siteAccess,
-        [field]: field === "passcode" || field === "confirmPasscode" ? value.replace(/\D/g, "").slice(0, 4) : value,
+        [field]:
+          field === "passcode" || field === "confirmPasscode"
+            ? value.replace(/\D/g, "").slice(0, 4)
+            : value,
       },
     }));
   }
@@ -989,8 +1094,7 @@ function StoryOfUsSetupRoute() {
               ? {
                   ...current.musicVoice.voiceNote,
                   uploadStatus: "failed",
-                  uploadError:
-                    error instanceof Error ? error.message : "Ses notu yüklenemedi.",
+                  uploadError: error instanceof Error ? error.message : "Ses notu yüklenemedi.",
                 }
               : null,
           },
@@ -1058,7 +1162,9 @@ function StoryOfUsSetupRoute() {
 
   function markPhotoUploadFailed(photoId: string, message: string) {
     const updatePhoto = (photo: StoryOfUsPhotoDraftItem | null) =>
-      photo?.id === photoId ? { ...photo, uploadStatus: "failed" as const, uploadError: message } : photo;
+      photo?.id === photoId
+        ? { ...photo, uploadStatus: "failed" as const, uploadError: message }
+        : photo;
 
     setFormData((current) => ({
       ...current,
@@ -1091,7 +1197,8 @@ function StoryOfUsSetupRoute() {
     semanticKey,
     sectionItemId,
   }: {
-    section: "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
+    section:
+      "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
     semanticKey: string;
     sectionItemId: string;
   }) {
@@ -1279,7 +1386,9 @@ function StoryOfUsSetupRoute() {
                 ? null
                 : current.media.puzzle.selectedPhotoId,
             sourceType:
-              current.media.puzzle.selectedPhotoId === photoId ? null : current.media.puzzle.sourceType,
+              current.media.puzzle.selectedPhotoId === photoId
+                ? null
+                : current.media.puzzle.sourceType,
           },
         },
       };
@@ -1320,13 +1429,13 @@ function StoryOfUsSetupRoute() {
     puzzlePhotoPreviewUrlsRef.current.add(previewUrl);
 
     const puzzlePhoto: StoryOfUsPhotoDraftItem = {
-        id: createPhotoDraftId(),
-        previewUrl,
-        caption: "",
-        sortOrder: 0,
-        uploadStatus: "uploading",
-        file,
-      };
+      id: createPhotoDraftId(),
+      previewUrl,
+      caption: "",
+      sortOrder: 0,
+      uploadStatus: "uploading",
+      file,
+    };
 
     setFormData((current) => {
       if (current.media.puzzle.puzzlePhoto) {
@@ -1722,7 +1831,7 @@ function StoryOfUsSetupRoute() {
             id: createLetterItemId(),
             type: "love_letter",
             title: DEFAULT_LOVE_LETTER_TITLE,
-            body: "",
+            body: DEFAULT_LOVE_LETTER_BODY,
             sortOrder: current.letters.length,
           },
         ],
@@ -1752,7 +1861,9 @@ function StoryOfUsSetupRoute() {
 
   function addDefaultOpenWhenLetters() {
     setFormData((current) => {
-      const currentOpenWhenCount = current.letters.filter((letter) => letter.type === "open_when").length;
+      const currentOpenWhenCount = current.letters.filter(
+        (letter) => letter.type === "open_when",
+      ).length;
 
       if (currentOpenWhenCount > 0) {
         return current;
@@ -1777,7 +1888,7 @@ function StoryOfUsSetupRoute() {
   }
 
   function updateLoveLetterPhoto(file: File) {
-    const nextPhoto = createImageDraft(file, "Kalbimden sana birkaç satır");
+    const nextPhoto = createImageDraft(file, DEFAULT_LOVE_LETTER_TITLE);
 
     if (!nextPhoto) {
       return;
@@ -1798,8 +1909,8 @@ function StoryOfUsSetupRoute() {
     void uploadPhotoDraft(nextPhoto, {
       section: "letter",
       mediaType: "photo",
-      semanticKey: "love_letter_side_photo",
-      sectionItemId: "loveLetterPhoto",
+      semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+      sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
       sortOrder: 0,
     });
   }
@@ -1807,8 +1918,8 @@ function StoryOfUsSetupRoute() {
   function removeLoveLetterPhoto() {
     void removePersistedMedia({
       section: "letter",
-      semanticKey: "love_letter_side_photo",
-      sectionItemId: "loveLetterPhoto",
+      semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+      sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
     });
 
     setFormData((current) => {
@@ -1829,20 +1940,50 @@ function StoryOfUsSetupRoute() {
     field: keyof Pick<StoryOfUsLetterItem, "title" | "body">,
     value: string,
   ) {
-    setFormData((current) => ({
-      ...current,
-      letters: current.letters.map((letter) =>
-        letter.id === letterId ? { ...letter, [field]: value } : letter,
-      ),
-    }));
+    setPendingDefaultConfirmation(null);
+    setFormData((current) => {
+      const targetLetter = current.letters.find((letter) => letter.id === letterId);
+      const isLoveLetterBody = targetLetter?.type === "love_letter" && field === "body";
+
+      return {
+        ...current,
+        letters: current.letters.map((letter) =>
+          letter.id === letterId ? { ...letter, [field]: value } : letter,
+        ),
+        editableDefaultContent: isLoveLetterBody
+          ? getNextEditableDefaultContentState(
+              current.editableDefaultContent,
+              "loveLetterBody",
+              value,
+              DEFAULT_LOVE_LETTER_BODY,
+            )
+          : current.editableDefaultContent,
+      };
+    });
   }
 
   function removeLetterItem(letterId: string) {
     setFormData((current) => ({
       ...current,
       letters: current.letters
-        .filter((letter) => letter.id !== letterId)
+        .filter((letter) => !(letter.id === letterId && letter.type !== "love_letter"))
         .map((letter, index) => ({ ...letter, sortOrder: index })),
+    }));
+  }
+
+  function restoreLoveLetterDefaultText(letterId: string) {
+    setPendingDefaultConfirmation(null);
+    setFormData((current) => ({
+      ...current,
+      letters: current.letters.map((letter) =>
+        letter.id === letterId && letter.type === "love_letter"
+          ? { ...letter, body: DEFAULT_LOVE_LETTER_BODY }
+          : letter,
+      ),
+      editableDefaultContent: removeEditableDefaultContentState(
+        current.editableDefaultContent,
+        "loveLetterBody",
+      ),
     }));
   }
 
@@ -1943,9 +2084,7 @@ function StoryOfUsSetupRoute() {
 
           <div className="mb-5 min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8 sm:rounded-3xl sm:p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-semibold text-rose-700">
-                Taslak bu cihazda otomatik kaydedilir.
-              </p>
+              <p className="font-semibold text-rose-700">Taslak bu cihazda otomatik kaydedilir.</p>
               <span
                 className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${draftSaveStatusClassName}`}
                 aria-live="polite"
@@ -2115,10 +2254,14 @@ function StoryOfUsSetupRoute() {
                 <LettersStep
                   letters={formData.letters}
                   loveLetterPhoto={formData.media.loveLetterPhoto}
+                  pendingDefaultConfirmation={pendingDefaultConfirmation}
                   onAddLoveLetter={addLoveLetter}
                   onAddOpenWhenLetter={addOpenWhenLetter}
                   onAddDefaultOpenWhenLetters={addDefaultOpenWhenLetters}
                   onUpdateLetter={updateLetterItem}
+                  onRestoreLoveLetterDefault={restoreLoveLetterDefaultText}
+                  onConfirmEditableDefault={confirmEditableDefaultContent}
+                  onReturnToEditableDefault={returnToEditableDefaultContent}
                   onUpdateLoveLetterPhoto={updateLoveLetterPhoto}
                   onRemoveLoveLetterPhoto={removeLoveLetterPhoto}
                   onRemoveLetter={removeLetterItem}
@@ -2216,7 +2359,7 @@ function getStepIntro(stepId: StoryOfUsSetupStepId) {
     case "timeline":
       return "İlişkinizdeki özel anları kısa başlık, tarih ve birkaç cümleyle sıralayın.";
     case "letters":
-      return "Ana aşk mektubunuzu ve ihtiyaç anlarında açılacak küçük notları burada hazırlayın.";
+      return "Kalbimden sana fotoğrafı zorunludur. Mektup metnini boş bırakırsanız hazırladığımız romantik varsayılan metni kullanacağız.";
     case "review":
       return "Göndermeden önce her şeyi sakince kontrol edin. Gönderimden sonra 3 saatlik düzenleme süreniz başlar.";
   }
@@ -2226,33 +2369,60 @@ function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[
   switch (stepId) {
     case "contactCouple":
       return [
-        { title: "İletişim alanları", description: "Ad, e-posta ve telefon bilgileri için form alanları gelecek." },
-        { title: "Çift bilgileri", description: "İsimler, özel tarih ve ilişki hikayesi burada toplanacak." },
+        {
+          title: "İletişim alanları",
+          description: "Ad, e-posta ve telefon bilgileri için form alanları gelecek.",
+        },
+        {
+          title: "Çift bilgileri",
+          description: "İsimler, özel tarih ve ilişki hikayesi burada toplanacak.",
+        },
       ];
     case "photosPuzzle":
       return [
-        { title: "Fotoğraf yükleme", description: "Galeri fotoğrafları için sıralanabilir yükleme alanı eklenecek." },
-        { title: "Puzzle seçimi", description: "Puzzle için hangi fotoğrafın kullanılacağı burada seçilecek." },
+        {
+          title: "Fotoğraf yükleme",
+          description: "Galeri fotoğrafları için sıralanabilir yükleme alanı eklenecek.",
+        },
+        {
+          title: "Puzzle seçimi",
+          description: "Puzzle için hangi fotoğrafın kullanılacağı burada seçilecek.",
+        },
       ];
     case "musicVoice":
       return [
-        { title: "Spotify şarkısı", description: "Şarkı linki, başlık ve sanatçı bilgisi için alanlar gelecek." },
+        {
+          title: "Spotify şarkısı",
+          description: "Şarkı linki, başlık ve sanatçı bilgisi için alanlar gelecek.",
+        },
         { title: "Ses notu", description: "İsteğe bağlı ses notu yükleme alanı burada görünecek." },
       ];
     case "timeline":
       return [
-        { title: "Hikaye kartları", description: "Başlık, tarih ve açıklama alanlarıyla özel anlar eklenecek." },
+        {
+          title: "Hikaye kartları",
+          description: "Başlık, tarih ve açıklama alanlarıyla özel anlar eklenecek.",
+        },
         { title: "Sıralama", description: "Anılar istenen sıraya göre düzenlenebilir olacak." },
       ];
     case "letters":
       return [
-        { title: "Ana mektup", description: "Kalbimden sana bölümü için uzun mektup alanı gelecek." },
-        { title: "Open-when notları", description: "İhtiyaç anlarında açılacak küçük mektuplar hazırlanacak." },
+        {
+          title: "Ana mektup",
+          description: "Kalbimden sana bölümü için uzun mektup alanı gelecek.",
+        },
+        {
+          title: "Open-when notları",
+          description: "İhtiyaç anlarında açılacak küçük mektuplar hazırlanacak.",
+        },
       ];
     case "review":
       return [
         { title: "Özet", description: "Tüm adımlardan gelen bilgiler tek yerde kontrol edilecek." },
-        { title: "Gönderim beklemede", description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor." },
+        {
+          title: "Gönderim beklemede",
+          description: "Bu skeleton aşamasında hiçbir veri kaydedilmiyor veya gönderilmiyor.",
+        },
       ];
   }
 }
@@ -2328,12 +2498,28 @@ function validateCurrentStep(
     warnings.push(getOptionalSectionWarning("timeline"));
   }
 
-  if (
-    stepId === "letters" &&
-    formData.letters.length === 0 &&
-    !isSectionConfirmedSkipped("letters", formData)
-  ) {
-    warnings.push(getOptionalSectionWarning("letters"));
+  if (stepId === "letters") {
+    const loveLetterPhotoError = getLoveLetterPhotoSubmitError(formData.media.loveLetterPhoto);
+    const loveLetter = formData.letters.find((letter) => letter.type === "love_letter");
+
+    if (loveLetterPhotoError) {
+      blockingErrors.push(loveLetterPhotoError);
+    }
+
+    if (!loveLetter?.body.trim()) {
+      blockingErrors.push(
+        "Kalbimden sana metni boş bırakılamaz. Kendi metninizi yazın veya varsayılan metni geri yükleyin.",
+      );
+    }
+  }
+
+  if (blockingErrors.length > 0) {
+    return {
+      blockingErrors,
+      contactFieldErrors,
+      siteAccessFieldErrors,
+      warning: null,
+    };
   }
 
   return {
@@ -2521,20 +2707,24 @@ function getValidationWarnings(notice: StepValidationNotice | null) {
 }
 
 function getRenderableValidationWarnings(notice: StepValidationNotice | null) {
-  return getValidationWarnings(notice).filter(
-    (warning): warning is OptionalSectionWarning =>
-      Boolean(warning?.sectionId && warning.message),
+  return getValidationWarnings(notice).filter((warning): warning is OptionalSectionWarning =>
+    Boolean(warning?.sectionId && warning.message),
   );
 }
 
 function getImportantFieldWarnings(formData: StoryOfUsSetupFormData) {
-  const importantFields: Array<keyof Pick<
-    StoryOfUsContactCoupleData,
-    "relationshipStartDate" | "relationshipStory" | "recipientNickname" | "specialDateLabel"
-  >> = ["relationshipStartDate", "relationshipStory", "recipientNickname", "specialDateLabel"];
+  const importantFields: Array<
+    keyof Pick<
+      StoryOfUsContactCoupleData,
+      "relationshipStartDate" | "relationshipStory" | "recipientNickname" | "specialDateLabel"
+    >
+  > = ["relationshipStartDate", "relationshipStory", "recipientNickname", "specialDateLabel"];
 
   return importantFields
-    .filter((field) => !formData.contactCouple[field].trim() && !isSectionConfirmedSkipped(field, formData))
+    .filter(
+      (field) =>
+        !formData.contactCouple[field].trim() && !isSectionConfirmedSkipped(field, formData),
+    )
     .map((field) => getOptionalSectionWarning(field));
 }
 
@@ -2549,7 +2739,10 @@ function getFullSetupWarnings(formData: StoryOfUsSetupFormData) {
     warnings.push(getOptionalSectionWarning("puzzle"));
   }
 
-  if (isMusicSectionEmpty(formData.musicVoice.music) && !isSectionConfirmedSkipped("music", formData)) {
+  if (
+    isMusicSectionEmpty(formData.musicVoice.music) &&
+    !isSectionConfirmedSkipped("music", formData)
+  ) {
     warnings.push(getOptionalSectionWarning("music"));
   }
 
@@ -2559,10 +2752,6 @@ function getFullSetupWarnings(formData: StoryOfUsSetupFormData) {
 
   if (formData.timeline.length === 0 && !isSectionConfirmedSkipped("timeline", formData)) {
     warnings.push(getOptionalSectionWarning("timeline"));
-  }
-
-  if (formData.letters.length === 0 && !isSectionConfirmedSkipped("letters", formData)) {
-    warnings.push(getOptionalSectionWarning("letters"));
   }
 
   return warnings;
@@ -2584,9 +2773,9 @@ function getStepOptionalSections(stepId: StoryOfUsSetupStepId): StoryOfUsOptiona
     case "timeline":
       return ["timeline"];
     case "letters":
-      return ["letters"];
+      return [];
     case "review":
-      return ["photos", "puzzle", "music", "voiceNote", "timeline", "letters"];
+      return ["photos", "puzzle", "music", "voiceNote", "timeline"];
     case "contactCouple":
       return [];
   }
@@ -2659,7 +2848,9 @@ function getFirstBlockingValidationTarget(notice: StepValidationNotice) {
     return `[data-setup-field="${contactField}"]`;
   }
 
-  const siteAccessField = siteAccessFieldOrder.find((field) => notice.siteAccessFieldErrors?.[field]);
+  const siteAccessField = siteAccessFieldOrder.find(
+    (field) => notice.siteAccessFieldErrors?.[field],
+  );
 
   if (siteAccessField) {
     return `[data-setup-field="${siteAccessField}"]`;
@@ -2761,7 +2952,7 @@ function createSetupFormDataFromAccessInitialData(
   initialData: StoryOfUsSetupAccessInitialData,
 ): StoryOfUsSetupFormData {
   const formData = createEmptyStoryOfUsSetupFormData();
-  const initialLetters =
+  const initialLetters = ensureLoveLetterDefaults(
     initialData.letters.length > 0
       ? initialData.letters
       : DEFAULT_OPEN_WHEN_LETTERS.map((letter, index) => ({
@@ -2769,14 +2960,20 @@ function createSetupFormDataFromAccessInitialData(
           type: letter.type,
           title: letter.title,
           body: letter.body,
-          sortOrder: index,
-        }));
+          sortOrder: index + 1,
+        })),
+    createLetterItemId,
+  );
   const existingMedia = initialData.existingMedia;
   const firstPersonPhoto = existingMediaToPhoto(
-    existingMedia.find((media) => media.section === "opening" && media.sectionItemId === "firstPerson"),
+    existingMedia.find(
+      (media) => media.section === "opening" && media.sectionItemId === "firstPerson",
+    ),
   );
   const secondPersonPhoto = existingMediaToPhoto(
-    existingMedia.find((media) => media.section === "opening" && media.sectionItemId === "secondPerson"),
+    existingMedia.find(
+      (media) => media.section === "opening" && media.sectionItemId === "secondPerson",
+    ),
   );
   const galleryPhotos = existingMedia
     .filter((media) => media.section === "gallery" && media.mediaType === "photo")
@@ -2863,6 +3060,10 @@ function createSetupFormDataFromAccessInitialData(
       sortOrder: index,
     })),
     letters: initialLetters.map((letter, index) => ({ ...letter, sortOrder: index })),
+    editableDefaultContent: restoreEditableDefaultContent(
+      initialData.editableDefaultContent,
+      initialLetters,
+    ),
     confirmedSkips: initialData.confirmedSkips,
     legalConsents: initialData.legalConsents ?? formData.legalConsents,
   };
@@ -2938,6 +3139,7 @@ function serializeSetupDraft(formData: StoryOfUsSetupFormData): StoryOfUsSetupDr
       music: formData.musicVoice.music,
       voiceNote: null,
     },
+    editableDefaultContent: formData.editableDefaultContent,
     confirmedSkips: formData.confirmedSkips,
     legalConsents: formData.legalConsents,
     timeline: getOrderedTimelineItems(formData.timeline).map((item, index) => ({
@@ -3012,8 +3214,8 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
         confirmedNoPuzzle: formData.media.puzzle.confirmedNoPuzzle,
       },
       loveLetterPhoto: createPhotoPayload(formData.media.loveLetterPhoto, {
-        semanticKey: "love_letter_side_photo",
-        sectionItemId: "loveLetterPhoto",
+        semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+        sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
         sortOrder: 0,
       }),
     },
@@ -3028,6 +3230,7 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
             }
           : null,
     },
+    editableDefaultContent: formData.editableDefaultContent,
     confirmedSkips: formData.confirmedSkips,
     legalConsents: formData.legalConsents,
     timeline: timelineItems.map((item, index) => ({
@@ -3050,8 +3253,16 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     }
   });
 
-  appendPhotoFile(submissionFormData, "openingPhoto:firstPerson", formData.media.openingPhotos.firstPerson);
-  appendPhotoFile(submissionFormData, "openingPhoto:secondPerson", formData.media.openingPhotos.secondPerson);
+  appendPhotoFile(
+    submissionFormData,
+    "openingPhoto:firstPerson",
+    formData.media.openingPhotos.firstPerson,
+  );
+  appendPhotoFile(
+    submissionFormData,
+    "openingPhoto:secondPerson",
+    formData.media.openingPhotos.secondPerson,
+  );
   promptPhotos.forEach((prompt) => {
     appendPhotoFile(submissionFormData, `promptPhoto:${prompt.id}`, prompt.photo);
   });
@@ -3068,10 +3279,7 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     );
   }
 
-  if (
-    formData.media.puzzle.sourceType === "separate" &&
-    formData.media.puzzle.puzzlePhoto?.file
-  ) {
+  if (formData.media.puzzle.sourceType === "separate" && formData.media.puzzle.puzzlePhoto?.file) {
     submissionFormData.append(
       "puzzlePhotoFile",
       formData.media.puzzle.puzzlePhoto.file,
@@ -3169,10 +3377,7 @@ function saveSetupDraft(formData: StoryOfUsSetupFormData, setupToken: string) {
     return;
   }
 
-  window.localStorage.setItem(
-    storageKey,
-    JSON.stringify(serializeSetupDraft(formData)),
-  );
+  window.localStorage.setItem(storageKey, JSON.stringify(serializeSetupDraft(formData)));
 }
 
 function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
@@ -3205,15 +3410,18 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
           sortOrder: index,
         }))
       : [];
-    const restoredLetters: StoryOfUsLetterItem[] = Array.isArray(parsedDraft.letters)
-      ? parsedDraft.letters.map((letter, index) => ({
-          id: typeof letter.id === "string" ? letter.id : createLetterItemId(),
-          type: letter.type === "love_letter" ? "love_letter" : "open_when",
-          title: typeof letter.title === "string" ? letter.title : "",
-          body: typeof letter.body === "string" ? letter.body : "",
-          sortOrder: index,
-        }))
-      : [];
+    const restoredLetters = ensureLoveLetterDefaults(
+      Array.isArray(parsedDraft.letters)
+        ? parsedDraft.letters.map((letter, index) => ({
+            id: typeof letter.id === "string" ? letter.id : createLetterItemId(),
+            type: letter.type === "love_letter" ? "love_letter" : "open_when",
+            title: typeof letter.title === "string" ? letter.title : "",
+            body: typeof letter.body === "string" ? letter.body : "",
+            sortOrder: index,
+          }))
+        : [],
+      createLetterItemId,
+    );
 
     return {
       ...emptyFormData,
@@ -3261,6 +3469,10 @@ function restoreSetupDraft(setupToken: string): StoryOfUsSetupFormData | null {
       legalConsents: restoreLegalConsents(parsedDraft.legalConsents, emptyFormData.legalConsents),
       timeline: restoredTimeline,
       letters: restoredLetters,
+      editableDefaultContent: restoreEditableDefaultContent(
+        parsedDraft.editableDefaultContent,
+        restoredLetters,
+      ),
     };
   } catch {
     clearSetupDraft(setupToken);
@@ -3370,7 +3582,8 @@ function formatFileSize(sizeBytes: number) {
 }
 
 function formatExistingMediaName(media: StoryOfUsSetupAccessExistingMediaItem) {
-  const filename = media.originalFilename || media.storagePath.split("/").pop() || "Yüklenmiş dosya";
+  const filename =
+    media.originalFilename || media.storagePath.split("/").pop() || "Yüklenmiş dosya";
   const sizeText = media.sizeBytes > 0 ? ` · ${formatFileSize(media.sizeBytes)}` : "";
   return `${filename}${sizeText}`;
 }
@@ -3530,8 +3743,8 @@ function StepValidationPanel({
             Devam etmeden önce birkaç temel bilgiyi tamamlamamız gerekiyor.
           </h4>
           <p className="mt-2 text-sm leading-6 text-red-900/70">
-            Size kurulum linkini ve gerekirse destek mesajlarını doğru şekilde ulaştırabilmemiz
-            için bu bilgileri net almamız gerekiyor.
+            Size kurulum linkini ve gerekirse destek mesajlarını doğru şekilde ulaştırabilmemiz için
+            bu bilgileri net almamız gerekiyor.
           </p>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-6 text-red-900/80">
             {notice.blockingErrors.map((error) => (
@@ -3728,7 +3941,10 @@ function PhotosPuzzleStep({
         </div>
         {existingOpeningMedia.length > 0 && (
           <div className="mt-4">
-            <ExistingMediaList title="Mevcut açılış fotoğrafları korunacak" items={existingOpeningMedia} />
+            <ExistingMediaList
+              title="Mevcut açılış fotoğrafları korunacak"
+              items={existingOpeningMedia}
+            />
           </div>
         )}
       </section>
@@ -3770,7 +3986,10 @@ function PhotosPuzzleStep({
         </div>
         {existingPromptMedia.length > 0 && (
           <div className="mt-4">
-            <ExistingMediaList title="Mevcut Benim gözümde sen fotoğrafları korunacak" items={existingPromptMedia} />
+            <ExistingMediaList
+              title="Mevcut Benim gözümde sen fotoğrafları korunacak"
+              items={existingPromptMedia}
+            />
           </div>
         )}
       </section>
@@ -3810,8 +4029,8 @@ function PhotosPuzzleStep({
           <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
           <h4 className="text-base font-semibold text-rose-950">Henüz fotoğraf eklenmedi.</h4>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
-            Eklediğiniz fotoğraflar romantik galeri için hazırlanacak. Galeriyi boş bırakıp
-            puzzle için ayrıca fotoğraf da yükleyebilirsiniz.
+            Eklediğiniz fotoğraflar romantik galeri için hazırlanacak. Galeriyi boş bırakıp puzzle
+            için ayrıca fotoğraf da yükleyebilirsiniz.
           </p>
         </section>
       ) : (
@@ -4015,7 +4234,8 @@ function MusicVoiceStep({
   onConfirmVoiceNoteSkip: () => void;
   onUndoVoiceNoteSkip: () => void;
 }) {
-  const isVoiceNoteSkipWarningVisible = !voiceNote && voiceNoteSkip?.warned && !voiceNoteSkip.confirmed;
+  const isVoiceNoteSkipWarningVisible =
+    !voiceNote && voiceNoteSkip?.warned && !voiceNoteSkip.confirmed;
   const isVoiceNoteSkipped = !voiceNote && voiceNoteSkip?.confirmed;
 
   return (
@@ -4027,8 +4247,8 @@ function MusicVoiceStep({
         <div className="mb-4">
           <h4 className="text-base font-semibold text-rose-950">Şarkınızı ekleyin</h4>
           <p className="mt-1 text-sm leading-6 text-rose-950/60">
-            Spotify şarkısı ayrı bir bölüm olarak görünür. Linki, şarkı adını ve sanatçıyı
-            eklemeniz yeterli.
+            Spotify şarkısı ayrı bir bölüm olarak görünür. Linki, şarkı adını ve sanatçıyı eklemeniz
+            yeterli.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -4098,11 +4318,7 @@ function MusicVoiceStep({
                 Ses notunu kaldır
               </button>
             </div>
-            <audio
-              src={voiceNote.previewUrl}
-              controls
-              className="w-full rounded-2xl"
-            >
+            <audio src={voiceNote.previewUrl} controls className="w-full rounded-2xl">
               Tarayıcınız ses önizlemeyi desteklemiyor.
             </audio>
             <div className="mt-3">
@@ -4367,9 +4583,7 @@ function TimelineStep({
                       </p>
                     )}
                     {item.description && (
-                      <p className="mt-2 text-sm leading-6 text-rose-950/60">
-                        {item.description}
-                      </p>
+                      <p className="mt-2 text-sm leading-6 text-rose-950/60">{item.description}</p>
                     )}
                     {!item.eventDate && !item.description && (
                       <p className="mt-2 text-sm leading-6 text-rose-950/45">
@@ -4390,10 +4604,14 @@ function TimelineStep({
 function LettersStep({
   letters,
   loveLetterPhoto,
+  pendingDefaultConfirmation,
   onAddLoveLetter,
   onAddOpenWhenLetter,
   onAddDefaultOpenWhenLetters,
   onUpdateLetter,
+  onRestoreLoveLetterDefault,
+  onConfirmEditableDefault,
+  onReturnToEditableDefault,
   onUpdateLoveLetterPhoto,
   onRemoveLoveLetterPhoto,
   onRemoveLetter,
@@ -4401,6 +4619,7 @@ function LettersStep({
 }: {
   letters: StoryOfUsLetterItem[];
   loveLetterPhoto: StoryOfUsPhotoDraftItem | null;
+  pendingDefaultConfirmation: StoryOfUsEditableDefaultConfirmation | null;
   onAddLoveLetter: () => void;
   onAddOpenWhenLetter: () => void;
   onAddDefaultOpenWhenLetters: () => void;
@@ -4409,6 +4628,9 @@ function LettersStep({
     field: keyof Pick<StoryOfUsLetterItem, "title" | "body">,
     value: string,
   ) => void;
+  onRestoreLoveLetterDefault: (letterId: string) => void;
+  onConfirmEditableDefault: (contentId: StoryOfUsEditableDefaultContentId) => void;
+  onReturnToEditableDefault: (contentId: StoryOfUsEditableDefaultContentId) => void;
   onUpdateLoveLetterPhoto: (file: File) => void;
   onRemoveLoveLetterPhoto: () => void;
   onRemoveLetter: (letterId: string) => void;
@@ -4430,8 +4652,9 @@ function LettersStep({
               Sevgilinize özel mektuplar ekleyin.
             </h4>
             <p className="mt-1 text-sm leading-6 text-rose-950/60">
-              Aşk mektubu ana romantik mesajınız olacak. Open-when mektupları ise farklı anlarda
-              açılacak küçük sürpriz notlar gibi düşünebilirsiniz.
+              Kalbimden sana fotoğrafı zorunludur. Aşk mektubu metni hazırladığımız romantik
+              varsayılan içerikle gelir; isterseniz doğrudan düzenleyebilirsiniz. Open-when
+              mektupları ise farklı anlarda açılacak küçük sürpriz notlar gibi düşünebilirsiniz.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
@@ -4470,22 +4693,55 @@ function LettersStep({
       <section className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-4 shadow-sm shadow-rose-100/50 sm:p-5">
         <SinglePhotoPicker
           title="Mektubunuzun yanında görünecek fotoğraf"
-          description="Kalbimden sana bölümünde mektubun yanında yer alacak özel fotoğrafı seçin."
+          description="Kalbimden sana bölümünde mektubun yanında yer alacak özel fotoğraf zorunludur."
           photo={loveLetterPhoto}
           buttonText="Mektup fotoğrafı seç"
-          emptyText="Mektup bölümüne henüz fotoğraf eklenmedi."
+          emptyText="Bu zorunlu fotoğraf henüz yüklenmedi."
           onSelect={onUpdateLoveLetterPhoto}
           onRemove={onRemoveLoveLetterPhoto}
         />
       </section>
+
+      {pendingDefaultConfirmation?.contentId === "loveLetterBody" && (
+        <section
+          className="rounded-3xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm shadow-amber-100/70 sm:p-5"
+          role="alert"
+          aria-live="assertive"
+        >
+          <p className="text-sm font-semibold text-amber-950">{pendingDefaultConfirmation.title}</p>
+          <p className="mt-2 text-sm leading-6 text-amber-950/70">
+            Bu metni değiştirmeden devam ederseniz, hazırladığımız varsayılan içerik sitenizde
+            kullanılacaktır.
+          </p>
+          <blockquote className="mt-3 rounded-2xl border border-amber-200 bg-white/75 px-4 py-3 text-sm italic leading-6 text-amber-950/75">
+            {pendingDefaultConfirmation.preview}
+          </blockquote>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => onReturnToEditableDefault(pendingDefaultConfirmation.contentId)}
+              className="min-h-11 rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/60"
+            >
+              Düzenlemeye dön
+            </button>
+            <button
+              type="button"
+              onClick={() => onConfirmEditableDefault(pendingDefaultConfirmation.contentId)}
+              className="min-h-11 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+            >
+              Varsayılan metinle devam et
+            </button>
+          </div>
+        </section>
+      )}
 
       {orderedLetters.length === 0 ? (
         <section className="rounded-3xl border border-dashed border-rose-200 bg-[#fffaf8] p-6 text-center shadow-sm shadow-rose-100/40">
           <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-br from-rose-100 to-pink-100" />
           <h4 className="text-base font-semibold text-rose-950">Henüz mektup eklenmedi.</h4>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-rose-950/60">
-            Bu bölüm daha sonra doğrulama ve atlama sistemiyle isteğe bağlı hale getirilebilir.
-            Şimdilik ana mektubunuzu veya open-when notlarınızı eklemek için yukarıdaki butonları
+            Aşk mektubu için hazırladığımız varsayılan metni kullanabilir veya kendi metninizle
+            değiştirebilirsiniz. Open-when notları eklemek isterseniz yukarıdaki butonları
             kullanabilirsiniz.
           </p>
         </section>
@@ -4548,10 +4804,29 @@ function LettersStep({
                   />
                   <SetupTextArea
                     label="Mektup içeriği"
+                    fieldKey={isLoveLetter ? "loveLetterBody" : undefined}
                     value={letter.body}
                     onChange={(nextValue) => onUpdateLetter(letter.id, "body", nextValue)}
-                    placeholder="Buraya mektubunuzu yazın…"
+                    placeholder={
+                      isLoveLetter ? DEFAULT_LOVE_LETTER_BODY : "Buraya mektubunuzu yazın…"
+                    }
                   />
+                  {isLoveLetter && !letter.body.trim() && (
+                    <div className="rounded-2xl border border-rose-100 bg-rose-50/75 p-4 text-sm leading-6 text-rose-950/65">
+                      <p className="font-semibold text-rose-700">Mektup metni boş bırakılamaz.</p>
+                      <p className="mt-1">
+                        Kendi metninizi yazabilir veya hazırladığımız varsayılan metni geri
+                        yükleyebilirsiniz.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => onRestoreLoveLetterDefault(letter.id)}
+                        className="mt-3 min-h-10 rounded-full border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                      >
+                        Varsayılan metni geri yükle
+                      </button>
+                    </div>
+                  )}
                 </div>
               </article>
             );
@@ -4586,7 +4861,9 @@ function LettersStep({
                     <p className="mt-2 text-sm leading-6 text-rose-950/60">{letter.body}</p>
                   ) : (
                     <p className="mt-2 text-sm leading-6 text-rose-950/45">
-                      Mektup içeriği yazıldığında burada romantik bir önizleme olarak görünecek.
+                      {isLoveLetter
+                        ? "Kendi metninizi yazabilir veya varsayılan metni geri yükleyebilirsiniz."
+                        : "Mektup içeriği yazıldığında burada romantik bir önizleme olarak görünecek."}
                     </p>
                   )}
                 </article>
@@ -4625,9 +4902,7 @@ function StoryOfUsSetupAccessScreen({ access }: { access: SetupAccessUiState }) 
                 {content.body || "Lütfen birkaç saniye sonra tekrar deneyin."}
               </p>
               {note && (
-                <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/55">
-                  {note}
-                </p>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/55">{note}</p>
               )}
             </div>
           </div>
@@ -4643,10 +4918,8 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
       return {
         icon: "💌",
         title: "Kurulum bağlantısı gerekiyor",
-        body:
-          "Kurulum formuna erişmek için ödeme sonrası size gönderilen özel bağlantıyı kullanmanız gerekiyor.",
-        note:
-          "Eğer ödeme yaptıysanız ve bağlantınızı bulamıyorsanız, lütfen e-posta kutunuzu ve spam klasörünüzü kontrol edin.",
+        body: "Kurulum formuna erişmek için ödeme sonrası size gönderilen özel bağlantıyı kullanmanız gerekiyor.",
+        note: "Eğer ödeme yaptıysanız ve bağlantınızı bulamıyorsanız, lütfen e-posta kutunuzu ve spam klasörünüzü kontrol edin.",
       };
     case "checking":
       return {
@@ -4658,8 +4931,7 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
       return {
         icon: "💔",
         title: "Bu kurulum bağlantısı bulunamadı veya geçersiz.",
-        body:
-          "Bağlantıyı e-postanızdan eksiksiz açtığınızdan emin olun. Sorun devam ederse bizimle iletişime geçebilirsiniz.",
+        body: "Bağlantıyı e-postanızdan eksiksiz açtığınızdan emin olun. Sorun devam ederse bizimle iletişime geçebilirsiniz.",
       };
     case "not_paid":
       return {
@@ -4689,8 +4961,7 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
       return {
         icon: "💌",
         title: "Düzenleme süreniz doldu.",
-        body:
-          "Kurulum bilgileriniz alınmış görünüyor. Düzenleme süresi sona erdiği için form artık değiştirilemez.",
+        body: "Kurulum bilgileriniz alınmış görünüyor. Düzenleme süresi sona erdiği için form artık değiştirilemez.",
         note: access.editableUntil
           ? `Son düzenleme zamanı: ${formatEditableUntil(access.editableUntil)}. Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.`
           : "Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.",
@@ -4869,7 +5140,6 @@ function StoryOfUsSetupSuccessScreen({
                 Bilgileri düzenle
               </button>
             </div>
-
           </div>
         </div>
       </section>
@@ -4908,7 +5178,6 @@ function ReviewSubmitStep({
   const isPuzzleSkipped = isSectionConfirmedSkipped("puzzle", formData);
   const isMusicSkipped = isSectionConfirmedSkipped("music", formData);
   const isTimelineSkipped = isSectionConfirmedSkipped("timeline", formData);
-  const isLettersSkipped = isSectionConfirmedSkipped("letters", formData);
   const existingGalleryMedia = existingMedia.filter(
     (media) => media.mediaType === "photo" && media.section === "gallery",
   );
@@ -4983,10 +5252,7 @@ function ReviewSubmitStep({
                 : "Henüz ayarlanmadı"
             }
           />
-          <ReviewField
-            label="Şifre ipucu"
-            value={displayValue(formData.siteAccess.passcodeHint)}
-          />
+          <ReviewField label="Şifre ipucu" value={displayValue(formData.siteAccess.passcodeHint)} />
         </div>
         {skippedImportantFields.length > 0 && (
           <div className="mt-4 rounded-2xl border border-rose-100 bg-white/80 p-4 text-sm leading-7 text-rose-950/65">
@@ -5008,10 +5274,12 @@ function ReviewSubmitStep({
         <div className="grid gap-4">
           <ReviewField
             label="Açılış fotoğrafları"
-            value={`${[
-              formData.media.openingPhotos.firstPerson,
-              formData.media.openingPhotos.secondPerson,
-            ].filter(Boolean).length} / 2 yeni fotoğraf`}
+            value={`${
+              [
+                formData.media.openingPhotos.firstPerson,
+                formData.media.openingPhotos.secondPerson,
+              ].filter(Boolean).length
+            } / 2 yeni fotoğraf`}
           />
           {(formData.media.openingPhotos.firstPerson ||
             formData.media.openingPhotos.secondPerson) && (
@@ -5060,18 +5328,11 @@ function ReviewSubmitStep({
             />
           )}
 
-          <ReviewField
-            label="Toplam fotoğraf"
-            value={`${formData.media.photos.length} fotoğraf`}
-          />
+          <ReviewField label="Toplam fotoğraf" value={`${formData.media.photos.length} fotoğraf`} />
           {formData.media.photos.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {formData.media.photos.map((photo, index) => (
-                <ReviewPhotoCard
-                  key={photo.id}
-                  photo={photo}
-                  title={`Fotoğraf ${index + 1}`}
-                />
+                <ReviewPhotoCard key={photo.id} photo={photo} title={`Fotoğraf ${index + 1}`} />
               ))}
             </div>
           ) : (
@@ -5147,7 +5408,10 @@ function ReviewSubmitStep({
           )}
 
           {existingPuzzleMedia.length > 0 && !isPuzzleSkipped && (
-            <ExistingMediaList title="Mevcut puzzle fotoğrafı korunacak" items={existingPuzzleMedia} />
+            <ExistingMediaList
+              title="Mevcut puzzle fotoğrafı korunacak"
+              items={existingPuzzleMedia}
+            />
           )}
         </div>
       </ReviewSection>
@@ -5171,10 +5435,7 @@ function ReviewSubmitStep({
             label="Şarkı adı"
             value={displayValue(formData.musicVoice.music.songTitle)}
           />
-          <ReviewField
-            label="Sanatçı"
-            value={displayValue(formData.musicVoice.music.artistName)}
-          />
+          <ReviewField label="Sanatçı" value={displayValue(formData.musicVoice.music.artistName)} />
           <ReviewField
             label="Başlangıç saniyesi"
             value={
@@ -5191,10 +5452,7 @@ function ReviewSubmitStep({
               )}`}
             />
           ) : voiceNoteSkip?.confirmed ? (
-            <ReviewField
-              label="Ses notu"
-              value="Ses notu bölümü isteğiniz üzerine kaldırılacak."
-            />
+            <ReviewField label="Ses notu" value="Ses notu bölümü isteğiniz üzerine kaldırılacak." />
           ) : existingVoiceNoteMedia.length > 0 ? (
             <ReviewField
               label="Ses notu"
@@ -5259,7 +5517,10 @@ function ReviewSubmitStep({
         )}
         {existingTimelineMedia.length > 0 && (
           <div className="mt-4">
-            <ExistingMediaList title="Mevcut zaman çizelgesi fotoğrafları korunacak" items={existingTimelineMedia} />
+            <ExistingMediaList
+              title="Mevcut zaman çizelgesi fotoğrafları korunacak"
+              items={existingTimelineMedia}
+            />
           </div>
         )}
       </ReviewSection>
@@ -5278,7 +5539,10 @@ function ReviewSubmitStep({
           </div>
         ) : existingLetterMedia.length > 0 ? (
           <div className="mb-4">
-            <ExistingMediaList title="Mevcut mektup fotoğrafı korunacak" items={existingLetterMedia} />
+            <ExistingMediaList
+              title="Mevcut mektup fotoğrafı korunacak"
+              items={existingLetterMedia}
+            />
           </div>
         ) : null}
         {orderedLetters.length > 0 ? (
@@ -5303,7 +5567,9 @@ function ReviewSubmitStep({
                     </p>
                   ) : (
                     <p className="mt-2 text-sm leading-6 text-rose-950/45">
-                      Mektup içeriği henüz yazılmadı.
+                      {isLoveLetter
+                        ? "Boş bırakılırsa hazırladığımız varsayılan aşk mektubu kullanılacak."
+                        : "Mektup içeriği henüz yazılmadı."}
                     </p>
                   )}
                 </article>
@@ -5312,9 +5578,8 @@ function ReviewSubmitStep({
           </div>
         ) : (
           <ReviewSoftHint>
-            {isLettersSkipped
-              ? "Bu bölüm isteğiniz üzerine kaldırılacak."
-              : "Henüz mektup eklenmedi."}
+            Henüz özel mektup eklenmedi. Aşk mektubu metni boş kalırsa hazırladığımız varsayılan
+            metin kullanılacak; mektup fotoğrafı zorunlu kalır.
           </ReviewSoftHint>
         )}
       </ReviewSection>
@@ -5323,7 +5588,9 @@ function ReviewSubmitStep({
         title="Onaylar"
         description="StoryOfUs web sitenizi hazırlayabilmemiz için paylaştığınız içerikleri yalnızca bu hizmet kapsamında kullanacağız."
         onEdit={() => setIsPrivacyNoticeOpen((isOpen) => !isOpen)}
-        editLabel={isPrivacyNoticeOpen ? "Aydınlatma metnini gizle" : "Aydınlatma metnini görüntüle"}
+        editLabel={
+          isPrivacyNoticeOpen ? "Aydınlatma metnini gizle" : "Aydınlatma metnini görüntüle"
+        }
       >
         <div className="grid gap-4">
           {legalConsentErrors.length > 0 && (
@@ -5380,8 +5647,8 @@ function ReviewSubmitStep({
                     Kurulum formunu gönderdikten sonra 3 saat boyunca bilgilerimi
                     düzenleyebileceğimi ve bu süre içinde iade talebinde bulunabileceğimi biliyorum.
                     Bu sürenin sonunda paylaştığım bilgilere göre kişiselleştirilmiş StoryOfUs
-                    hizmetinin hazırlanmasına başlanmasını açıkça talep ediyorum. Hazırlık başladıktan
-                    sonra yalnızca fikir değişikliğine dayalı standart cayma hakkının
+                    hizmetinin hazırlanmasına başlanmasını açıkça talep ediyorum. Hazırlık
+                    başladıktan sonra yalnızca fikir değişikliğine dayalı standart cayma hakkının
                     uygulanmayabileceği konusunda bilgilendirildim.{" "}
                     <Link
                       to={storyOfUsDemoCtaConfig.refundPolicyPath}
@@ -5449,7 +5716,9 @@ function ReviewSection({
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h4 className="text-base font-semibold text-rose-950">{title}</h4>
-          <p className="mt-1 break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">{description}</p>
+          <p className="mt-1 break-words text-sm leading-6 text-rose-950/60 [overflow-wrap:anywhere]">
+            {description}
+          </p>
         </div>
         <button
           type="button"
@@ -5504,18 +5773,14 @@ function ReviewField({
   return (
     <div className={`min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 ${className}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-500">{label}</p>
-      <p className="mt-1 break-words text-sm leading-6 text-rose-950/70 [overflow-wrap:anywhere]">{value}</p>
+      <p className="mt-1 break-words text-sm leading-6 text-rose-950/70 [overflow-wrap:anywhere]">
+        {value}
+      </p>
     </div>
   );
 }
 
-function ReviewPhotoCard({
-  photo,
-  title,
-}: {
-  photo: StoryOfUsPhotoDraftItem;
-  title: string;
-}) {
+function ReviewPhotoCard({ photo, title }: { photo: StoryOfUsPhotoDraftItem; title: string }) {
   return (
     <article className="min-w-0 overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm shadow-rose-100/40">
       <img
@@ -5673,7 +5938,9 @@ function ExistingMediaList({
               />
             )}
             <div className="min-w-0 px-3 py-2">
-              <p className="break-words [overflow-wrap:anywhere]">{formatExistingMediaName(item)}</p>
+              <p className="break-words [overflow-wrap:anywhere]">
+                {formatExistingMediaName(item)}
+              </p>
               {item.caption && (
                 <p className="mt-1 break-words text-xs leading-5 text-rose-950/50 [overflow-wrap:anywhere]">
                   {item.caption}
@@ -5807,8 +6074,8 @@ function ContactCoupleStep({
         <div className="mb-4">
           <h4 className="text-base font-semibold text-rose-950">Website giriş şifresi</h4>
           <p className="mt-1 text-sm leading-6 text-rose-950/60">
-            Final site bu 4 rakamlı kodla açılacak. Kodunuz ekranda görünür şekilde
-            saklanmaz; sadece giriş kontrolü için güvenli şekilde hazırlanır.
+            Final site bu 4 rakamlı kodla açılacak. Kodunuz ekranda görünür şekilde saklanmaz;
+            sadece giriş kontrolü için güvenli şekilde hazırlanır.
           </p>
           {siteAccess.hasExistingPasscode && (
             <div className="mt-3 rounded-2xl border border-fuchsia-100 bg-white/80 px-4 py-3 text-sm leading-6 text-fuchsia-800">

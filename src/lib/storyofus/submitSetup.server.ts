@@ -1,7 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import {
+  STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
+  STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+  getLoveLetterPhotoSubmitError,
+} from "./loveLetterRequirements";
+import { getLoveLetterDefaultContentSubmitError } from "./editableDefaultContent";
 import { hashSitePasscode, validateSitePasscode } from "./passcode.server";
-import { getStoryOfUsServiceStartConsent, isStoryOfUsActiveRefundStatus } from "./refundEligibility.server";
+import {
+  getStoryOfUsServiceStartConsent,
+  isStoryOfUsActiveRefundStatus,
+} from "./refundEligibility.server";
+import type { StoryOfUsEditableDefaultContentState } from "./setupTypes";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
@@ -42,13 +52,7 @@ type SubmitPhotoMetadata = {
 };
 
 type StoryOfUsMediaSection =
-  | "opening"
-  | "memory_prompt"
-  | "gallery"
-  | "timeline"
-  | "letter"
-  | "puzzle"
-  | "voice_note";
+  "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
 
 type SubmitPuzzleSourceType = "gallery" | "separate";
 
@@ -109,6 +113,7 @@ type SubmitPayload = {
     passcodeHint: string;
     hasExistingPasscode?: boolean;
   };
+  editableDefaultContent: StoryOfUsEditableDefaultContentState;
   confirmedSkips: ConfirmedSkips;
   legalConsents: {
     privacyNoticeAccepted: {
@@ -199,8 +204,14 @@ async function submitStoryOfUsSetupData(
     throw new Error("StoryOfUs setup form is not active until payment is approved.");
   }
 
-  if (isStoryOfUsActiveRefundStatus(typeof submission.refund_status === "string" ? submission.refund_status : null)) {
-    throw new Error("Bu siparişle ilgili iade talebiniz inceleniyor. Ayrıntılı bilgi için contact@leony.tech adresinden bize ulaşabilirsiniz.");
+  if (
+    isStoryOfUsActiveRefundStatus(
+      typeof submission.refund_status === "string" ? submission.refund_status : null,
+    )
+  ) {
+    throw new Error(
+      "Bu siparişle ilgili iade talebiniz inceleniyor. Ayrıntılı bilgi için contact@leony.tech adresinden bize ulaşabilirsiniz.",
+    );
   }
 
   const isFirstSubmit = submission.status === "draft";
@@ -247,6 +258,21 @@ async function submitStoryOfUsSetupData(
 
   if (!passcodeValidation.isValid) {
     throw new Error(passcodeValidation.errors[0] ?? "Website giriş şifresi geçersiz.");
+  }
+
+  const loveLetterPhotoError = getLoveLetterPhotoSubmitError(payload.media.loveLetterPhoto);
+
+  if (loveLetterPhotoError) {
+    throw new Error(loveLetterPhotoError);
+  }
+
+  const loveLetterDefaultContentError = getLoveLetterDefaultContentSubmitError(
+    payload.letters,
+    payload.editableDefaultContent ?? {},
+  );
+
+  if (loveLetterDefaultContentError) {
+    throw new Error(loveLetterDefaultContentError);
   }
 
   const nextPasscodeHash = passcodeValidation.shouldHashPasscode
@@ -338,7 +364,9 @@ async function prepareExistingMediaForSubmit(
       .eq("section", "gallery");
 
     if (error) {
-      throw new Error(`StoryOfUs existing gallery media rows could not be cleared: ${error.message}`);
+      throw new Error(
+        `StoryOfUs existing gallery media rows could not be cleared: ${error.message}`,
+      );
     }
   }
 
@@ -350,7 +378,9 @@ async function prepareExistingMediaForSubmit(
       .eq("section", "puzzle");
 
     if (deleteError) {
-      throw new Error(`StoryOfUs existing puzzle media rows could not be cleared: ${deleteError.message}`);
+      throw new Error(
+        `StoryOfUs existing puzzle media rows could not be cleared: ${deleteError.message}`,
+      );
     }
 
     const { error: updateError } = await storyOfUsSupabaseAdmin
@@ -360,7 +390,9 @@ async function prepareExistingMediaForSubmit(
       .eq("is_puzzle_source", true);
 
     if (updateError) {
-      throw new Error(`StoryOfUs existing puzzle source could not be cleared: ${updateError.message}`);
+      throw new Error(
+        `StoryOfUs existing puzzle source could not be cleared: ${updateError.message}`,
+      );
     }
   }
 
@@ -372,7 +404,9 @@ async function prepareExistingMediaForSubmit(
       .eq("section", "voice_note");
 
     if (error) {
-      throw new Error(`StoryOfUs existing voice note media rows could not be cleared: ${error.message}`);
+      throw new Error(
+        `StoryOfUs existing voice note media rows could not be cleared: ${error.message}`,
+      );
     }
   }
 }
@@ -397,7 +431,10 @@ async function insertCoupleDetails(submissionId: string, payload: SubmitPayload)
 }
 
 async function insertMusicIfNeeded(submissionId: string, payload: SubmitPayload) {
-  if (isConfirmedSkipped(payload.confirmedSkips, "music") || isMusicEmpty(payload.musicVoice.music)) {
+  if (
+    isConfirmedSkipped(payload.confirmedSkips, "music") ||
+    isMusicEmpty(payload.musicVoice.music)
+  ) {
     return;
   }
 
@@ -415,7 +452,11 @@ async function insertMusicIfNeeded(submissionId: string, payload: SubmitPayload)
   }
 }
 
-async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload, formData: FormData) {
+async function uploadPhotosIfNeeded(
+  submissionId: string,
+  payload: SubmitPayload,
+  formData: FormData,
+) {
   const shouldMarkPuzzle =
     !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
     payload.media.puzzle.sourceType === "gallery" &&
@@ -514,8 +555,8 @@ async function uploadPhotosIfNeeded(submissionId: string, payload: SubmitPayload
     section: "letter",
     mediaType: "photo",
     storageFolder: "letter",
-    semanticKey: "love_letter_side_photo",
-    sectionItemId: "loveLetterPhoto",
+    semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+    sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
     sortOrder: 0,
   });
 
@@ -830,7 +871,7 @@ async function insertTimelineIfNeeded(submissionId: string, payload: SubmitPaylo
 }
 
 async function insertLettersIfNeeded(submissionId: string, payload: SubmitPayload) {
-  if (isConfirmedSkipped(payload.confirmedSkips, "letters") || payload.letters.length === 0) {
+  if (payload.letters.length === 0) {
     return;
   }
 
@@ -895,6 +936,7 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
       passcodeConfigured: true,
       passcodeHint: payload.siteAccess?.passcodeHint ?? "",
     },
+    editableDefaultContent: payload.editableDefaultContent ?? {},
     confirmedSkips: payload.confirmedSkips,
     legalConsents: payload.legalConsents,
     timeline: payload.timeline,

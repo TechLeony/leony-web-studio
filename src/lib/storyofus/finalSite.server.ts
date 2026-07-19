@@ -14,8 +14,17 @@ import {
   clearStoryOfUsFinalSitePasscodeFailures,
   recordStoryOfUsFinalSitePasscodeFailure,
 } from "./finalSitePasscodeRateLimit.server";
+import { restoreEditableDefaultContent } from "./editableDefaultContent";
 import { verifySitePasscode } from "./passcode.server";
+import {
+  STORYOFUS_LOVE_LETTER_PHOTO_SECTION,
+  STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
+  STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
+  getLoveLetterPhotoPublishError,
+  isRequiredLoveLetterPhotoMediaRow,
+} from "./loveLetterRequirements";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
+import type { StoryOfUsEditableDefaultContentState } from "./setupTypes";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
 
@@ -65,6 +74,7 @@ export type StoryOfUsFinalSiteData = {
   voiceNote: StoryOfUsFinalSiteMedia | null;
   timeline: StoryOfUsFinalSiteTimelineItem[];
   letters: StoryOfUsFinalSiteLetter[];
+  editableDefaultContent: StoryOfUsEditableDefaultContentState;
   music: {
     spotifyUrl: string;
     songTitle: string;
@@ -325,6 +335,18 @@ export const publishStoryOfUsFinalSite = createServerFn({ method: "POST" })
       };
     }
 
+    const hasRequiredLoveLetterPhoto = await hasRequiredLoveLetterPhotoForPublish(
+      data.submissionId,
+    );
+    const requiredMediaError = getLoveLetterPhotoPublishError(hasRequiredLoveLetterPhoto);
+
+    if (requiredMediaError) {
+      return {
+        status: "not_publishable",
+        message: requiredMediaError,
+      };
+    }
+
     const coupleDetails = await loadCoupleDetails(data.submissionId);
     const slugBase = createStoryOfUsFinalSiteSlugBase(
       coupleDetails?.coupleDisplayName ?? "",
@@ -518,6 +540,30 @@ async function loadAdminPreviewPasscodeSubmission(submissionId: string) {
   };
 }
 
+async function hasRequiredLoveLetterPhotoForPublish(submissionId: string) {
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_media")
+    .select("section, semantic_key, section_item_id, storage_path")
+    .eq("submission_id", submissionId)
+    .eq("section", STORYOFUS_LOVE_LETTER_PHOTO_SECTION)
+    .eq("semantic_key", STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY)
+    .eq("section_item_id", STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID)
+    .limit(1);
+
+  if (error) {
+    throw new Error("StoryOfUs required final site media could not be checked.");
+  }
+
+  return (data ?? []).some((row) =>
+    isRequiredLoveLetterPhotoMediaRow({
+      section: stringValue(row.section),
+      semanticKey: nullableString(row.semantic_key),
+      sectionItemId: nullableString(row.section_item_id),
+      storagePath: nullableString(row.storage_path),
+    }),
+  );
+}
+
 async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOfUsFinalSiteData> {
   const [submission, coupleDetails, music, media, timeline, letters] = await Promise.all([
     loadSubmissionBase(submissionId),
@@ -555,6 +601,10 @@ async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOf
       photo: mediaBySectionItem.get(`timeline:${item.id}`) ?? null,
     })),
     letters,
+    editableDefaultContent: restoreEditableDefaultContent(
+      submission.editableDefaultContent,
+      letters,
+    ),
     music,
   };
 }
@@ -562,7 +612,7 @@ async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOf
 async function loadSubmissionBase(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("order_reference, final_site_url, site_passcode_hint")
+    .select("order_reference, final_site_url, site_passcode_hint, submission_snapshot")
     .eq("id", submissionId)
     .maybeSingle();
 
@@ -574,6 +624,9 @@ async function loadSubmissionBase(submissionId: string) {
     orderReference: stringValue(data.order_reference),
     finalSiteUrl: nullableString(data.final_site_url),
     passcodeHint: stringValue(data.site_passcode_hint),
+    editableDefaultContent: isRecord(data.submission_snapshot)
+      ? data.submission_snapshot.editableDefaultContent
+      : undefined,
   };
 }
 
@@ -783,4 +836,8 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

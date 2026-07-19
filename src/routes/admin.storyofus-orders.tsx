@@ -238,6 +238,12 @@ function StoryOfUsOrdersAdmin() {
                 <p className="text-sm font-semibold text-rose-950">
                   Bu yalnızca yönetici önizlemesidir; site henüz müşteriye açılmadı.
                 </p>
+                {!previewSite.loveLetterPhoto?.previewUrl && (
+                  <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+                    Zorunlu mektup fotoğrafı eksik. Bu sipariş bu fotoğraf tamamlanmadan
+                    yayınlanmamalıdır.
+                  </p>
+                )}
               </div>
               <button
                 type="button"

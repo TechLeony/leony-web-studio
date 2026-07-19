@@ -7,6 +7,7 @@ import type {
 } from "@/lib/storyofus/finalSite.server";
 
 import { createStoryOfUsExperienceDataFromFinalSite } from "./storyOfUsExperienceAdapter.ts";
+import { demoStoryData } from "./storyOfUsExperienceData.ts";
 
 function media(overrides: Partial<StoryOfUsFinalSiteMedia>): StoryOfUsFinalSiteMedia {
   return {
@@ -46,6 +47,7 @@ function site(overrides: Partial<StoryOfUsFinalSiteData> = {}): StoryOfUsFinalSi
     voiceNote: null,
     timeline: [],
     letters: [],
+    editableDefaultContent: {},
     music: null,
     ...overrides,
   };
@@ -118,7 +120,8 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
         loveLetterPhoto: media({
           id: "letter-photo-internal",
           section: "letter",
-          semanticKey: "love_letter_photo",
+          semanticKey: "love_letter_side_photo",
+          sectionItemId: "loveLetterPhoto",
           previewUrl: "https://signed.example/letter-photo",
         }),
         voiceNote: media({
@@ -202,6 +205,79 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
     assert.equal(experience.spotify.artist, "Bize özel sanatçı");
   });
 
+  it("uses stable default love-letter text when custom text is empty", () => {
+    const experience = createStoryOfUsExperienceDataFromFinalSite(
+      site({
+        editableDefaultContent: {
+          loveLetterBody: {
+            outcome: "default_accepted",
+          },
+        },
+        loveLetterPhoto: media({
+          section: "letter",
+          semanticKey: "love_letter_side_photo",
+          sectionItemId: "loveLetterPhoto",
+          previewUrl: "https://signed.example/letter-photo",
+        }),
+        letters: [
+          {
+            id: "empty-love-letter",
+            type: "love_letter",
+            title: "",
+            body: "   ",
+            sortOrder: 0,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(experience.letter.letterTitle, demoStoryData.letter.letterTitle);
+    assert.equal(experience.letter.letterBody, demoStoryData.letter.letterBody);
+    assert.equal(experience.letter.letterSidePhoto.photoSrc, "https://signed.example/letter-photo");
+  });
+
+  it("uses explicit editable-default outcome for love-letter body precedence", () => {
+    const defaultAccepted = createStoryOfUsExperienceDataFromFinalSite(
+      site({
+        editableDefaultContent: {
+          loveLetterBody: {
+            outcome: "default_accepted",
+          },
+        },
+        letters: [
+          {
+            id: "love-letter",
+            type: "love_letter",
+            title: "Kalbimden sana",
+            body: "Customer typed the exact default manually, but accepted default wins.",
+            sortOrder: 0,
+          },
+        ],
+      }),
+    );
+    const customized = createStoryOfUsExperienceDataFromFinalSite(
+      site({
+        editableDefaultContent: {
+          loveLetterBody: {
+            outcome: "customized",
+          },
+        },
+        letters: [
+          {
+            id: "love-letter",
+            type: "love_letter",
+            title: "Kalbimden sana",
+            body: "Bu müşterinin özel mektubu.",
+            sortOrder: 0,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(defaultAccepted.letter.letterBody, demoStoryData.letter.letterBody);
+    assert.equal(customized.letter.letterBody, "Bu müşterinin özel mektubu.");
+  });
+
   it("exposes signed preview URLs but not media internals", () => {
     const experience = createStoryOfUsExperienceDataFromFinalSite(
       site({
@@ -236,18 +312,49 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
     assert.doesNotMatch(serialized, /private-memory-id/);
     assert.doesNotMatch(serialized, /private-memory-key/);
     assert.doesNotMatch(serialized, /sweetest/);
+    assert.doesNotMatch(serialized, /\/demo-assets\//);
   });
 
-  it("omits unsupported or missing optional sections instead of fabricating content", () => {
+  it("keeps stable product defaults while omitting unsupported optional customer sections", () => {
     const experience = createStoryOfUsExperienceDataFromFinalSite(site());
+    const serialized = JSON.stringify(experience);
 
     assert.deepEqual(experience.memories.items, []);
     assert.deepEqual(experience.timeline.items, []);
     assert.equal(experience.photoPuzzle.imageUrl, "");
     assert.equal(experience.voiceNote.audioUrl, "");
-    assert.deepEqual(experience.reasons.items, []);
+    assert.ok(experience.reasons.items.length > 0);
     assert.deepEqual(experience.couponQuiz.questions, []);
-    assert.deepEqual(experience.coupleWrapped.stats, []);
-    assert.equal(experience.finalSurprise.finalSecretNote, "");
+    assert.ok(experience.coupleWrapped.stats.length > 0);
+    assert.equal(experience.reasons.reasonsTitle, demoStoryData.reasons.reasonsTitle);
+    assert.equal(experience.coupleWrapped.title, demoStoryData.coupleWrapped.title);
+    assert.equal(
+      experience.finalSurprise.finalSecretNote,
+      demoStoryData.finalSurprise.finalSecretNote,
+    );
+    assert.equal(experience.letter.letterBody, demoStoryData.letter.letterBody);
+    assert.equal(experience.letter.letterSidePhoto.photoSrc, "");
+    assert.doesNotMatch(serialized, /editableDefaultContent/);
+  });
+
+  it("does not use demo fixture photos for missing real timeline or love-letter media", () => {
+    const experience = createStoryOfUsExperienceDataFromFinalSite(
+      site({
+        timeline: [
+          {
+            id: "timeline-without-photo",
+            title: "Fotoğrafsız anı",
+            eventDate: "2024-06-01",
+            description: "Gerçek fotoğraf yoksa demo görsel gelmemeli.",
+            sortOrder: 0,
+            photo: null,
+          },
+        ],
+      }),
+    );
+
+    assert.equal(experience.timeline.items[0]?.photoSrc, "");
+    assert.equal(experience.letter.letterSidePhoto.photoSrc, "");
+    assert.doesNotMatch(JSON.stringify(experience), /\/demo-assets\//);
   });
 });

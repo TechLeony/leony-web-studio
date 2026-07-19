@@ -1,3 +1,9 @@
+import {
+  STORYOFUS_DEFAULT_FINAL_SURPRISE_NOTE,
+  STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
+  STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
+} from "../../lib/storyofus/stableContentDefaults.ts";
+
 export type DecorStyle = "hearts" | "stars" | "capybara" | "cat" | "dog" | "panda";
 export type GalleryMode = "polaroid" | "carousel" | "stacked";
 export type AnimationStyle = "soft-slide" | "fade" | "none";
@@ -264,9 +270,8 @@ export const demoStoryData = {
     ],
   },
   letter: {
-    letterTitle: "Kalbimden sana birkaç satır",
-    letterBody:
-      "Bazen sana baktığımda, anlatmak istediğim her şey kelimelerin biraz ötesinde kalıyor. Gülüşün, sesin, yanımda oluşun… Hepsi kalbimde çok özel bir yere sahip. Seninle geçen her an, en sıradan günü bile güzel bir anıya dönüştürüyor. İyi ki varsın, iyi ki benimlesin. Seni düşündüğüm her yerde, kalbim biraz daha yumuşuyor.",
+    letterTitle: STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
+    letterBody: STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
     signaturePrefix: "Sonsuza dek",
     letterSidePhoto: {
       src: "/demo-assets/arda-ceren-closeup.webp",
@@ -278,7 +283,7 @@ export const demoStoryData = {
   finalSurprise: {
     finalGiftButtonText: "Sana bir sürprizim daha var",
     finalLabel: "Gizli mesaj",
-    finalSecretNote: "Seni her gün bir öncekinden çok daha fazla çok seviyorum, hayatım 💖💖",
+    finalSecretNote: STORYOFUS_DEFAULT_FINAL_SURPRISE_NOTE,
   },
   interactiveFeatures: {
     coupleWrapped: { enabled: true },

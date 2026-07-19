@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-react";
 
 import { storyOfUsDemoCtaConfig } from "@/lib/storyofus/demoCtaConfig";
@@ -63,6 +64,7 @@ export function StoryOfUsExperience({
   const [showFinal, setShowFinal] = useState(false);
   const [showPuzzle, setShowPuzzle] = useState(false);
   const [openLetterIndex, setOpenLetterIndex] = useState<number | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
   const [elapsed, setElapsed] = useState(() =>
     getElapsed(story.relationship.relationshipStartDate),
   );
@@ -138,8 +140,40 @@ export function StoryOfUsExperience({
   const hasReasons = story.reasons.items.length > 0;
   const hasCouponQuiz = story.couponQuiz.questions.length > 0;
   const hasCoupleWrapped = story.coupleWrapped.stats.length > 0;
-  const hasLoveLetter = Boolean(story.letter.letterBody);
+  const hasLoveLetter = Boolean(story.letter.letterBody && story.letter.letterSidePhoto.photoSrc);
   const hasFinalSurprise = Boolean(story.finalSurprise.finalSecretNote);
+  const hasOpenWhenOverlay = openLetterIndex !== null && hasOpenWhenLetters;
+  const hasFinalOverlay = showFinal && hasFinalSurprise;
+  const hasExperienceOverlay = hasOpenWhenOverlay || hasFinalOverlay;
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasExperienceOverlay || typeof document === "undefined" || typeof window === "undefined") {
+      return;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+
+    function handleOverlayKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      setOpenLetterIndex(null);
+      setShowFinal(false);
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleOverlayKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener("keydown", handleOverlayKeyDown);
+    };
+  }, [hasExperienceOverlay]);
 
   useEffect(() => {
     if (!entered) return;
@@ -505,7 +539,9 @@ export function StoryOfUsExperience({
                       </p>
                     </div>
                   </div>
-                  <PhotoFrame photo={item} aspect="aspect-[4/3] sm:aspect-square" compact />
+                  {item.photoSrc && (
+                    <PhotoFrame photo={item} aspect="aspect-[4/3] sm:aspect-square" compact />
+                  )}
                 </div>
               </li>
             ))}
@@ -621,7 +657,10 @@ export function StoryOfUsExperience({
                 <button
                   key={letter.title}
                   type="button"
-                  onClick={() => setOpenLetterIndex(i)}
+                  onClick={() => {
+                    setShowFinal(false);
+                    setOpenLetterIndex(i);
+                  }}
                   className="group relative min-h-[12.5rem] overflow-hidden rounded-[1.5rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(255,228,235,0.72))] p-4 text-left shadow-xl shadow-rose-200/30 backdrop-blur transition duration-500 hover:-translate-y-1 hover:shadow-rose-300/45 sm:min-h-[14rem] sm:rounded-[1.75rem]"
                 >
                   <span className="pointer-events-none absolute inset-x-4 top-4 h-16 rounded-b-[2rem] rounded-t-xl border border-rose-100/80 bg-gradient-to-br from-rose-100/80 via-pink-50/80 to-white/70 shadow-inner transition duration-500 group-hover:translate-y-1" />
@@ -905,7 +944,10 @@ export function StoryOfUsExperience({
       {hasFinalSurprise && (
         <section className="relative z-10 mx-auto max-w-xl px-4 pb-20 text-center sm:px-6 sm:pb-24">
           <button
-            onClick={() => setShowFinal(true)}
+            onClick={() => {
+              setOpenLetterIndex(null);
+              setShowFinal(true);
+            }}
             className="group relative inline-flex flex-col items-center gap-4 rounded-[1.75rem] px-6 py-6 transition hover:bg-white/35 sm:rounded-[2rem] sm:px-8 sm:py-7"
           >
             <span className="pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-br from-rose-100/40 via-white/20 to-pink-200/35 opacity-0 blur-xl transition duration-500 group-hover:opacity-100" />
@@ -919,38 +961,6 @@ export function StoryOfUsExperience({
         </section>
       )}
 
-      {openLetterIndex !== null && hasOpenWhenLetters && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-rose-950/35 px-4 py-8 backdrop-blur-sm animate-in fade-in duration-300 sm:px-5">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] border border-white/70 bg-[linear-gradient(180deg,#fffafc,#fff1f5)] p-4 shadow-2xl shadow-rose-950/20 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 sm:rounded-[2rem] sm:p-8">
-            <button
-              type="button"
-              onClick={() => setOpenLetterIndex(null)}
-              aria-label="Mektubu kapat"
-              className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[color:var(--sou-primary)] shadow-sm transition hover:bg-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <span className="pointer-events-none absolute inset-x-8 top-6 h-24 rounded-b-[2rem] rounded-t-xl border border-rose-100 bg-gradient-to-br from-rose-100 via-pink-50 to-white shadow-inner" />
-            <div className="relative mt-10 rounded-[1.35rem] border border-white/80 bg-white/80 px-4 py-5 shadow-xl shadow-rose-100/50 sm:rounded-[1.5rem] sm:px-5 sm:py-6">
-              <Heart className="mb-4 h-8 w-8 fill-rose-300/60 text-[color:var(--sou-primary)]" />
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--sou-primary)] sm:tracking-[0.25em]">
-                {story.openWhenLetters.items[openLetterIndex].title}
-              </p>
-              <p
-                className="mt-5 min-h-[7rem] text-xl leading-relaxed text-[color:var(--sou-text)] animate-in fade-in slide-in-from-top-2 duration-500 sm:text-2xl"
-                style={{ fontFamily: "var(--sou-font-accent)", fontStyle: "italic" }}
-              >
-                {typedLetterMessage}
-                {typedLetterMessage.length <
-                  story.openWhenLetters.items[openLetterIndex].message.length && (
-                  <span className="ml-1 inline-block h-6 w-px translate-y-1 bg-[color:var(--sou-primary)] animate-pulse" />
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showPuzzle && hasPuzzle && (
         <PhotoPuzzleGame
           imageUrl={story.photoPuzzle.imageUrl}
@@ -962,65 +972,105 @@ export function StoryOfUsExperience({
         />
       )}
 
-      {showFinal && hasFinalSurprise && (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-rose-950/45 px-4 py-8 backdrop-blur-sm animate-in fade-in duration-500 sm:px-5">
-          <div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-gradient-to-br from-[color:var(--sou-primary)] via-[color:var(--sou-secondary)] to-rose-500 p-6 text-center text-white shadow-2xl shadow-rose-950/40 ring-1 ring-white/40 animate-in fade-in zoom-in-95 duration-700 sm:p-10">
-            <style>{`
-              @keyframes sou-final-float {
-                from { opacity: 0; transform: translate3d(0, 34px, 0) rotate(var(--final-rotate)) scale(0.82); }
-                18% { opacity: var(--final-opacity); }
-                to { opacity: 0; transform: translate3d(var(--final-drift), -126px, 0) rotate(calc(var(--final-rotate) + 28deg)) scale(1.18); }
-              }
-            `}</style>
-            <button
-              type="button"
-              onClick={() => setShowFinal(false)}
-              aria-label="Sürprizi kapat"
-              className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white shadow-sm transition hover:bg-white/25"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(255,255,255,0.32),transparent_34%),radial-gradient(circle_at_12%_90%,rgba(255,255,255,0.18),transparent_30%)]" />
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-black/10" />
-            <div className="pointer-events-none absolute inset-0">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((spark) => (
-                <Heart
-                  key={spark}
-                  className="absolute fill-white/50 text-white/60 drop-shadow"
-                  style={
-                    {
-                      left: `${8 + spark * 10}%`,
-                      bottom: `${spark % 2 === 0 ? 7 : 17}%`,
-                      width: `${14 + (spark % 3) * 4}px`,
-                      height: `${14 + (spark % 3) * 4}px`,
-                      animation: `sou-final-float ${4.6 + spark * 0.28}s ease-in-out ${spark * 0.18}s infinite`,
-                      "--final-drift": `${spark % 2 === 0 ? 34 : -30}px`,
-                      "--final-rotate": `${spark % 2 === 0 ? -14 : 18}deg`,
-                      "--final-opacity": `${0.42 + (spark % 3) * 0.12}`,
-                    } as CSSProperties
-                  }
-                />
-              ))}
-            </div>
-            <Heart className="relative mx-auto mb-5 h-8 w-8 text-white/80 animate-in fade-in zoom-in duration-700" />
-            <p className="relative text-xs uppercase tracking-[0.28em] text-white/80 sm:tracking-[0.4em]">
-              {story.finalSurprise.finalLabel}
-            </p>
-            <p
-              className="relative mt-6 text-2xl leading-relaxed drop-shadow-sm animate-in fade-in zoom-in-95 duration-1000 sm:text-3xl md:text-4xl"
-              style={{ fontFamily: "var(--sou-font-heading)" }}
-            >
-              {typedFinalNote}
-              {typedFinalNote.length < story.finalSurprise.finalSecretNote.length && (
-                <span className="ml-1 inline-block h-7 w-px translate-y-1 bg-white/85 animate-pulse" />
-              )}
-            </p>
-            <p className="relative mt-6 text-sm text-white/80 animate-in fade-in slide-in-from-bottom-2 duration-1000">
-              {story.letter.signaturePrefix}, {story.relationship.coupleNames.second}
-            </p>
-          </div>
-        </div>
-      )}
+      {portalReady &&
+        hasExperienceOverlay &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div style={themeStyle}>
+            {hasOpenWhenOverlay && openLetterIndex !== null && (
+              <div className="fixed inset-0 z-[1000] grid min-h-[100dvh] place-items-center overflow-y-auto bg-rose-950/35 px-4 py-[max(2rem,env(safe-area-inset-top))] backdrop-blur-sm animate-in fade-in duration-300 sm:px-5">
+                <div className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] border border-white/70 bg-[linear-gradient(180deg,#fffafc,#fff1f5)] p-4 shadow-2xl shadow-rose-950/20 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 sm:rounded-[2rem] sm:p-8">
+                  <button
+                    type="button"
+                    onClick={() => setOpenLetterIndex(null)}
+                    aria-label="Mektubu kapat"
+                    className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[color:var(--sou-primary)] shadow-sm transition hover:bg-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <span className="pointer-events-none absolute inset-x-8 top-6 h-24 rounded-b-[2rem] rounded-t-xl border border-rose-100 bg-gradient-to-br from-rose-100 via-pink-50 to-white shadow-inner" />
+                  <div className="relative mt-10 rounded-[1.35rem] border border-white/80 bg-white/80 px-4 py-5 shadow-xl shadow-rose-100/50 sm:rounded-[1.5rem] sm:px-5 sm:py-6">
+                    <Heart className="mb-4 h-8 w-8 fill-rose-300/60 text-[color:var(--sou-primary)]" />
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[color:var(--sou-primary)] sm:tracking-[0.25em]">
+                      {story.openWhenLetters.items[openLetterIndex].title}
+                    </p>
+                    <p
+                      className="mt-5 min-h-[7rem] text-xl leading-relaxed text-[color:var(--sou-text)] animate-in fade-in slide-in-from-top-2 duration-500 sm:text-2xl"
+                      style={{ fontFamily: "var(--sou-font-accent)", fontStyle: "italic" }}
+                    >
+                      {typedLetterMessage}
+                      {typedLetterMessage.length <
+                        story.openWhenLetters.items[openLetterIndex].message.length && (
+                        <span className="ml-1 inline-block h-6 w-px translate-y-1 bg-[color:var(--sou-primary)] animate-pulse" />
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hasFinalOverlay && (
+              <div className="fixed inset-0 z-[1000] grid min-h-[100dvh] place-items-center overflow-y-auto bg-rose-950/45 px-4 py-[max(2rem,env(safe-area-inset-top))] backdrop-blur-sm animate-in fade-in duration-500 sm:px-5">
+                <div className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-gradient-to-br from-[color:var(--sou-primary)] via-[color:var(--sou-secondary)] to-rose-500 p-6 text-center text-white shadow-2xl shadow-rose-950/40 ring-1 ring-white/40 animate-in fade-in zoom-in-95 duration-700 sm:p-10">
+                  <style>{`
+                    @keyframes sou-final-float {
+                      from { opacity: 0; transform: translate3d(0, 34px, 0) rotate(var(--final-rotate)) scale(0.82); }
+                      18% { opacity: var(--final-opacity); }
+                      to { opacity: 0; transform: translate3d(var(--final-drift), -126px, 0) rotate(calc(var(--final-rotate) + 28deg)) scale(1.18); }
+                    }
+                  `}</style>
+                  <button
+                    type="button"
+                    onClick={() => setShowFinal(false)}
+                    aria-label="Sürprizi kapat"
+                    className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white shadow-sm transition hover:bg-white/25"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(255,255,255,0.32),transparent_34%),radial-gradient(circle_at_12%_90%,rgba(255,255,255,0.18),transparent_30%)]" />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-black/10" />
+                  <div className="pointer-events-none absolute inset-0">
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((spark) => (
+                      <Heart
+                        key={spark}
+                        className="absolute fill-white/50 text-white/60 drop-shadow"
+                        style={
+                          {
+                            left: `${8 + spark * 10}%`,
+                            bottom: `${spark % 2 === 0 ? 7 : 17}%`,
+                            width: `${14 + (spark % 3) * 4}px`,
+                            height: `${14 + (spark % 3) * 4}px`,
+                            animation: `sou-final-float ${4.6 + spark * 0.28}s ease-in-out ${spark * 0.18}s infinite`,
+                            "--final-drift": `${spark % 2 === 0 ? 34 : -30}px`,
+                            "--final-rotate": `${spark % 2 === 0 ? -14 : 18}deg`,
+                            "--final-opacity": `${0.42 + (spark % 3) * 0.12}`,
+                          } as CSSProperties
+                        }
+                      />
+                    ))}
+                  </div>
+                  <Heart className="relative mx-auto mb-5 h-8 w-8 text-white/80 animate-in fade-in zoom-in duration-700" />
+                  <p className="relative text-xs uppercase tracking-[0.28em] text-white/80 sm:tracking-[0.4em]">
+                    {story.finalSurprise.finalLabel}
+                  </p>
+                  <p
+                    className="relative mt-6 text-2xl leading-relaxed drop-shadow-sm animate-in fade-in zoom-in-95 duration-1000 sm:text-3xl md:text-4xl"
+                    style={{ fontFamily: "var(--sou-font-heading)" }}
+                  >
+                    {typedFinalNote}
+                    {typedFinalNote.length < story.finalSurprise.finalSecretNote.length && (
+                      <span className="ml-1 inline-block h-7 w-px translate-y-1 bg-white/85 animate-pulse" />
+                    )}
+                  </p>
+                  <p className="relative mt-6 text-sm text-white/80 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+                    {story.letter.signaturePrefix}, {story.relationship.coupleNames.second}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )}
 
       <FooterSignature footer={story.footer} />
     </div>

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { isStoryOfUsActiveRefundStatus } from "./refundEligibility.server";
+import type { StoryOfUsEditableDefaultContentState } from "./setupTypes";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 type SkipState = {
@@ -34,13 +35,7 @@ export type StoryOfUsSetupAccessExistingMediaItem = {
   id: string;
   mediaType: "photo" | "puzzle_photo" | "voice_note";
   section:
-    | "opening"
-    | "memory_prompt"
-    | "gallery"
-    | "timeline"
-    | "letter"
-    | "puzzle"
-    | "voice_note";
+    "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
   semanticKey: string;
   sectionItemId: string;
   previewUrl: string;
@@ -60,6 +55,7 @@ export type StoryOfUsSetupAccessInitialData = {
   contactPhone: string;
   status: string;
   confirmedSkips: ConfirmedSkips;
+  editableDefaultContent: StoryOfUsEditableDefaultContentState;
   legalConsents: {
     privacyNoticeAccepted: LegalConsentState;
     explicitConsentAccepted: LegalConsentState;
@@ -130,7 +126,11 @@ export type StoryOfUsSetupAccessResult =
 
 export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => {
-    if (!data || typeof data !== "object" || typeof (data as { token?: unknown }).token !== "string") {
+    if (
+      !data ||
+      typeof data !== "object" ||
+      typeof (data as { token?: unknown }).token !== "string"
+    ) {
       return {
         token: "",
       };
@@ -161,6 +161,7 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
           "payment_status",
           "refund_status",
           "confirmed_skips",
+          "submission_snapshot",
           "legal_consents",
           "service_start_consent",
           "submitted_at",
@@ -260,15 +261,19 @@ async function createInitialData(submission: Record<string, unknown>) {
     orderReference:
       typeof submission.order_reference === "string" ? submission.order_reference : "",
     customerName: typeof submission.customer_name === "string" ? submission.customer_name : "",
-    customerEmail:
-      typeof submission.customer_email === "string" ? submission.customer_email : "",
-    contactPhone:
-      typeof submission.contact_phone === "string" ? submission.contact_phone : "",
+    customerEmail: typeof submission.customer_email === "string" ? submission.customer_email : "",
+    contactPhone: typeof submission.contact_phone === "string" ? submission.contact_phone : "",
     status: typeof submission.status === "string" ? submission.status : "draft",
     confirmedSkips: isRecord(submission.confirmed_skips)
       ? (submission.confirmed_skips as ConfirmedSkips)
       : {},
-    legalConsents: restoreLegalConsents(submission.legal_consents, submission.service_start_consent),
+    editableDefaultContent: restoreEditableDefaultContentFromSnapshot(
+      submission.submission_snapshot,
+    ),
+    legalConsents: restoreLegalConsents(
+      submission.legal_consents,
+      submission.service_start_consent,
+    ),
     contactCouple: {
       partnerName: stringValue(coupleDetails?.partner_name),
       coupleDisplayName: stringValue(coupleDetails?.couple_display_name),
@@ -303,25 +308,27 @@ async function createInitialData(submission: Record<string, unknown>) {
       body: stringValue(letter.body),
       sortOrder: typeof letter.sort_order === "number" ? letter.sort_order : index,
     })),
-    existingMedia: await Promise.all(mediaItems.map(async (media, index) => ({
-      id: stringValue(media.id) || `media-${index}`,
-      mediaType:
-        media.media_type === "puzzle_photo" || media.media_type === "voice_note"
-          ? media.media_type
-          : "photo",
-      section:
-        typeof media.section === "string" ? normalizeMediaSection(media.section) : "gallery",
-      semanticKey: stringValue(media.semantic_key),
-      sectionItemId: stringValue(media.section_item_id),
-      previewUrl: await createMediaSignedUrl(stringValue(media.storage_path)),
-      storagePath: stringValue(media.storage_path),
-      originalFilename: stringValue(media.original_filename),
-      mimeType: stringValue(media.mime_type),
-      sizeBytes: typeof media.size_bytes === "number" ? media.size_bytes : 0,
-      caption: stringValue(media.caption),
-      sortOrder: typeof media.sort_order === "number" ? media.sort_order : index,
-      isPuzzleSource: media.is_puzzle_source === true,
-    }))),
+    existingMedia: await Promise.all(
+      mediaItems.map(async (media, index) => ({
+        id: stringValue(media.id) || `media-${index}`,
+        mediaType:
+          media.media_type === "puzzle_photo" || media.media_type === "voice_note"
+            ? media.media_type
+            : "photo",
+        section:
+          typeof media.section === "string" ? normalizeMediaSection(media.section) : "gallery",
+        semanticKey: stringValue(media.semantic_key),
+        sectionItemId: stringValue(media.section_item_id),
+        previewUrl: await createMediaSignedUrl(stringValue(media.storage_path)),
+        storagePath: stringValue(media.storage_path),
+        originalFilename: stringValue(media.original_filename),
+        mimeType: stringValue(media.mime_type),
+        sizeBytes: typeof media.size_bytes === "number" ? media.size_bytes : 0,
+        caption: stringValue(media.caption),
+        sortOrder: typeof media.sort_order === "number" ? media.sort_order : index,
+        isPuzzleSource: media.is_puzzle_source === true,
+      })),
+    ),
   };
 }
 
@@ -456,6 +463,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function restoreEditableDefaultContentFromSnapshot(
+  submissionData: unknown,
+): StoryOfUsEditableDefaultContentState {
+  if (!isRecord(submissionData) || !isRecord(submissionData.editableDefaultContent)) {
+    return {};
+  }
+
+  const loveLetterBody = submissionData.editableDefaultContent.loveLetterBody;
+
+  if (!isRecord(loveLetterBody)) {
+    return {};
+  }
+
+  if (loveLetterBody.outcome === "default_accepted") {
+    return {
+      loveLetterBody: {
+        outcome: "default_accepted",
+        confirmedAt:
+          typeof loveLetterBody.confirmedAt === "string" ? loveLetterBody.confirmedAt : undefined,
+      },
+    };
+  }
+
+  if (loveLetterBody.outcome === "customized") {
+    return {
+      loveLetterBody: {
+        outcome: "customized",
+      },
+    };
+  }
+
+  return {};
+}
+
 function restoreLegalConsents(legalConsents: unknown, serviceStartConsent: unknown) {
   const baseConsents = isRecord(legalConsents) ? legalConsents : {};
 
@@ -502,8 +543,7 @@ function getRefundSetupAccessContent(refundStatus: string) {
     case "requested":
       return {
         title: "İade talebiniz alındı.",
-        body:
-          "İade talebiniz bize ulaştı. İnceleme süreci boyunca kurulum formunuz geçici olarak kapalıdır.",
+        body: "İade talebiniz bize ulaştı. İnceleme süreci boyunca kurulum formunuz geçici olarak kapalıdır.",
       };
     case "approved":
       return {
@@ -513,8 +553,7 @@ function getRefundSetupAccessContent(refundStatus: string) {
     case "processing":
       return {
         title: "İade işleminiz sürüyor.",
-        body:
-          "İade işleminiz devam ediyor. İşlem tamamlandığında sipariş takip sayfanız güncellenecektir.",
+        body: "İade işleminiz devam ediyor. İşlem tamamlandığında sipariş takip sayfanız güncellenecektir.",
       };
     case "refunded":
       return {
@@ -525,8 +564,7 @@ function getRefundSetupAccessContent(refundStatus: string) {
     default:
       return {
         title: "İade talebiniz inceleniyor.",
-        body:
-          "Bu siparişle ilgili iade talebiniz inceleniyor. Gerekirse sizinle iletişime geçeceğiz.",
+        body: "Bu siparişle ilgili iade talebiniz inceleniyor. Gerekirse sizinle iletişime geçeceğiz.",
       };
   }
 }

@@ -144,6 +144,20 @@ export type StoryOfUsLetterItem = {
   sortOrder: number;
 };
 
+export type StoryOfUsEditableDefaultContentId = "loveLetterBody";
+
+export type StoryOfUsEditableDefaultContentOutcome = "default_accepted" | "customized";
+
+export type StoryOfUsEditableDefaultContentState = Partial<
+  Record<
+    StoryOfUsEditableDefaultContentId,
+    {
+      outcome: StoryOfUsEditableDefaultContentOutcome;
+      confirmedAt?: string;
+    }
+  >
+>;
+
 export type StoryOfUsLegalConsentState = {
   accepted: boolean;
   acceptedAt?: string;
@@ -173,6 +187,7 @@ export type StoryOfUsSetupFormData = {
   siteAccess: StoryOfUsSiteAccessData;
   timeline: StoryOfUsTimelineItem[];
   letters: StoryOfUsLetterItem[];
+  editableDefaultContent: StoryOfUsEditableDefaultContentState;
 
   confirmedSkips: StoryOfUsConfirmedSkips;
   legalConsents: StoryOfUsLegalConsents;
@@ -191,9 +206,11 @@ export type StoryOfUsSerializableSetupFormData = Omit<
       firstPerson: StoryOfUsSerializablePhotoDraftItem | null;
       secondPerson: StoryOfUsSerializablePhotoDraftItem | null;
     };
-    promptPhotos: Array<Omit<StoryOfUsPromptPhotoItem, "photo"> & {
-      photo: StoryOfUsSerializablePhotoDraftItem | null;
-    }>;
+    promptPhotos: Array<
+      Omit<StoryOfUsPromptPhotoItem, "photo"> & {
+        photo: StoryOfUsSerializablePhotoDraftItem | null;
+      }
+    >;
     photos: StoryOfUsSerializablePhotoDraftItem[];
     puzzle: Omit<StoryOfUsPuzzleData, "puzzlePhoto"> & {
       puzzlePhoto: StoryOfUsSerializablePhotoDraftItem | null;
@@ -341,6 +358,7 @@ export const createEmptyStoryOfUsSetupFormData = (): StoryOfUsSetupFormData => (
   timeline: [],
 
   letters: [],
+  editableDefaultContent: {},
 
   confirmedSkips: {},
 
