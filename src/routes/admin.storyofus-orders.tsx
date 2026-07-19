@@ -244,10 +244,7 @@ function StoryOfUsOrdersAdmin() {
                 Önizlemeyi kapat
               </button>
             </div>
-            <StoryOfUsFinalSiteRenderer
-              site={previewSite}
-              previewNotice="Bu yalnızca yönetici önizlemesidir; site henüz müşteriye açılmadı."
-            />
+            <StoryOfUsFinalSiteRenderer site={previewSite} />
           </div>
         </div>
       )}
