@@ -5,6 +5,8 @@ import {
   createStoryOfUsFinalSiteSlug,
   createStoryOfUsFinalSiteSlugBase,
   createStoryOfUsFinalSiteUrl,
+  findStoryOfUsTimelinePhotoForItem,
+  formatStoryOfUsExperienceSinceLabel,
   getStoryOfUsFinalSiteMaxSlugLength,
   isValidStoryOfUsFinalSiteUrl,
   normalizeStoryOfUsFinalSiteSlug,
@@ -78,6 +80,82 @@ test("rejects invalid or overlong public slugs", () => {
   assert.equal(normalizeStoryOfUsFinalSiteSlug("elif_mert"), null);
   assert.equal(
     normalizeStoryOfUsFinalSiteSlug("a".repeat(getStoryOfUsFinalSiteMaxSlugLength() + 1)),
+    null,
+  );
+});
+
+test("formats StoryOfUs relationship dates with the shared since wording", () => {
+  assert.equal(formatStoryOfUsExperienceSinceLabel("2025-05-15"), "15 Mayıs 2025'ten beri");
+});
+
+test("matches timeline photos by current timeline item id", () => {
+  const matchingPhoto = {
+    section: "timeline",
+    sectionItemId: "db-timeline-item",
+    previewUrl: "https://signed.example/current",
+  };
+
+  assert.equal(
+    findStoryOfUsTimelinePhotoForItem({
+      timelineItem: { id: "db-timeline-item" },
+      itemIndex: 0,
+      timelineMedia: [matchingPhoto],
+      snapshotTimeline: [],
+    }),
+    matchingPhoto,
+  );
+});
+
+test("matches legacy timeline photos by original setup snapshot id at the same position", () => {
+  const legacyPhoto = {
+    section: "timeline",
+    sectionItemId: "setup-local-timeline-id",
+    previewUrl: "https://signed.example/legacy",
+  };
+
+  assert.equal(
+    findStoryOfUsTimelinePhotoForItem({
+      timelineItem: { id: "db-generated-timeline-id" },
+      itemIndex: 0,
+      timelineMedia: [legacyPhoto],
+      snapshotTimeline: [{ id: "setup-local-timeline-id" }],
+    }),
+    legacyPhoto,
+  );
+});
+
+test("does not attach unmatched timeline media to another timeline item", () => {
+  assert.equal(
+    findStoryOfUsTimelinePhotoForItem({
+      timelineItem: { id: "db-timeline-item" },
+      itemIndex: 0,
+      timelineMedia: [
+        {
+          section: "timeline",
+          sectionItemId: "different-timeline-item",
+          previewUrl: "https://signed.example/wrong",
+        },
+      ],
+      snapshotTimeline: [{ id: "different-setup-item-at-another-position" }],
+    }),
+    null,
+  );
+});
+
+test("does not attach timeline media when the signed preview URL is missing", () => {
+  assert.equal(
+    findStoryOfUsTimelinePhotoForItem({
+      timelineItem: { id: "db-timeline-item" },
+      itemIndex: 0,
+      timelineMedia: [
+        {
+          section: "timeline",
+          sectionItemId: "db-timeline-item",
+          previewUrl: "",
+        },
+      ],
+      snapshotTimeline: [],
+    }),
     null,
   );
 });

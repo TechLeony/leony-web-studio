@@ -186,6 +186,8 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
 
     assert.equal(experience.relationship.heroLeftPhoto.src, "https://signed.example/hero-left");
     assert.equal(experience.relationship.heroRightPhoto.src, "https://signed.example/hero-right");
+    assert.equal(experience.relationship.relationshipStartLabel, "12 Haziran 2024'ten beri");
+    assert.equal(experience.stats.statsSinceText, "12 Haziran 2024'ten beri");
     assert.equal(experience.memories.items[0]?.title, "En tatlış fotiğin");
     assert.equal(experience.memories.items[0]?.photoSrc, "https://signed.example/sweetest");
     assert.equal(experience.memories.items[1]?.title, "En güzel gülüşün");
@@ -203,6 +205,7 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
     assert.equal(experience.openWhenLetters.items[0]?.title, "Beni özlediğinde aç");
     assert.equal(experience.spotify.songTitle, "Bizim şarkımız");
     assert.equal(experience.spotify.artist, "Bize özel sanatçı");
+    assert.equal(experience.finalSurprise.finalGiftButtonText, "Sürprize başla");
   });
 
   it("uses stable default love-letter text when custom text is empty", () => {

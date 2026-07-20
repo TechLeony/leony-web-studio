@@ -64,6 +64,69 @@ export function isValidStoryOfUsFinalSiteUrl(value: string) {
   }
 }
 
+export type StoryOfUsTimelineMediaCandidate = {
+  section: string;
+  sectionItemId: string | null;
+  previewUrl: string;
+};
+
+export type StoryOfUsTimelineItemCandidate = {
+  id: string;
+};
+
+export type StoryOfUsTimelineSnapshotItemCandidate = {
+  id: string;
+};
+
+export function formatStoryOfUsExperienceDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function formatStoryOfUsExperienceSinceLabel(value: string) {
+  const dateText = formatStoryOfUsExperienceDate(value);
+
+  return dateText ? `${dateText}'ten beri` : "";
+}
+
+export function findStoryOfUsTimelinePhotoForItem<TMedia extends StoryOfUsTimelineMediaCandidate>({
+  timelineItem,
+  itemIndex,
+  timelineMedia,
+  snapshotTimeline,
+}: {
+  timelineItem: StoryOfUsTimelineItemCandidate;
+  itemIndex: number;
+  timelineMedia: TMedia[];
+  snapshotTimeline: StoryOfUsTimelineSnapshotItemCandidate[];
+}) {
+  const allowedSectionItemIds = new Set<string>([timelineItem.id]);
+  const snapshotTimelineItem = snapshotTimeline[itemIndex];
+
+  if (snapshotTimelineItem?.id) {
+    allowedSectionItemIds.add(snapshotTimelineItem.id);
+  }
+
+  return (
+    timelineMedia.find(
+      (media) =>
+        media.section === "timeline" &&
+        Boolean(media.previewUrl) &&
+        Boolean(media.sectionItemId) &&
+        allowedSectionItemIds.has(media.sectionItemId as string),
+    ) ?? null
+  );
+}
+
 export function getStoryOfUsFinalSiteMaxSlugLength() {
   return MAX_SLUG_LENGTH;
 }

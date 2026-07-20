@@ -7,6 +7,7 @@ import {
   createStoryOfUsFinalSiteSlug,
   createStoryOfUsFinalSiteSlugBase,
   createStoryOfUsFinalSiteUrl,
+  findStoryOfUsTimelinePhotoForItem,
   normalizeStoryOfUsFinalSiteSlug,
 } from "./finalSiteUtils";
 import {
@@ -596,9 +597,14 @@ async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOf
     puzzlePhoto: media.find((item) => item.isPuzzleSource) ?? null,
     loveLetterPhoto: mediaBySectionItem.get("letter:loveLetterPhoto") ?? null,
     voiceNote: mediaBySectionItem.get("voice_note:voiceNote") ?? null,
-    timeline: timeline.map((item) => ({
+    timeline: timeline.map((item, index) => ({
       ...item,
-      photo: mediaBySectionItem.get(`timeline:${item.id}`) ?? null,
+      photo: findStoryOfUsTimelinePhotoForItem({
+        timelineItem: item,
+        itemIndex: index,
+        timelineMedia: media,
+        snapshotTimeline: submission.timelineSnapshot,
+      }),
     })),
     letters,
     editableDefaultContent: restoreEditableDefaultContent(
@@ -624,6 +630,7 @@ async function loadSubmissionBase(submissionId: string) {
     orderReference: stringValue(data.order_reference),
     finalSiteUrl: nullableString(data.final_site_url),
     passcodeHint: stringValue(data.site_passcode_hint),
+    timelineSnapshot: getSubmissionSnapshotTimeline(data.submission_snapshot),
     editableDefaultContent: isRecord(data.submission_snapshot)
       ? data.submission_snapshot.editableDefaultContent
       : undefined,
@@ -836,6 +843,16 @@ function stringValue(value: unknown) {
 
 function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function getSubmissionSnapshotTimeline(value: unknown) {
+  if (!isRecord(value) || !Array.isArray(value.timeline)) {
+    return [];
+  }
+
+  return value.timeline
+    .map((item) => (isRecord(item) ? { id: stringValue(item.id) } : null))
+    .filter((item): item is { id: string } => Boolean(item?.id));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

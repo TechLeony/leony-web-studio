@@ -2,6 +2,10 @@ import type {
   StoryOfUsFinalSiteData,
   StoryOfUsFinalSiteMedia,
 } from "@/lib/storyofus/finalSite.server";
+import {
+  formatStoryOfUsExperienceDate,
+  formatStoryOfUsExperienceSinceLabel,
+} from "../../lib/storyofus/finalSiteUtils.ts";
 import { demoStoryData, type StoryOfUsExperienceData } from "./storyOfUsExperienceData.ts";
 
 const neutralSpotifyFallback = {
@@ -16,7 +20,7 @@ export function createStoryOfUsExperienceDataFromFinalSite(
   const coupleNames = splitCoupleDisplayName(site.coupleDisplayName);
   const relationshipStartDate = site.relationshipStartDate || new Date().toISOString();
   const relationshipDateText = site.relationshipStartDate
-    ? formatExperienceDate(site.relationshipStartDate)
+    ? formatStoryOfUsExperienceSinceLabel(site.relationshipStartDate)
     : "";
   const loveLetter = site.letters.find((letter) => letter.type === "love_letter");
   const loveLetterOutcome = site.editableDefaultContent.loveLetterBody?.outcome;
@@ -59,7 +63,7 @@ export function createStoryOfUsExperienceDataFromFinalSite(
         return {
           ...fallback,
           ...mediaToExperiencePhoto(item.photo, fallback),
-          date: item.eventDate ? formatExperienceDate(item.eventDate) : "",
+          date: item.eventDate ? formatStoryOfUsExperienceDate(item.eventDate) : "",
           title: item.title,
           description: item.description,
         };
@@ -204,20 +208,6 @@ function mediaToExperiencePhoto<
     photoAlt: media?.caption || media?.originalFilename || fallback.photoAlt,
     caption: media?.caption || fallback.caption || "",
   };
-}
-
-function formatExperienceDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
 }
 
 function splitCoupleDisplayName(coupleDisplayName: string) {
