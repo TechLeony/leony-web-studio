@@ -186,6 +186,7 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
 
     assert.equal(experience.relationship.heroLeftPhoto.src, "https://signed.example/hero-left");
     assert.equal(experience.relationship.heroRightPhoto.src, "https://signed.example/hero-right");
+    assert.equal(experience.relationship.relationshipHeroDateLabel, "12.06.2024");
     assert.equal(experience.relationship.relationshipStartLabel, "12 Haziran 2024'ten beri");
     assert.equal(experience.stats.statsSinceText, "12 Haziran 2024'ten beri");
     assert.equal(experience.memories.items[0]?.title, "En tatlış fotiğin");

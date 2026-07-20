@@ -4,6 +4,7 @@ import type {
 } from "@/lib/storyofus/finalSite.server";
 import {
   formatStoryOfUsExperienceDate,
+  formatStoryOfUsExperienceNumericDate,
   formatStoryOfUsExperienceSinceLabel,
 } from "../../lib/storyofus/finalSiteUtils.ts";
 import { demoStoryData, type StoryOfUsExperienceData } from "./storyOfUsExperienceData.ts";
@@ -22,6 +23,9 @@ export function createStoryOfUsExperienceDataFromFinalSite(
   const relationshipDateText = site.relationshipStartDate
     ? formatStoryOfUsExperienceSinceLabel(site.relationshipStartDate)
     : "";
+  const relationshipHeroDateText = site.relationshipStartDate
+    ? formatStoryOfUsExperienceNumericDate(site.relationshipStartDate)
+    : "";
   const loveLetter = site.letters.find((letter) => letter.type === "love_letter");
   const loveLetterOutcome = site.editableDefaultContent.loveLetterBody?.outcome;
   const openWhenLetters = site.letters.filter((letter) => letter.type === "open_when");
@@ -36,6 +40,8 @@ export function createStoryOfUsExperienceDataFromFinalSite(
       recipientName: site.recipientNickname,
       coupleNames,
       relationshipStartDate,
+      relationshipHeroDateLabel:
+        relationshipHeroDateText || demoStoryData.relationship.relationshipHeroDateLabel,
       relationshipStartLabel: relationshipDateText,
       heroMessage: demoStoryData.relationship.heroMessage,
       heroLeftPhoto: mediaToExperienceHeroPhoto(

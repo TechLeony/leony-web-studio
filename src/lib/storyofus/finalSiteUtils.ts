@@ -92,6 +92,20 @@ export function formatStoryOfUsExperienceDate(value: string) {
   });
 }
 
+export function formatStoryOfUsExperienceNumericDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function formatStoryOfUsExperienceSinceLabel(value: string) {
   const dateText = formatStoryOfUsExperienceDate(value);
 

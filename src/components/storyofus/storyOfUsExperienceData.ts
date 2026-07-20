@@ -3,13 +3,18 @@ import {
   STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
   STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
 } from "../../lib/storyofus/stableContentDefaults.ts";
-import { formatStoryOfUsExperienceSinceLabel } from "../../lib/storyofus/finalSiteUtils.ts";
+import {
+  formatStoryOfUsExperienceNumericDate,
+  formatStoryOfUsExperienceSinceLabel,
+} from "../../lib/storyofus/finalSiteUtils.ts";
 
 export type DecorStyle = "hearts" | "stars" | "capybara" | "cat" | "dog" | "panda";
 export type GalleryMode = "polaroid" | "carousel" | "stacked";
 export type AnimationStyle = "soft-slide" | "fade" | "none";
 
 const demoRelationshipStartDate = "2022-03-12T00:00:00";
+const demoRelationshipHeroDateLabel =
+  formatStoryOfUsExperienceNumericDate(demoRelationshipStartDate);
 const demoRelationshipStartLabel = formatStoryOfUsExperienceSinceLabel(demoRelationshipStartDate);
 
 export const demoStoryData = {
@@ -33,6 +38,7 @@ export const demoStoryData = {
       separator: "&",
     },
     relationshipStartDate: demoRelationshipStartDate,
+    relationshipHeroDateLabel: demoRelationshipHeroDateLabel,
     relationshipStartLabel: demoRelationshipStartLabel,
     heroEyebrow: "Bizim sonsuz aşk hikâyemiz",
     heroMessage: "Bizim aşk dolu yolculuğumuz 💖",

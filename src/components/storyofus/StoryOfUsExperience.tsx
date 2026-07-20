@@ -383,7 +383,7 @@ export function StoryOfUsExperience({
           />
         </div>
         <p className="mt-3 text-sm text-[color:var(--sou-muted)]">
-          {story.relationship.relationshipStartLabel}
+          {story.relationship.relationshipHeroDateLabel}
         </p>
         <p className="mx-auto mt-5 max-w-xl rounded-2xl border border-white/70 bg-white/45 px-4 py-3 text-sm italic text-[color:var(--sou-text)]/80 shadow-lg shadow-rose-100/40 backdrop-blur sm:mt-6 sm:rounded-3xl sm:px-5 sm:py-4 sm:text-base">
           "{story.relationship.heroMessage}"

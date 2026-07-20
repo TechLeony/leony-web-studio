@@ -6,6 +6,7 @@ import {
   createStoryOfUsFinalSiteSlugBase,
   createStoryOfUsFinalSiteUrl,
   findStoryOfUsTimelinePhotoForItem,
+  formatStoryOfUsExperienceNumericDate,
   formatStoryOfUsExperienceSinceLabel,
   getStoryOfUsFinalSiteMaxSlugLength,
   isValidStoryOfUsFinalSiteUrl,
@@ -85,6 +86,7 @@ test("rejects invalid or overlong public slugs", () => {
 });
 
 test("formats StoryOfUs relationship dates with the shared since wording", () => {
+  assert.equal(formatStoryOfUsExperienceNumericDate("2025-05-15"), "15.05.2025");
   assert.equal(formatStoryOfUsExperienceSinceLabel("2025-05-15"), "15 Mayıs 2025'ten beri");
 });
 
