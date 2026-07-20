@@ -1,4 +1,4 @@
-import type { StoryOfUsEmailType } from "./emailOutbox.server";
+import { storyOfUsEmailTypes, type StoryOfUsEmailType } from "./emailOutboxTypes";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 export type StoryOfUsEmailOutboxStatus =
@@ -101,7 +101,6 @@ const MAX_ATTEMPTS = 8;
 const MAX_RETRY_AFTER_SECONDS = 86_400;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SAFE_PROVIDER_MESSAGE_ID_PATTERN = /^[a-zA-Z0-9:._@-]+$/;
-const storyOfUsEmailTypes = new Set<StoryOfUsEmailType>(["order_created", "final_site_ready"]);
 const storyOfUsEmailStatuses = new Set<StoryOfUsEmailOutboxStatus>([
   "pending",
   "processing",

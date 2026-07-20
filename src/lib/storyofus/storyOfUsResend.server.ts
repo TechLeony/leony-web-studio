@@ -1,11 +1,21 @@
 import {
   createStoryOfUsEmailTemplate,
+  type StoryOfUsCheckoutCreatedTemplateInput,
   type StoryOfUsFinalSiteReadyTemplateInput,
   type StoryOfUsOrderCreatedTemplateInput,
+  type StoryOfUsSetupSubmittedTemplateInput,
 } from "./storyOfUsEmailTemplates.server";
 
 export type SendStoryOfUsEmailInput =
+  | (StoryOfUsCheckoutCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
   | (StoryOfUsOrderCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
+  | (StoryOfUsSetupSubmittedTemplateInput & {
       recipientEmail: string;
       idempotencyKey: string;
     })
@@ -32,7 +42,15 @@ export type SendStoryOfUsEmailResult =
     };
 
 type NormalizedSendStoryOfUsEmailInput =
+  | (StoryOfUsCheckoutCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
   | (StoryOfUsOrderCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
+  | (StoryOfUsSetupSubmittedTemplateInput & {
       recipientEmail: string;
       idempotencyKey: string;
     })
@@ -48,6 +66,7 @@ const DEFAULT_STORYOFUS_PUBLIC_ORIGIN = "https://leony.tech";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 256;
 const ORDER_REFERENCE_PATTERN = /^SOU-(\d{8})-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
+const TRACKING_CODE_PATTERN = /^SOT-(\d{8})-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
 const FINAL_SITE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export async function sendStoryOfUsEmail(
@@ -115,12 +134,35 @@ function normalizeSendStoryOfUsEmailInput(
     idempotencyKey: input.idempotencyKey.trim(),
   };
 
+  if (input.emailType === "checkout_created") {
+    return {
+      ...sharedInput,
+      emailType: "checkout_created",
+      trackingCode: input.trackingCode.trim().toUpperCase(),
+      shopierPaymentUrl: input.shopierPaymentUrl.trim(),
+      trackOrderUrl: input.trackOrderUrl.trim(),
+    };
+  }
+
   if (input.emailType === "order_created") {
     return {
       ...sharedInput,
       emailType: "order_created",
+      trackingCode: input.trackingCode.trim().toUpperCase(),
       setupUrl: input.setupUrl.trim(),
       trackOrderUrl: input.trackOrderUrl.trim(),
+    };
+  }
+
+  if (input.emailType === "setup_submitted") {
+    return {
+      ...sharedInput,
+      emailType: "setup_submitted",
+      trackingCode: input.trackingCode.trim().toUpperCase(),
+      setupUrl: input.setupUrl.trim(),
+      trackOrderUrl: input.trackOrderUrl.trim(),
+      editableUntil: input.editableUntil.trim(),
+      editableUntilLabel: input.editableUntilLabel.trim(),
     };
   }
 
@@ -128,6 +170,7 @@ function normalizeSendStoryOfUsEmailInput(
     ...sharedInput,
     emailType: "final_site_ready",
     finalSiteUrl: input.finalSiteUrl.trim(),
+    passcodeHint: input.passcodeHint?.trim(),
   };
 }
 
@@ -175,14 +218,45 @@ function isValidStoryOfUsEmailInput(input: NormalizedSendStoryOfUsEmailInput, pu
     return false;
   }
 
+  if (input.emailType === "checkout_created") {
+    return (
+      isValidTrackingCode(input.trackingCode) &&
+      isValidShopierPaymentUrl(input.shopierPaymentUrl) &&
+      isValidStoryOfUsTrackOrderUrl(input.trackOrderUrl, publicOrigin)
+    );
+  }
+
   if (input.emailType === "order_created") {
     return (
+      isValidTrackingCode(input.trackingCode) &&
       isValidStoryOfUsSetupUrl(input.setupUrl, publicOrigin) &&
       isValidStoryOfUsTrackOrderUrl(input.trackOrderUrl, publicOrigin)
     );
   }
 
+  if (input.emailType === "setup_submitted") {
+    return (
+      isValidTrackingCode(input.trackingCode) &&
+      isValidStoryOfUsSetupUrl(input.setupUrl, publicOrigin) &&
+      isValidStoryOfUsTrackOrderUrl(input.trackOrderUrl, publicOrigin) &&
+      isValidFutureTimestampText(input.editableUntil) &&
+      input.editableUntilLabel.length > 0 &&
+      input.editableUntilLabel.length <= 120 &&
+      !hasAsciiControlCharacter(input.editableUntilLabel)
+    );
+  }
+
   return isValidStoryOfUsFinalSiteUrl(input.finalSiteUrl, publicOrigin);
+}
+
+function isValidShopierPaymentUrl(value: string) {
+  const url = parseUrl(value);
+
+  if (!url || url.protocol !== "https:") {
+    return false;
+  }
+
+  return url.hostname === "www.shopier.com" || url.hostname === "shopier.com";
 }
 
 function isValidStoryOfUsSetupUrl(value: string, publicOrigin: URL) {
@@ -215,6 +289,12 @@ function isValidStoryOfUsTrackOrderUrl(value: string, publicOrigin: URL) {
   const code = url.searchParams.get("code");
 
   return code === null || code.trim().length > 0;
+}
+
+function isValidFutureTimestampText(value: string) {
+  const timestamp = Date.parse(value);
+
+  return Number.isFinite(timestamp) && timestamp > 0;
 }
 
 function isValidStoryOfUsFinalSiteUrl(value: string, publicOrigin: URL) {
@@ -386,6 +466,28 @@ function isValidOrderReference(value: string) {
   }
 
   const match = value.match(ORDER_REFERENCE_PATTERN);
+
+  if (!match) {
+    return false;
+  }
+
+  const datePart = match[1];
+  const year = Number(datePart.slice(0, 4));
+  const month = Number(datePart.slice(4, 6));
+  const day = Number(datePart.slice(6, 8));
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
+function isValidTrackingCode(value: string) {
+  if (value.length === 0 || value.length > 80 || hasAsciiControlCharacter(value)) {
+    return false;
+  }
+
+  const match = value.match(TRACKING_CODE_PATTERN);
 
   if (!match) {
     return false;

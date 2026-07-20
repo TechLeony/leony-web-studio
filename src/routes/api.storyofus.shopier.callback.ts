@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
 import { enqueueStoryOfUsEmail } from "../lib/storyofus/emailOutbox.server";
+import { getSuccessfulShopierPaymentEmailEnqueueOutcome } from "../lib/storyofus/shopierWebhookEmailResult";
 import { storyOfUsSupabaseAdmin } from "../lib/storyofus/supabaseAdmin.server";
 import {
   parseVerifiedStoryOfUsShopierWebhook,
@@ -71,13 +72,12 @@ export const Route = createFileRoute("/api/storyofus/shopier/callback")({
 
         if (SUCCESSFUL_PAYMENT_RESULTS.has(rpcResult.result)) {
           const emailQueued = await ensureOrderCreatedEmailQueued(lookupResult.submissionId);
+          const emailOutcome = getSuccessfulShopierPaymentEmailEnqueueOutcome(emailQueued);
 
-          if (!emailQueued) {
-            console.error("[StoryOfUs Shopier webhook]", {
+          if (!emailOutcome.emailQueued) {
+            console.warn("[StoryOfUs Shopier webhook]", {
               eventCode: "shopier_webhook_email_enqueue_failed",
-              submissionId: lookupResult.submissionId,
             });
-            return jsonResponse({ ok: false, error: "internal_error" }, 500);
           }
         } else {
           console.warn("[StoryOfUs Shopier webhook]", {

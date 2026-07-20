@@ -13,6 +13,10 @@ import {
   uploadStoryOfUsSetupMedia,
 } from "../lib/storyofus/mediaUpload.server";
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
+import {
+  getStoryOfUsSetupSuccessCopy,
+  type StoryOfUsSetupSubmissionKind,
+} from "../lib/storyofus/setupSuccessCopy";
 import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
 import {
   STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
@@ -169,6 +173,7 @@ type StoryOfUsSubmissionResult = {
   submissionId: string;
   setupToken: string | null;
   status: "submitted";
+  submissionKind: StoryOfUsSetupSubmissionKind;
   editableUntil: string | null;
 };
 
@@ -2017,6 +2022,7 @@ function StoryOfUsSetupRoute() {
     return (
       <StoryOfUsSetupSuccessScreen
         editableUntil={submissionResult.editableUntil}
+        submissionKind={submissionResult.submissionKind}
         onEditAgain={() => {
           setSubmissionResult(null);
           enterSubmittedEditMode();
@@ -5059,11 +5065,15 @@ function StoryOfUsSubmittedReentryScreen({
 
 function StoryOfUsSetupSuccessScreen({
   editableUntil,
+  submissionKind,
   onEditAgain,
 }: {
   editableUntil: string | null;
+  submissionKind: StoryOfUsSetupSubmissionKind;
   onEditAgain: () => void;
 }) {
+  const copy = getStoryOfUsSetupSuccessCopy(submissionKind);
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
@@ -5080,11 +5090,13 @@ function StoryOfUsSetupSuccessScreen({
                 StoryOfUs Setup
               </p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-rose-950 sm:text-5xl">
-                Bilgileriniz başarıyla alındı 💌
+                {copy.title}
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
-                Bilgilerinizi aldık 💌 Herhangi bir konuda bize ulaşmanız gerekirse veya eklemek
-                istediğiniz bir şey olursa{" "}
+                {copy.body}
+              </p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/60 sm:text-base">
+                Herhangi bir konuda bize ulaşmanız gerekirse veya eklemek istediğiniz bir şey olursa{" "}
                 <a
                   href="mailto:contact@leony.tech"
                   className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"

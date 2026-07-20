@@ -13,6 +13,7 @@ import {
   StoryOfUsShopierProductError,
   type StoryOfUsShopierProductErrorCode,
 } from "./shopierApi.server";
+import { enqueueStoryOfUsEmail } from "./emailOutbox.server";
 import {
   assertStoryOfUsShopierProductConfiguration,
   storyOfUsShopierConfig,
@@ -123,6 +124,7 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
       amount: normalizedPaymentAmount,
       currency: normalizedPaymentCurrency,
     });
+    await enqueueCheckoutCreatedEmailQuietly(submissionId);
 
     return {
       orderReference: String(insertedSubmission.order_reference),
@@ -185,6 +187,25 @@ async function createAndPersistShopierProduct({
   }
 
   return product;
+}
+
+async function enqueueCheckoutCreatedEmailQuietly(submissionId: string) {
+  try {
+    const result = await enqueueStoryOfUsEmail({
+      submissionId,
+      emailType: "checkout_created",
+    });
+
+    if (!result.ok) {
+      console.warn("[StoryOfUs checkout]", {
+        eventCode: "checkout_created_email_enqueue_failed",
+      });
+    }
+  } catch {
+    console.warn("[StoryOfUs checkout]", {
+      eventCode: "checkout_created_email_enqueue_failed",
+    });
+  }
 }
 
 async function updateShopierProductFieldsWithRetry(

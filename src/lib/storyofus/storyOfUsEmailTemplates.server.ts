@@ -6,12 +6,33 @@ export type StoryOfUsEmailTemplate = {
   text: string;
 };
 
+export type StoryOfUsCheckoutCreatedTemplateInput = {
+  emailType: "checkout_created";
+  customerName: string;
+  orderReference: string;
+  trackingCode: string;
+  shopierPaymentUrl: string;
+  trackOrderUrl: string;
+};
+
 export type StoryOfUsOrderCreatedTemplateInput = {
   emailType: "order_created";
   customerName: string;
   orderReference: string;
+  trackingCode: string;
   setupUrl: string;
   trackOrderUrl: string;
+};
+
+export type StoryOfUsSetupSubmittedTemplateInput = {
+  emailType: "setup_submitted";
+  customerName: string;
+  orderReference: string;
+  trackingCode: string;
+  setupUrl: string;
+  trackOrderUrl: string;
+  editableUntil: string;
+  editableUntilLabel: string;
 };
 
 export type StoryOfUsFinalSiteReadyTemplateInput = {
@@ -19,18 +40,30 @@ export type StoryOfUsFinalSiteReadyTemplateInput = {
   customerName: string;
   orderReference: string;
   finalSiteUrl: string;
+  passcodeHint?: string;
 };
 
 export type StoryOfUsEmailTemplateInput =
-  StoryOfUsOrderCreatedTemplateInput | StoryOfUsFinalSiteReadyTemplateInput;
+  | StoryOfUsCheckoutCreatedTemplateInput
+  | StoryOfUsOrderCreatedTemplateInput
+  | StoryOfUsSetupSubmittedTemplateInput
+  | StoryOfUsFinalSiteReadyTemplateInput;
 
 const SUPPORT_EMAIL = "contact@leony.tech";
 
 export function createStoryOfUsEmailTemplate(
   input: StoryOfUsEmailTemplateInput,
 ): StoryOfUsEmailTemplate {
+  if (input.emailType === "checkout_created") {
+    return createCheckoutCreatedTemplate(input);
+  }
+
   if (input.emailType === "order_created") {
     return createOrderCreatedTemplate(input);
+  }
+
+  if (input.emailType === "setup_submitted") {
+    return createSetupSubmittedTemplate(input);
   }
 
   return createFinalSiteReadyTemplate(input);
@@ -40,11 +73,63 @@ export function getStoryOfUsEmailTemplateSubject(
   emailType: StoryOfUsEmailType,
   orderReference: string,
 ) {
+  if (emailType === "checkout_created") {
+    return `${orderReference} numaralı StoryOfUs ödeme adımınız hazır 💌`;
+  }
+
   if (emailType === "order_created") {
-    return `${orderReference} numaralı siparişiniz oluşturuldu 💌`;
+    return `${orderReference} numaralı StoryOfUs ödemeniz onaylandı 💌`;
+  }
+
+  if (emailType === "setup_submitted") {
+    return `${orderReference} numaralı StoryOfUs bilgileriniz alındı 💌`;
   }
 
   return "StoryOfUs sayfanız hazır 💖";
+}
+
+function createCheckoutCreatedTemplate(
+  input: StoryOfUsCheckoutCreatedTemplateInput,
+): StoryOfUsEmailTemplate {
+  const safeCustomerName = escapeHtml(input.customerName);
+  const safeOrderReference = escapeHtml(input.orderReference);
+  const safeTrackingCode = escapeHtml(input.trackingCode);
+  const safeShopierPaymentUrl = escapeHtml(input.shopierPaymentUrl);
+  const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
+  const subject = getStoryOfUsEmailTemplateSubject("checkout_created", input.orderReference);
+
+  return {
+    subject,
+    html: renderEmailShell({
+      eyebrow: "Ödeme adımı hazır",
+      title: "StoryOfUs siparişiniz için ödeme bağlantınız hazır",
+      preview:
+        "StoryOfUs siparişiniz oluşturuldu. Ödemeyi tamamlayarak özel kurulum bağlantınızı aktif edebilirsiniz.",
+      bodyHtml: `
+        <p>Merhaba ${safeCustomerName},</p>
+        <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz oluşturuldu.</p>
+        <p>Ödeme tamamlandıktan sonra size özel kurulum bağlantınızı e-posta ile göndereceğiz.</p>
+        <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
+        ${renderButton("Ödemeye devam et", safeShopierPaymentUrl)}
+        ${renderSecondaryButton("Siparişimi takip et", safeTrackOrderUrl)}
+        ${renderRawLink("Ödeme bağlantısı", safeShopierPaymentUrl)}
+        ${renderRawLink("Sipariş takip bağlantısı", safeTrackOrderUrl)}
+        ${renderSupportNote()}
+      `,
+    }),
+    text: [
+      `Merhaba ${input.customerName},`,
+      "",
+      `${input.orderReference} numaralı StoryOfUs siparişiniz oluşturuldu.`,
+      "Ödeme tamamlandıktan sonra size özel kurulum bağlantınızı e-posta ile göndereceğiz.",
+      "",
+      `Sipariş takip kodunuz: ${input.trackingCode}`,
+      `Ödeme bağlantısı: ${input.shopierPaymentUrl}`,
+      `Sipariş takip bağlantısı: ${input.trackOrderUrl}`,
+      "",
+      `Herhangi bir konuda bize ${SUPPORT_EMAIL} adresinden yazabilirsiniz.`,
+    ].join("\n"),
+  };
 }
 
 function createOrderCreatedTemplate(
@@ -52,6 +137,7 @@ function createOrderCreatedTemplate(
 ): StoryOfUsEmailTemplate {
   const safeCustomerName = escapeHtml(input.customerName);
   const safeOrderReference = escapeHtml(input.orderReference);
+  const safeTrackingCode = escapeHtml(input.trackingCode);
   const safeSetupUrl = escapeHtml(input.setupUrl);
   const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
   const subject = getStoryOfUsEmailTemplateSubject("order_created", input.orderReference);
@@ -59,15 +145,17 @@ function createOrderCreatedTemplate(
   return {
     subject,
     html: renderEmailShell({
-      eyebrow: "Siparişiniz oluşturuldu",
-      title: "StoryOfUs yolculuğunuz başladı",
+      eyebrow: "Ödemeniz onaylandı",
+      title: "StoryOfUs kurulum bağlantınız hazır",
       preview:
-        "StoryOfUs siparişiniz oluşturuldu. Kişisel bilgilerinizi tamamlamak için özel kurulum bağlantınızı kullanabilirsiniz.",
+        "StoryOfUs ödemeniz onaylandı. Kişisel bilgilerinizi tamamlamak için özel kurulum bağlantınızı kullanabilirsiniz.",
       bodyHtml: `
         <p>Merhaba ${safeCustomerName},</p>
-        <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz başarıyla oluşturuldu.</p>
+        <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs ödemeniz başarıyla onaylandı.</p>
         <p>Şimdi sırada sevgilinize özel hazırlanacak sayfa için fotoğraflarınızı, müziğinizi, anılarınızı ve mektup detaylarınızı tamamlamak var.</p>
-        <p>Kurulum bilgilerinizi aşağıdaki özel bağlantıdan doldurabilirsiniz. Final StoryOfUs web siteniz hazır olduğunda size ayrıca e-posta ile haber vereceğiz.</p>
+        <p>Kurulum bağlantısı size özeldir; güvenliğiniz için bu bağlantıyı yalnızca sizin kullanmanız gerekir.</p>
+        <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
+        <p>Kurulum bilgilerinizi aşağıdaki özel bağlantıdan doldurabilirsiniz. Bilgileri tamamladıktan sonra düzenleme süreniz başlar; final StoryOfUs web siteniz hazır olduğunda size ayrıca e-posta ile haber vereceğiz.</p>
         ${renderButton("Kurulum bilgilerini doldur", safeSetupUrl)}
         ${renderSecondaryButton("Siparişimi takip et", safeTrackOrderUrl)}
         ${renderRawLink("Kurulum bağlantısı", safeSetupUrl)}
@@ -78,12 +166,62 @@ function createOrderCreatedTemplate(
     text: [
       `Merhaba ${input.customerName},`,
       "",
-      `${input.orderReference} numaralı StoryOfUs siparişiniz başarıyla oluşturuldu.`,
+      `${input.orderReference} numaralı StoryOfUs ödemeniz başarıyla onaylandı.`,
       "",
       "Sevgilinize özel hazırlanacak sayfa için fotoğraflarınızı, müziğinizi, anılarınızı ve mektup detaylarınızı özel kurulum bağlantınızdan tamamlayabilirsiniz.",
-      "Final StoryOfUs web siteniz hazır olduğunda size ayrıca e-posta ile haber vereceğiz.",
+      "Kurulum bağlantısı size özeldir; güvenliğiniz için bu bağlantıyı yalnızca sizin kullanmanız gerekir.",
+      `Sipariş takip kodunuz: ${input.trackingCode}`,
+      "Bilgileri tamamladıktan sonra düzenleme süreniz başlar; final StoryOfUs web siteniz hazır olduğunda size ayrıca e-posta ile haber vereceğiz.",
       "",
       `Kurulum bağlantısı: ${input.setupUrl}`,
+      `Sipariş takip bağlantısı: ${input.trackOrderUrl}`,
+      "",
+      `Herhangi bir konuda bize ${SUPPORT_EMAIL} adresinden yazabilirsiniz.`,
+    ].join("\n"),
+  };
+}
+
+function createSetupSubmittedTemplate(
+  input: StoryOfUsSetupSubmittedTemplateInput,
+): StoryOfUsEmailTemplate {
+  const safeCustomerName = escapeHtml(input.customerName);
+  const safeOrderReference = escapeHtml(input.orderReference);
+  const safeTrackingCode = escapeHtml(input.trackingCode);
+  const safeSetupUrl = escapeHtml(input.setupUrl);
+  const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
+  const safeEditableUntil = escapeHtml(input.editableUntilLabel);
+  const subject = getStoryOfUsEmailTemplateSubject("setup_submitted", input.orderReference);
+
+  return {
+    subject,
+    html: renderEmailShell({
+      eyebrow: "Bilgileriniz alındı",
+      title: "StoryOfUs bilgilerinizi aldık 💌",
+      preview:
+        "StoryOfUs kurulum bilgileriniz bize ulaştı. Düzenleme ve iade talebi sürenizi bu e-postada bulabilirsiniz.",
+      bodyHtml: `
+        <p>Merhaba ${safeCustomerName},</p>
+        <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs kurulum bilgileriniz bize ulaştı.</p>
+        <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
+        <p>Bilgilerinizi <strong>${safeEditableUntil}</strong> tarihine kadar yeniden düzenleyebilirsiniz. Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.</p>
+        <p>Düzenleme süresi dolduktan sonra inceleme ve hazırlık süreci başlar. Final StoryOfUs bağlantınızı düzenleme süresi bittikten sonra 24 saat içinde e-posta ile göndereceğiz.</p>
+        ${renderButton("Bilgilerimi düzenle", safeSetupUrl)}
+        ${renderSecondaryButton("Siparişimi takip et", safeTrackOrderUrl)}
+        ${renderRawLink("Düzenleme bağlantısı", safeSetupUrl)}
+        ${renderRawLink("Sipariş takip bağlantısı", safeTrackOrderUrl)}
+        ${renderSupportNote()}
+      `,
+    }),
+    text: [
+      `Merhaba ${input.customerName},`,
+      "",
+      `${input.orderReference} numaralı StoryOfUs kurulum bilgileriniz bize ulaştı.`,
+      `Sipariş takip kodunuz: ${input.trackingCode}`,
+      "",
+      `Bilgilerinizi ${input.editableUntilLabel} tarihine kadar yeniden düzenleyebilirsiniz. Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.`,
+      "Düzenleme süresi dolduktan sonra inceleme ve hazırlık süreci başlar. Final StoryOfUs bağlantınızı düzenleme süresi bittikten sonra 24 saat içinde e-posta ile göndereceğiz.",
+      "",
+      `Düzenleme bağlantısı: ${input.setupUrl}`,
       `Sipariş takip bağlantısı: ${input.trackOrderUrl}`,
       "",
       `Herhangi bir konuda bize ${SUPPORT_EMAIL} adresinden yazabilirsiniz.`,
@@ -97,6 +235,10 @@ function createFinalSiteReadyTemplate(
   const safeCustomerName = escapeHtml(input.customerName);
   const safeOrderReference = escapeHtml(input.orderReference);
   const safeFinalSiteUrl = escapeHtml(input.finalSiteUrl);
+  const safePasscodeHint =
+    typeof input.passcodeHint === "string" && input.passcodeHint.trim()
+      ? escapeHtml(input.passcodeHint.trim())
+      : null;
   const subject = getStoryOfUsEmailTemplateSubject("final_site_ready", input.orderReference);
 
   return {
@@ -111,6 +253,7 @@ function createFinalSiteReadyTemplate(
         <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz hazırlandı.</p>
         <p>Sevgilinize özel romantik web sitenizi aşağıdaki bağlantıdan açabilirsiniz.</p>
         <p>Sayfada giriş şifresi istenirse, kurulum sırasında sizin belirlediğiniz dört haneli şifreyi kullanabilirsiniz. Güvenliğiniz için bu şifre e-postada paylaşılmaz.</p>
+        ${safePasscodeHint ? `<p>Şifre ipucunuz: <strong>${safePasscodeHint}</strong></p>` : ""}
         ${renderButton("StoryOfUs sayfamı aç", safeFinalSiteUrl)}
         ${renderRawLink("Final site bağlantısı", safeFinalSiteUrl)}
         ${renderSupportNote()}
@@ -123,6 +266,7 @@ function createFinalSiteReadyTemplate(
       "",
       "Sevgilinize özel romantik web sitenizi aşağıdaki bağlantıdan açabilirsiniz.",
       "Sayfada giriş şifresi istenirse, kurulum sırasında sizin belirlediğiniz dört haneli şifreyi kullanabilirsiniz. Güvenliğiniz için bu şifre e-postada paylaşılmaz.",
+      ...(input.passcodeHint?.trim() ? [`Şifre ipucunuz: ${input.passcodeHint.trim()}`] : []),
       "",
       `Final site bağlantısı: ${input.finalSiteUrl}`,
       "",

@@ -1,6 +1,11 @@
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
+import {
+  createStoryOfUsEmailEventKey,
+  storyOfUsEmailTypes,
+  type StoryOfUsEmailType,
+} from "./emailOutboxTypes";
 
-export type StoryOfUsEmailType = "order_created" | "final_site_ready";
+export type { StoryOfUsEmailType } from "./emailOutboxTypes";
 
 export type EnqueueStoryOfUsEmailInput = {
   submissionId: string;
@@ -25,7 +30,6 @@ export type EnqueueStoryOfUsEmailResult =
 
 const POSTGRES_UNIQUE_VIOLATION_CODE = "23505";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const storyOfUsEmailTypes = new Set<StoryOfUsEmailType>(["order_created", "final_site_ready"]);
 
 export async function enqueueStoryOfUsEmail({
   submissionId,
@@ -71,10 +75,6 @@ export async function enqueueStoryOfUsEmail({
     ok: false,
     errorCode: "database_error",
   };
-}
-
-function createStoryOfUsEmailEventKey(submissionId: string, emailType: StoryOfUsEmailType) {
-  return `storyofus:${emailType}:${submissionId}`;
 }
 
 function isUniqueViolation(error: { code?: string } | null) {

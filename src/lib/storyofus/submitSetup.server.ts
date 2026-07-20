@@ -6,6 +6,7 @@ import {
   getLoveLetterPhotoSubmitError,
 } from "./loveLetterRequirements";
 import { getLoveLetterDefaultContentSubmitError } from "./editableDefaultContent";
+import { enqueueStoryOfUsEmail } from "./emailOutbox.server";
 import { hashSitePasscode, validateSitePasscode } from "./passcode.server";
 import {
   getStoryOfUsServiceStartConsent,
@@ -154,6 +155,7 @@ type SubmissionResult = {
   submissionId: string;
   setupToken: string | null;
   status: "submitted";
+  submissionKind: "first_submit" | "edit_submit";
   editableUntil: string | null;
 };
 
@@ -319,12 +321,36 @@ async function submitStoryOfUsSetupData(
     throw new Error(`StoryOfUs submission could not be finalized: ${updateError?.message}`);
   }
 
+  if (isFirstSubmit) {
+    await enqueueSetupSubmittedEmailQuietly(submissionId);
+  }
+
   return {
     submissionId,
     setupToken: (updatedSubmission.setup_token as string | null) ?? null,
     status: "submitted",
+    submissionKind: isFirstSubmit ? "first_submit" : "edit_submit",
     editableUntil: nextEditableUntil,
   };
+}
+
+async function enqueueSetupSubmittedEmailQuietly(submissionId: string) {
+  try {
+    const result = await enqueueStoryOfUsEmail({
+      submissionId,
+      emailType: "setup_submitted",
+    });
+
+    if (!result.ok) {
+      console.warn("[StoryOfUs setup]", {
+        eventCode: "setup_submitted_email_enqueue_failed",
+      });
+    }
+  } catch {
+    console.warn("[StoryOfUs setup]", {
+      eventCode: "setup_submitted_email_enqueue_failed",
+    });
+  }
 }
 
 async function deleteExistingTextDetails(submissionId: string) {
