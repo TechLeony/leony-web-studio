@@ -3227,14 +3227,17 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
     },
     musicVoice: {
       music: formData.musicVoice.music,
-      voiceNote:
-        formData.musicVoice.voiceNote && formData.musicVoice.voiceNote.file
-          ? {
-              originalFilename: formData.musicVoice.voiceNote.file.name,
-              mimeType: formData.musicVoice.voiceNote.file.type,
-              sizeBytes: formData.musicVoice.voiceNote.file.size,
-            }
-          : null,
+      voiceNote: formData.musicVoice.voiceNote?.mediaId
+        ? {
+            originalFilename: formData.musicVoice.voiceNote.originalFilename,
+            mimeType: formData.musicVoice.voiceNote.mimeType,
+            sizeBytes: formData.musicVoice.voiceNote.sizeBytes,
+            mediaId: formData.musicVoice.voiceNote.mediaId,
+            storagePath: formData.musicVoice.voiceNote.storagePath ?? "",
+            semanticKey: formData.musicVoice.voiceNote.semanticKey ?? "voice_note",
+            sectionItemId: formData.musicVoice.voiceNote.sectionItemId ?? "voiceNote",
+          }
+        : null,
     },
     editableDefaultContent: formData.editableDefaultContent,
     confirmedSkips: formData.confirmedSkips,
@@ -3253,46 +3256,6 @@ function createStoryOfUsSubmissionFormData(formData: StoryOfUsSetupFormData, set
 
   submissionFormData.append("payload", JSON.stringify(payload));
 
-  photos.forEach((photo) => {
-    if (photo.file) {
-      submissionFormData.append(`photoFile:${photo.id}`, photo.file, photo.file.name);
-    }
-  });
-
-  appendPhotoFile(
-    submissionFormData,
-    "openingPhoto:firstPerson",
-    formData.media.openingPhotos.firstPerson,
-  );
-  appendPhotoFile(
-    submissionFormData,
-    "openingPhoto:secondPerson",
-    formData.media.openingPhotos.secondPerson,
-  );
-  promptPhotos.forEach((prompt) => {
-    appendPhotoFile(submissionFormData, `promptPhoto:${prompt.id}`, prompt.photo);
-  });
-  timelineItems.forEach((item) => {
-    appendPhotoFile(submissionFormData, `timelinePhoto:${item.id}`, item.photo);
-  });
-  appendPhotoFile(submissionFormData, "loveLetterPhoto", formData.media.loveLetterPhoto);
-
-  if (formData.musicVoice.voiceNote?.file) {
-    submissionFormData.append(
-      "voiceNoteFile",
-      formData.musicVoice.voiceNote.file,
-      formData.musicVoice.voiceNote.file.name,
-    );
-  }
-
-  if (formData.media.puzzle.sourceType === "separate" && formData.media.puzzle.puzzlePhoto?.file) {
-    submissionFormData.append(
-      "puzzlePhotoFile",
-      formData.media.puzzle.puzzlePhoto.file,
-      formData.media.puzzle.puzzlePhoto.file.name,
-    );
-  }
-
   return submissionFormData;
 }
 
@@ -3300,50 +3263,33 @@ function createPhotoPayload(
   photo: StoryOfUsPhotoDraftItem | null,
   options: { semanticKey?: string; sectionItemId?: string; sortOrder?: number } = {},
 ) {
-  if (!photo?.file) {
-    if (!photo?.mediaId) {
-      return null;
-    }
-
-    return {
-      id: photo.id,
-      caption: photo.caption,
-      sortOrder: options.sortOrder ?? photo.sortOrder,
-      originalFilename: photo.originalFilename ?? "",
-      mimeType: photo.mimeType ?? "",
-      sizeBytes: photo.sizeBytes ?? 0,
-      semanticKey: options.semanticKey ?? photo.semanticKey ?? "",
-      sectionItemId: options.sectionItemId ?? photo.sectionItemId ?? "",
-      mediaId: photo.mediaId,
-      storagePath: photo.storagePath ?? "",
-    };
+  if (!photo?.mediaId) {
+    return null;
   }
 
   return {
     id: photo.id,
     caption: photo.caption,
     sortOrder: options.sortOrder ?? photo.sortOrder,
-    originalFilename: photo.file.name,
-    mimeType: photo.file.type,
-    sizeBytes: photo.file.size,
-    semanticKey: options.semanticKey ?? "",
-    sectionItemId: options.sectionItemId ?? "",
+    originalFilename: photo.originalFilename ?? "",
+    mimeType: photo.mimeType ?? "",
+    sizeBytes: photo.sizeBytes ?? 0,
+    semanticKey: options.semanticKey ?? photo.semanticKey ?? "",
+    sectionItemId: options.sectionItemId ?? photo.sectionItemId ?? "",
     mediaId: photo.mediaId,
-    storagePath: photo.storagePath,
+    storagePath: photo.storagePath ?? "",
   };
-}
-
-function appendPhotoFile(formData: FormData, key: string, photo: StoryOfUsPhotoDraftItem | null) {
-  if (photo?.file) {
-    formData.append(key, photo.file, photo.file.name);
-  }
 }
 
 function getMediaUploadBlocker(formData: StoryOfUsSetupFormData) {
   const photoItems = collectPhotoItems(formData);
   const hasUploadingPhoto = photoItems.some((photo) => photo.uploadStatus === "uploading");
   const hasFailedPhoto = photoItems.some((photo) => photo.uploadStatus === "failed");
+  const hasLocalUnuploadedPhoto = photoItems.some((photo) => Boolean(photo.file && !photo.mediaId));
   const voiceStatus = formData.musicVoice.voiceNote?.uploadStatus;
+  const hasLocalUnuploadedVoiceNote = Boolean(
+    formData.musicVoice.voiceNote?.file && !formData.musicVoice.voiceNote.mediaId,
+  );
 
   if (hasUploadingPhoto || voiceStatus === "uploading") {
     return "Dosya yüklemeleri devam ediyor. Lütfen yüklemeler tamamlandıktan sonra gönderin.";
@@ -3355,6 +3301,10 @@ function getMediaUploadBlocker(formData: StoryOfUsSetupFormData) {
 
   if (voiceStatus === "failed") {
     return "Ses notu yüklenemedi. Lütfen tekrar yükleyin veya ses notu bölümünü istemediğinizi onaylayın.";
+  }
+
+  if (hasLocalUnuploadedPhoto || hasLocalUnuploadedVoiceNote) {
+    return "Bazı dosyalarınız henüz yüklenmemiş görünüyor. Lütfen işaretli dosyaları yeniden seçip yüklemenin tamamlanmasını bekleyin.";
   }
 
   return null;

@@ -12,10 +12,14 @@ import {
   getStoryOfUsServiceStartConsent,
   isStoryOfUsActiveRefundStatus,
 } from "./refundEligibility.server";
+import {
+  STORYOFUS_DURABLE_MEDIA_REQUIRED_MESSAGE,
+  assertNoSubmitTimeMediaFiles,
+  collectStoryOfUsSubmitMediaRequirements,
+  validateStoryOfUsSubmitMediaRows,
+} from "./setupMediaSubmitBoundary";
 import type { StoryOfUsEditableDefaultContentState } from "./setupTypes";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
-
-const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
 
 type SkipState = {
   warned: boolean;
@@ -61,6 +65,10 @@ type SubmitVoiceNoteMetadata = {
   originalFilename: string;
   mimeType: string;
   sizeBytes: number;
+  mediaId?: string;
+  storagePath?: string;
+  semanticKey?: string;
+  sectionItemId?: string;
 };
 
 type SubmitPayload = {
@@ -168,14 +176,12 @@ export const submitStoryOfUsSetup = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data }) => {
+    assertNoSubmitTimeMediaFiles(data);
     const payload = parseSubmissionPayload(data);
-    return submitStoryOfUsSetupData(payload, data);
+    return submitStoryOfUsSetupData(payload);
   });
 
-async function submitStoryOfUsSetupData(
-  payload: SubmitPayload,
-  formData: FormData,
-): Promise<SubmissionResult> {
+async function submitStoryOfUsSetupData(payload: SubmitPayload): Promise<SubmissionResult> {
   const setupToken = payload.setupToken?.trim();
 
   if (!setupToken) {
@@ -277,6 +283,8 @@ async function submitStoryOfUsSetupData(
     throw new Error(loveLetterDefaultContentError);
   }
 
+  await validateDurableMediaForSubmit(submissionId, payload);
+
   const nextPasscodeHash = passcodeValidation.shouldHashPasscode
     ? hashSitePasscode(siteAccess.passcode.trim())
     : submission.site_passcode_hash;
@@ -288,8 +296,7 @@ async function submitStoryOfUsSetupData(
   await prepareExistingMediaForSubmit(submissionId, payload, isFirstSubmit);
   await insertCoupleDetails(submissionId, payload);
   await insertMusicIfNeeded(submissionId, payload);
-  await uploadPhotosIfNeeded(submissionId, payload, formData);
-  await uploadVoiceNoteIfNeeded(submissionId, payload, formData);
+  await updateSubmittedMediaMetadata(submissionId, payload);
   await updatePuzzleSourceSelection(submissionId, payload);
   await insertTimelineIfNeeded(submissionId, payload);
   await insertLettersIfNeeded(submissionId, payload);
@@ -478,276 +485,159 @@ async function insertMusicIfNeeded(submissionId: string, payload: SubmitPayload)
   }
 }
 
-async function uploadPhotosIfNeeded(
-  submissionId: string,
-  payload: SubmitPayload,
-  formData: FormData,
-) {
+async function validateDurableMediaForSubmit(submissionId: string, payload: SubmitPayload) {
+  const requirements = collectStoryOfUsSubmitMediaRequirements(payload);
+
+  if (requirements.length === 0) {
+    return;
+  }
+
+  const mediaIds = [...new Set(requirements.map((requirement) => requirement.mediaId))];
+
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_media")
+    .select("id, media_type, section, semantic_key, section_item_id, storage_bucket, storage_path")
+    .eq("submission_id", submissionId)
+    .in("id", mediaIds);
+
+  if (error) {
+    throw new Error(STORYOFUS_DURABLE_MEDIA_REQUIRED_MESSAGE);
+  }
+
+  validateStoryOfUsSubmitMediaRows(
+    requirements,
+    (data ?? []).map((row) => ({
+      id: String(row.id),
+      mediaType: String(row.media_type),
+      section: String(row.section),
+      semanticKey: typeof row.semantic_key === "string" ? row.semantic_key : null,
+      sectionItemId: typeof row.section_item_id === "string" ? row.section_item_id : null,
+      storageBucket: typeof row.storage_bucket === "string" ? row.storage_bucket : null,
+      storagePath: typeof row.storage_path === "string" ? row.storage_path : null,
+    })),
+  );
+}
+
+async function updateSubmittedMediaMetadata(submissionId: string, payload: SubmitPayload) {
   const shouldMarkPuzzle =
     !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
     payload.media.puzzle.sourceType === "gallery" &&
     Boolean(payload.media.puzzle.selectedPhotoId);
 
-  await uploadSemanticPhotoIfNeeded({
+  await updateSemanticSubmittedPhoto({
     submissionId,
-    formData,
-    formDataKey: "openingPhoto:firstPerson",
     photo: payload.media.openingPhotos?.firstPerson ?? null,
     section: "opening",
-    mediaType: "photo",
-    storageFolder: "opening",
     semanticKey: "hero_left",
     sectionItemId: "firstPerson",
     sortOrder: 0,
+    isPuzzleSource: false,
   });
-  await uploadSemanticPhotoIfNeeded({
+  await updateSemanticSubmittedPhoto({
     submissionId,
-    formData,
-    formDataKey: "openingPhoto:secondPerson",
     photo: payload.media.openingPhotos?.secondPerson ?? null,
     section: "opening",
-    mediaType: "photo",
-    storageFolder: "opening",
     semanticKey: "hero_right",
     sectionItemId: "secondPerson",
     sortOrder: 1,
+    isPuzzleSource: false,
   });
 
   for (const prompt of payload.media.promptPhotos ?? []) {
-    await uploadSemanticPhotoIfNeeded({
+    await updateSemanticSubmittedPhoto({
       submissionId,
-      formData,
-      formDataKey: `promptPhoto:${prompt.id}`,
       photo: prompt.photo,
       section: "memory_prompt",
-      mediaType: "photo",
-      storageFolder: "memory-prompts",
       semanticKey: prompt.id,
       sectionItemId: prompt.id,
       sortOrder: prompt.sortOrder,
+      isPuzzleSource: false,
     });
   }
 
   if (!isConfirmedSkipped(payload.confirmedSkips, "photos")) {
     for (const photo of payload.media.photos) {
-      const file = getFileFromFormData(formData, `photoFile:${photo.id}`);
-
-      if (!file) {
-        await updateExistingMediaMetadata({
-          submissionId,
-          photo,
-          fallbackSection: "gallery",
-          fallbackSemanticKey: photo.semanticKey || "gallery_photo",
-          fallbackSectionItemId: photo.sectionItemId || photo.id,
-          fallbackSortOrder: photo.sortOrder,
-          isPuzzleSource: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
-        });
-        continue;
-      }
-
-      const storagePath = `submissions/${submissionId}/photos/${createSafeStorageFileName(
-        photo.originalFilename || file.name,
-      )}`;
-
-      await uploadFileToStorage(storagePath, file);
-
-      const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
-        submission_id: submissionId,
-        media_type: "photo",
-        section: "gallery",
-        semantic_key: emptyToNull(photo.semanticKey),
-        section_item_id: emptyToNull(photo.sectionItemId),
-        storage_bucket: STORYOFUS_MEDIA_BUCKET,
-        storage_path: storagePath,
-        original_filename: emptyToNull(photo.originalFilename || file.name),
-        mime_type: emptyToNull(photo.mimeType || file.type),
-        size_bytes: photo.sizeBytes || file.size,
-        caption: emptyToNull(photo.caption),
-        sort_order: photo.sortOrder,
-        is_puzzle_source: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
+      await updateExistingMediaMetadata({
+        submissionId,
+        photo,
+        fallbackSection: "gallery",
+        fallbackSemanticKey: photo.semanticKey || "gallery_photo",
+        fallbackSectionItemId: photo.sectionItemId || photo.id,
+        fallbackSortOrder: photo.sortOrder,
+        isPuzzleSource: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
       });
-
-      if (error) {
-        throw new Error(`StoryOfUs photo metadata could not be saved: ${error.message}`);
-      }
     }
   }
 
-  await uploadSemanticPhotoIfNeeded({
+  await updateSemanticSubmittedPhoto({
     submissionId,
-    formData,
-    formDataKey: "loveLetterPhoto",
     photo: payload.media.loveLetterPhoto ?? null,
     section: "letter",
-    mediaType: "photo",
-    storageFolder: "letter",
     semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
     sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
     sortOrder: 0,
+    isPuzzleSource: false,
   });
 
   for (const item of payload.timeline) {
-    await uploadSemanticPhotoIfNeeded({
+    await updateSemanticSubmittedPhoto({
       submissionId,
-      formData,
-      formDataKey: `timelinePhoto:${item.id}`,
       photo: item.photo ?? null,
       section: "timeline",
-      mediaType: "photo",
-      storageFolder: "timeline",
       semanticKey: "timeline_item",
       sectionItemId: item.id,
       sortOrder: item.sortOrder,
-    });
-  }
-
-  await uploadSeparatePuzzlePhotoIfNeeded(submissionId, payload, formData);
-}
-
-async function uploadSemanticPhotoIfNeeded({
-  submissionId,
-  formData,
-  formDataKey,
-  photo,
-  section,
-  mediaType,
-  storageFolder,
-  semanticKey,
-  sectionItemId,
-  sortOrder,
-}: {
-  submissionId: string;
-  formData: FormData;
-  formDataKey: string;
-  photo: SubmitPhotoMetadata | null;
-  section: StoryOfUsMediaSection;
-  mediaType: "photo" | "puzzle_photo";
-  storageFolder: string;
-  semanticKey: string;
-  sectionItemId: string;
-  sortOrder: number;
-}) {
-  if (!photo) {
-    return;
-  }
-
-  const file = getFileFromFormData(formData, formDataKey);
-
-  if (!file) {
-    await updateExistingMediaMetadata({
-      submissionId,
-      photo,
-      fallbackSection: section,
-      fallbackSemanticKey: semanticKey,
-      fallbackSectionItemId: sectionItemId,
-      fallbackSortOrder: sortOrder,
       isPuzzleSource: false,
     });
-    return;
   }
 
-  await deleteExistingSemanticMedia(submissionId, section, semanticKey, sectionItemId);
-
-  const storagePath = `submissions/${submissionId}/${storageFolder}/${createSafeStorageFileName(
-    photo.originalFilename || file.name,
-  )}`;
-
-  await uploadFileToStorage(storagePath, file);
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
-    submission_id: submissionId,
-    media_type: mediaType,
-    section,
-    semantic_key: semanticKey,
-    section_item_id: sectionItemId,
-    storage_bucket: STORYOFUS_MEDIA_BUCKET,
-    storage_path: storagePath,
-    original_filename: emptyToNull(photo.originalFilename || file.name),
-    mime_type: emptyToNull(photo.mimeType || file.type),
-    size_bytes: photo.sizeBytes || file.size,
-    caption: emptyToNull(photo.caption),
-    sort_order: sortOrder,
-    is_puzzle_source: false,
-  });
-
-  if (error) {
-    throw new Error(`StoryOfUs ${section} photo metadata could not be saved: ${error.message}`);
-  }
-}
-
-async function deleteExistingSemanticMedia(
-  submissionId: string,
-  section: StoryOfUsMediaSection,
-  semanticKey: string,
-  sectionItemId: string,
-) {
-  const { error } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .delete()
-    .eq("submission_id", submissionId)
-    .eq("section", section)
-    .eq("semantic_key", semanticKey)
-    .eq("section_item_id", sectionItemId);
-
-  if (error) {
-    throw new Error(`StoryOfUs existing ${section} photo could not be replaced: ${error.message}`);
-  }
-}
-
-async function uploadSeparatePuzzlePhotoIfNeeded(
-  submissionId: string,
-  payload: SubmitPayload,
-  formData: FormData,
-) {
   if (
-    isConfirmedSkipped(payload.confirmedSkips, "puzzle") ||
-    payload.media.puzzle.sourceType !== "separate" ||
-    !payload.media.puzzle.puzzlePhoto
+    !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
+    payload.media.puzzle.sourceType === "separate" &&
+    payload.media.puzzle.puzzlePhoto
   ) {
-    return;
-  }
-
-  const file = getFileFromFormData(formData, "puzzlePhotoFile");
-
-  if (!file) {
     await updateExistingMediaMetadata({
       submissionId,
-      photo: puzzlePhoto,
+      photo: payload.media.puzzle.puzzlePhoto,
       fallbackSection: "puzzle",
       fallbackSemanticKey: "puzzle_source",
       fallbackSectionItemId: "puzzlePhoto",
       fallbackSortOrder: 0,
       isPuzzleSource: true,
     });
+  }
+}
+
+async function updateSemanticSubmittedPhoto({
+  submissionId,
+  photo,
+  section,
+  semanticKey,
+  sectionItemId,
+  sortOrder,
+  isPuzzleSource,
+}: {
+  submissionId: string;
+  photo: SubmitPhotoMetadata | null;
+  section: StoryOfUsMediaSection;
+  semanticKey: string;
+  sectionItemId: string;
+  sortOrder: number;
+  isPuzzleSource: boolean;
+}) {
+  if (!photo) {
     return;
   }
 
-  const puzzlePhoto = payload.media.puzzle.puzzlePhoto;
-  const storagePath = `submissions/${submissionId}/puzzle/${createSafeStorageFileName(
-    puzzlePhoto.originalFilename || file.name,
-  )}`;
-
-  await uploadFileToStorage(storagePath, file);
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
-    submission_id: submissionId,
-    media_type: "puzzle_photo",
-    section: "puzzle",
-    semantic_key: "puzzle_source",
-    section_item_id: "puzzlePhoto",
-    storage_bucket: STORYOFUS_MEDIA_BUCKET,
-    storage_path: storagePath,
-    original_filename: emptyToNull(puzzlePhoto.originalFilename || file.name),
-    mime_type: emptyToNull(puzzlePhoto.mimeType || file.type),
-    size_bytes: puzzlePhoto.sizeBytes || file.size,
-    caption: emptyToNull(puzzlePhoto.caption),
-    sort_order: 0,
-    is_puzzle_source: true,
+  await updateExistingMediaMetadata({
+    submissionId,
+    photo,
+    fallbackSection: section,
+    fallbackSemanticKey: semanticKey,
+    fallbackSectionItemId: sectionItemId,
+    fallbackSortOrder: sortOrder,
+    isPuzzleSource,
   });
-
-  if (error) {
-    throw new Error(`StoryOfUs puzzle photo metadata could not be saved: ${error.message}`);
-  }
 }
 
 async function updateExistingMediaMetadata({
@@ -821,58 +711,23 @@ async function updatePuzzleSourceSelection(submissionId: string, payload: Submit
   }
 
   if (payload.media.puzzle.sourceType === "gallery" && payload.media.puzzle.selectedPhotoId) {
-    const { error } = await storyOfUsSupabaseAdmin
+    const { data, error } = await storyOfUsSupabaseAdmin
       .from("storyofus_media")
       .update({ is_puzzle_source: true })
       .eq("submission_id", submissionId)
       .eq("section", "gallery")
-      .eq("section_item_id", payload.media.puzzle.selectedPhotoId);
+      .eq("semantic_key", "gallery_photo")
+      .eq("section_item_id", payload.media.puzzle.selectedPhotoId)
+      .eq("media_type", "photo")
+      .select("id");
 
     if (error) {
       throw new Error(`StoryOfUs gallery puzzle source could not be marked: ${error.message}`);
     }
-  }
-}
 
-async function uploadVoiceNoteIfNeeded(
-  submissionId: string,
-  payload: SubmitPayload,
-  formData: FormData,
-) {
-  if (isConfirmedSkipped(payload.confirmedSkips, "voiceNote") || !payload.musicVoice.voiceNote) {
-    return;
-  }
-
-  const file = getFileFromFormData(formData, "voiceNoteFile");
-
-  if (!file) {
-    return;
-  }
-
-  const storagePath = `submissions/${submissionId}/voice-note/${createSafeStorageFileName(
-    payload.musicVoice.voiceNote.originalFilename || file.name,
-  )}`;
-
-  await uploadFileToStorage(storagePath, file);
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").insert({
-    submission_id: submissionId,
-    media_type: "voice_note",
-    section: "voice_note",
-    semantic_key: "voice_note",
-    section_item_id: "voiceNote",
-    storage_bucket: STORYOFUS_MEDIA_BUCKET,
-    storage_path: storagePath,
-    original_filename: emptyToNull(payload.musicVoice.voiceNote.originalFilename || file.name),
-    mime_type: emptyToNull(payload.musicVoice.voiceNote.mimeType || file.type),
-    size_bytes: payload.musicVoice.voiceNote.sizeBytes || file.size,
-    caption: null,
-    sort_order: 0,
-    is_puzzle_source: false,
-  });
-
-  if (error) {
-    throw new Error(`StoryOfUs voice note metadata could not be saved: ${error.message}`);
+    if ((data ?? []).length !== 1) {
+      throw new Error(STORYOFUS_DURABLE_MEDIA_REQUIRED_MESSAGE);
+    }
   }
 }
 
@@ -916,19 +771,6 @@ async function insertLettersIfNeeded(submissionId: string, payload: SubmitPayloa
   }
 }
 
-async function uploadFileToStorage(storagePath: string, file: File) {
-  const { error } = await storyOfUsSupabaseAdmin.storage
-    .from(STORYOFUS_MEDIA_BUCKET)
-    .upload(storagePath, file, {
-      contentType: file.type || undefined,
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`StoryOfUs media upload failed: ${error.message}`);
-  }
-}
-
 function parseSubmissionPayload(formData: FormData): SubmitPayload {
   const rawPayload = formData.get("payload");
 
@@ -968,33 +810,6 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
     timeline: payload.timeline,
     letters: payload.letters,
   };
-}
-
-function getFileFromFormData(formData: FormData, key: string): File | null {
-  const value = formData.get(key);
-
-  if (!value || typeof value === "string" || typeof (value as File).arrayBuffer !== "function") {
-    return null;
-  }
-
-  return value as File;
-}
-
-function createSafeStorageFileName(originalFilename: string) {
-  const extensionMatch = originalFilename.match(/\.([a-zA-Z0-9]+)$/);
-  const extension = extensionMatch ? `.${extensionMatch[1].toLowerCase()}` : "";
-  const baseName = originalFilename
-    .replace(/\.[a-zA-Z0-9]+$/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-  const randomId =
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-  return `${randomId}-${baseName || "file"}${extension}`;
 }
 
 function isConfirmedSkipped(confirmedSkips: ConfirmedSkips, sectionId: keyof ConfirmedSkips) {
