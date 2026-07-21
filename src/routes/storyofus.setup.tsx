@@ -14,7 +14,16 @@ import {
 } from "../lib/storyofus/mediaUpload.server";
 import { submitStoryOfUsSetup } from "../lib/storyofus/submitSetup.server";
 import {
+  getStoryOfUsEditSubmitNotice,
+  getStoryOfUsEditSubmissionConfirmationCopy,
+  getStoryOfUsEditUsageLabel,
+  getStoryOfUsEditingClosedCopy,
+  getStoryOfUsEditingStateDescription,
+  getStoryOfUsEditingStateLabel,
+  getStoryOfUsRemainingEditCount,
   getStoryOfUsSetupSuccessCopy,
+  isStoryOfUsEditingOpen,
+  type StoryOfUsSetupEditStatusInput,
   type StoryOfUsSetupSubmissionKind,
 } from "../lib/storyofus/setupSuccessCopy";
 import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
@@ -56,6 +65,11 @@ import {
   type StoryOfUsTimelineItem,
   type StoryOfUsVoiceNoteData,
 } from "../lib/storyofus/setupTypes";
+import {
+  createStoryOfUsSingleUseAsyncGuard,
+  getStoryOfUsFinalSubmitUiState,
+  shouldCloseStoryOfUsEditSubmitDialogOnEscape,
+} from "../lib/storyofus/setupSubmitUiState";
 
 export const Route = createFileRoute("/storyofus/setup")({
   validateSearch: (search) => ({
@@ -215,18 +229,23 @@ function StoryOfUsSetupRoute() {
   const [validationNotice, setValidationNotice] = useState<StepValidationNotice | null>(null);
   const [legalConsentErrors, setLegalConsentErrors] = useState<string[]>([]);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
+  const [isConfirmingEditSubmit, setIsConfirmingEditSubmit] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<StoryOfUsSubmissionResult | null>(null);
   const [hasEnteredSubmittedEditMode, setHasEnteredSubmittedEditMode] = useState(false);
   const [draftSaveStatus, setDraftSaveStatus] = useState<DraftSaveStatus>("idle");
   const [pendingDefaultConfirmation, setPendingDefaultConfirmation] =
     useState<StoryOfUsEditableDefaultConfirmation | null>(null);
+  const [pendingEditSubmitConfirmation, setPendingEditSubmitConfirmation] =
+    useState<StoryOfUsSetupEditStatusInput | null>(null);
   const photoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const puzzlePhotoPreviewUrlsRef = useRef<Set<string>>(new Set());
   const voiceNotePreviewUrlsRef = useRef<Set<string>>(new Set());
   const skipNextDraftSaveRef = useRef(false);
   const draftSaveSequenceRef = useRef(0);
   const draftSaveTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const editSubmitAttemptGuardRef = useRef(createStoryOfUsSingleUseAsyncGuard());
+  const reviewSubmitButtonRef = useRef<HTMLButtonElement | null>(null);
   const stepCardRef = useRef<HTMLElement | null>(null);
   const validationPanelRef = useRef<HTMLElement | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
@@ -238,6 +257,23 @@ function StoryOfUsSetupRoute() {
   const progressPercent = Math.round(((currentStepIndex + 1) / totalSteps) * 100);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === totalSteps - 1;
+  const setupEditStatus =
+    setupAccess.status === "ready" || setupAccess.status === "edit_locked"
+      ? getSetupEditStatus(setupAccess)
+      : null;
+  const isSubmittedEditSession =
+    setupAccess.status === "ready" &&
+    setupAccess.mode === "edit" &&
+    formData.status === "submitted";
+  const isSubmittedEditOpen = setupEditStatus ? isStoryOfUsEditingOpen(setupEditStatus) : false;
+  const finalSubmitUiState = getStoryOfUsFinalSubmitUiState({
+    isSubmitting: isSubmittingSetup,
+    isConfirmingEditSubmit,
+    mediaBlocker: getMediaUploadBlocker(formData),
+    validationBlocker: getFinalSubmitValidationBlocker(formData),
+    isSubmittedEdit: isSubmittedEditSession,
+    isSubmittedEditOpen,
+  });
   const displayedValidationNotice =
     currentStep.id === "contactCouple" && validationNotice?.contactFieldErrors
       ? mergeLiveContactValidationNotice(
@@ -516,117 +552,176 @@ function StoryOfUsSetupRoute() {
     scheduleStepCardScroll(120);
   }
 
-  async function handleSubmitSetup() {
-    if (isSubmittingSetup) {
+  async function refreshSetupAccessState() {
+    if (!setupToken) {
       return;
     }
 
-    if (setupAccess.status !== "ready" || !setupToken) {
-      setSubmitError("Kurulum formunu göndermek için geçerli ödeme bağlantısı gerekiyor.");
-      return;
+    const accessResult = (await checkSetupAccess({
+      data: { setupToken },
+    })) as StoryOfUsSetupAccessResult;
+
+    setSetupAccess(accessResult);
+
+    if (accessResult.status !== "ready") {
+      setHasEnteredSubmittedEditMode(false);
     }
+  }
 
-    const contactValidation = validateCurrentStep("contactCouple", formData);
+  async function handleSubmitSetup({ confirmedEditSubmit = false } = {}) {
+    const didStartEditSubmitGuard = confirmedEditSubmit;
 
-    if (contactValidation.blockingErrors.length > 0) {
-      setValidationNotice(contactValidation);
-      setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
-      setCurrentStepIndex(0);
-      scheduleValidationScroll(contactValidation, 120);
-      return;
+    if (confirmedEditSubmit) {
+      if (!editSubmitAttemptGuardRef.current.tryStart()) {
+        return;
+      }
+
+      setIsConfirmingEditSubmit(true);
     }
-
-    const mediaUploadBlocker = getMediaUploadBlocker(formData);
-
-    if (mediaUploadBlocker) {
-      setSubmitError(mediaUploadBlocker);
-      setCurrentStepIndex(mediaUploadBlocker.includes("Ses notu") ? 2 : 1);
-      scheduleStepCardScroll(120);
-      return;
-    }
-
-    const lettersValidation = validateCurrentStep("letters", formData);
-
-    if (lettersValidation.blockingErrors.length > 0) {
-      setValidationNotice(lettersValidation);
-      setSubmitError("Devam etmeden önce mektup fotoğrafını yüklemeniz gerekiyor.");
-      setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
-      scheduleValidationScroll(lettersValidation, 120);
-      return;
-    }
-
-    const defaultConfirmation = getPendingEditableDefaultConfirmation(
-      "letters",
-      formData.letters,
-      formData.editableDefaultContent,
-    );
-
-    if (defaultConfirmation) {
-      setPendingDefaultConfirmation(defaultConfirmation);
-      setSubmitError(
-        "Devam etmeden önce varsayılan mektup metni tercihinizi onaylamanız gerekiyor.",
-      );
-      setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
-      scheduleStepCardScroll(120);
-      return;
-    }
-
-    const setupWarnings = getFullSetupWarnings(formData);
-
-    if (setupWarnings.length > 0) {
-      setValidationNotice({
-        blockingErrors: [],
-        warning: setupWarnings[0],
-        warnings: setupWarnings,
-      });
-      setSubmitError(
-        "Devam etmeden önce eksik bırakılan bölümleri tamamlamanız veya istemediğinizi onaylamanız gerekiyor.",
-      );
-      setCurrentStepIndex(totalSteps - 1);
-      scheduleWarningScroll(setupWarnings[0].sectionId, 120);
-      return;
-    }
-
-    const nextLegalConsentErrors = validateLegalConsents(
-      formData.legalConsents,
-      formData.status === "draft",
-    );
-
-    if (nextLegalConsentErrors.length > 0) {
-      setLegalConsentErrors(nextLegalConsentErrors);
-      setSubmitError("Gönderim için onaylarınızı tamamlamamız gerekiyor.");
-      return;
-    }
-
-    setIsSubmittingSetup(true);
-    setSubmitError(null);
-    setLegalConsentErrors([]);
-    setSubmissionResult(null);
 
     try {
-      const result = await submitSetup({
-        data: createStoryOfUsSubmissionFormData(formData, setupToken),
-      });
-      clearSetupDraft(setupToken);
-      revokeCurrentPreviewUrls();
-      setValidationNotice(null);
-      setWasDraftRestored(false);
-      if (setupAccess.status === "ready") {
-        setSetupAccess({
-          ...setupAccess,
-          mode: "edit",
-          editableUntil: (result as StoryOfUsSubmissionResult).editableUntil,
-        });
+      if (isSubmittingSetup) {
+        return;
       }
-      setSubmissionResult(result as StoryOfUsSubmissionResult);
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Bilgiler gönderilirken beklenmeyen bir hata oluştu.",
+
+      if (setupAccess.status !== "ready" || !setupToken) {
+        setSubmitError("Kurulum formunu göndermek için geçerli ödeme bağlantısı gerekiyor.");
+        return;
+      }
+
+      const contactValidation = validateCurrentStep("contactCouple", formData);
+
+      if (contactValidation.blockingErrors.length > 0) {
+        setValidationNotice(contactValidation);
+        setSubmitError("Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.");
+        setCurrentStepIndex(0);
+        scheduleValidationScroll(contactValidation, 120);
+        return;
+      }
+
+      const mediaUploadBlocker = getMediaUploadBlocker(formData);
+
+      if (mediaUploadBlocker) {
+        setSubmitError(mediaUploadBlocker);
+        setCurrentStepIndex(mediaUploadBlocker.includes("Ses notu") ? 2 : 1);
+        scheduleStepCardScroll(120);
+        return;
+      }
+
+      const lettersValidation = validateCurrentStep("letters", formData);
+
+      if (lettersValidation.blockingErrors.length > 0) {
+        setValidationNotice(lettersValidation);
+        setSubmitError("Devam etmeden önce mektup fotoğrafını yüklemeniz gerekiyor.");
+        setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
+        scheduleValidationScroll(lettersValidation, 120);
+        return;
+      }
+
+      const defaultConfirmation = getPendingEditableDefaultConfirmation(
+        "letters",
+        formData.letters,
+        formData.editableDefaultContent,
       );
+
+      if (defaultConfirmation) {
+        setPendingDefaultConfirmation(defaultConfirmation);
+        setSubmitError(
+          "Devam etmeden önce varsayılan mektup metni tercihinizi onaylamanız gerekiyor.",
+        );
+        setCurrentStepIndex(STORYOFUS_SETUP_STEPS.findIndex((step) => step.id === "letters"));
+        scheduleStepCardScroll(120);
+        return;
+      }
+
+      const setupWarnings = getFullSetupWarnings(formData);
+
+      if (setupWarnings.length > 0) {
+        setValidationNotice({
+          blockingErrors: [],
+          warning: setupWarnings[0],
+          warnings: setupWarnings,
+        });
+        setSubmitError(
+          "Devam etmeden önce eksik bırakılan bölümleri tamamlamanız veya istemediğinizi onaylamanız gerekiyor.",
+        );
+        setCurrentStepIndex(totalSteps - 1);
+        scheduleWarningScroll(setupWarnings[0].sectionId, 120);
+        return;
+      }
+
+      const nextLegalConsentErrors = validateLegalConsents(
+        formData.legalConsents,
+        formData.status === "draft",
+      );
+
+      if (nextLegalConsentErrors.length > 0) {
+        setLegalConsentErrors(nextLegalConsentErrors);
+        setSubmitError("Gönderim için onaylarınızı tamamlamamız gerekiyor.");
+        return;
+      }
+
+      if (isSubmittedEditSession && !confirmedEditSubmit) {
+        if (!isSubmittedEditOpen) {
+          await refreshSetupAccessState();
+          setSubmitError("Düzenleme süreniz veya hakkınız sona ermiş görünüyor.");
+          return;
+        }
+
+        setPendingEditSubmitConfirmation(getSetupEditStatus(setupAccess));
+        return;
+      }
+
+      setIsSubmittingSetup(true);
+      setSubmitError(null);
+      setLegalConsentErrors([]);
+      setSubmissionResult(null);
+      setPendingEditSubmitConfirmation(null);
+
+      try {
+        const result = await submitSetup({
+          data: createStoryOfUsSubmissionFormData(formData, setupToken),
+        });
+        clearSetupDraft(setupToken);
+        revokeCurrentPreviewUrls();
+        setValidationNotice(null);
+        setWasDraftRestored(false);
+        if (setupAccess.status === "ready") {
+          setSetupAccess({
+            ...setupAccess,
+            mode: "edit",
+            editableUntil: (result as StoryOfUsSubmissionResult).editableUntil,
+            refundRequestUntil: (result as StoryOfUsSubmissionResult).refundRequestUntil ?? null,
+            editsUsed: (result as StoryOfUsSubmissionResult).editsUsed ?? 0,
+            editLimit: (result as StoryOfUsSubmissionResult).editLimit ?? 2,
+            editingClosedAt: (result as StoryOfUsSubmissionResult).editingClosedAt ?? null,
+            editingClosedReason: (result as StoryOfUsSubmissionResult).editingClosedReason ?? null,
+            initialData: {
+              ...setupAccess.initialData,
+              status: (result as StoryOfUsSubmissionResult).status,
+            },
+          });
+        }
+        setSubmissionResult(result as StoryOfUsSubmissionResult);
+      } catch (error) {
+        try {
+          await refreshSetupAccessState();
+        } catch {
+          // The submit error remains the actionable message; access refresh is best-effort.
+        }
+        setSubmitError(
+          error instanceof Error
+            ? error.message
+            : "Bilgiler gönderilirken beklenmeyen bir hata oluştu.",
+        );
+      } finally {
+        setIsSubmittingSetup(false);
+      }
     } finally {
-      setIsSubmittingSetup(false);
+      if (didStartEditSubmitGuard) {
+        editSubmitAttemptGuardRef.current.release();
+        setIsConfirmingEditSubmit(false);
+      }
     }
   }
 
@@ -2027,8 +2122,8 @@ function StoryOfUsSetupRoute() {
   if (submissionResult) {
     return (
       <StoryOfUsSetupSuccessScreen
-        editableUntil={submissionResult.editableUntil}
         submissionKind={submissionResult.submissionKind}
+        editStatus={getSubmissionResultEditStatus(submissionResult)}
         onEditAgain={() => {
           setSubmissionResult(null);
           enterSubmittedEditMode();
@@ -2044,302 +2139,333 @@ function StoryOfUsSetupRoute() {
   if (setupAccess.mode === "edit" && !hasEnteredSubmittedEditMode) {
     return (
       <StoryOfUsSubmittedReentryScreen
-        editableUntil={setupAccess.editableUntil}
+        editStatus={setupEditStatus ?? getSetupEditStatus(setupAccess)}
         onEnterEditMode={enterSubmittedEditMode}
       />
     );
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-3 py-5 text-[#3d2323] sm:px-6 sm:py-10">
-      <section className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-5 sm:gap-8">
-        <header className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-rose-100 bg-white/75 px-4 py-6 text-center shadow-xl shadow-rose-100/50 backdrop-blur sm:rounded-[2rem] sm:px-8 sm:py-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500 sm:tracking-[0.35em]">
-            StoryOfUs Setup
-          </p>
-          <h1 className="mx-auto mt-3 max-w-3xl text-2xl font-bold tracking-tight text-rose-950 sm:text-5xl">
-            Hikayenizi birlikte hazırlayalım
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-rose-950/65 sm:text-base">
-            Fotoğraflarınız, müziğiniz, anılarınız ve mektuplarınızla size özel romantik web
-            sitesini hazırlamak için birkaç kısa adımı tamamlayın.
-          </p>
-        </header>
-
-        <section className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/70 p-3 pb-24 shadow-2xl shadow-rose-100/60 backdrop-blur sm:rounded-[2rem] sm:p-6 lg:p-8">
-          <div className="mb-5 grid min-w-0 gap-3 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
-                Adım {currentStepIndex + 1} / {totalSteps}
-              </p>
-              <h2 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-3xl">
-                {currentStep.title}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-rose-950/60">
-                {currentStep.description}
-              </p>
-            </div>
-            <div className="min-w-0 rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-left shadow-sm shadow-rose-100/50 sm:text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
-                İlerleme
-              </p>
-              <p className="mt-1 text-2xl font-bold text-rose-700">{progressPercent}%</p>
-            </div>
-          </div>
-
-          <div className="mb-6 h-2 overflow-hidden rounded-full bg-rose-100 sm:mb-8">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-rose-400 via-pink-400 to-fuchsia-400 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-
-          <div className="mb-5 min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8 sm:rounded-3xl sm:p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="font-semibold text-rose-700">Taslak bu cihazda otomatik kaydedilir.</p>
-              <span
-                className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${draftSaveStatusClassName}`}
-                aria-live="polite"
-              >
-                {draftSaveStatusLabel}
-              </span>
-            </div>
-            {wasDraftRestored && (
-              <p className="mt-1 text-rose-950/65">Kaydedilmiş taslağınız yüklendi.</p>
-            )}
-            <p className="mt-1">
-              Güvenlik nedeniyle fotoğraf ve ses dosyalarını tekrar seçmeniz gerekebilir.
+    <>
+      <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-3 py-5 text-[#3d2323] sm:px-6 sm:py-10">
+        <section className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-5 sm:gap-8">
+          <header className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-rose-100 bg-white/75 px-4 py-6 text-center shadow-xl shadow-rose-100/50 backdrop-blur sm:rounded-[2rem] sm:px-8 sm:py-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-rose-500 sm:tracking-[0.35em]">
+              StoryOfUs Setup
             </p>
-          </div>
+            <h1 className="mx-auto mt-3 max-w-3xl text-2xl font-bold tracking-tight text-rose-950 sm:text-5xl">
+              Hikayenizi birlikte hazırlayalım
+            </h1>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-rose-950/65 sm:text-base">
+              Fotoğraflarınız, müziğiniz, anılarınız ve mektuplarınızla size özel romantik web
+              sitesini hazırlamak için birkaç kısa adımı tamamlayın.
+            </p>
+          </header>
 
-          {setupAccess.mode === "edit" && (
-            <div className="mb-5 min-w-0 rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-3 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8 sm:rounded-3xl sm:p-4">
-              <p className="font-semibold text-fuchsia-700">
-                Bilgilerinizi düzenleme modundasınız.
-              </p>
-              {setupAccess.editableUntil && (
-                <p className="mt-1">
-                  Bu formu {formatEditableUntil(setupAccess.editableUntil)} tarihine kadar
-                  düzenleyebilirsiniz. {getRemainingEditWindowText(setupAccess.editableUntil)}
+          <section className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-white/80 bg-white/70 p-3 pb-24 shadow-2xl shadow-rose-100/60 backdrop-blur sm:rounded-[2rem] sm:p-6 lg:p-8">
+            <div className="mb-5 grid min-w-0 gap-3 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
+                  Adım {currentStepIndex + 1} / {totalSteps}
                 </p>
-              )}
+                <h2 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-3xl">
+                  {currentStep.title}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-rose-950/60">
+                  {currentStep.description}
+                </p>
+              </div>
+              <div className="min-w-0 rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 text-left shadow-sm shadow-rose-100/50 sm:text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                  İlerleme
+                </p>
+                <p className="mt-1 text-2xl font-bold text-rose-700">{progressPercent}%</p>
+              </div>
             </div>
-          )}
 
-          <div className="grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-5">
-            <aside className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-[#fffaf8] p-2 shadow-sm shadow-rose-100/50 sm:rounded-[1.5rem] sm:p-3">
-              <nav
-                className="flex w-full min-w-0 snap-x gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] lg:grid lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
-                aria-label="StoryOfUs setup adımları"
-              >
-                {STORYOFUS_SETUP_STEPS.map((step, index) => {
-                  const isActive = index === currentStepIndex;
-                  const isCompleted = index < currentStepIndex;
-                  const isLocked = index > currentStepIndex;
+            <div className="mb-6 h-2 overflow-hidden rounded-full bg-rose-100 sm:mb-8">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-rose-400 via-pink-400 to-fuchsia-400 transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
 
-                  return (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => goToStepById(step.id)}
-                      disabled={isLocked}
-                      aria-current={isActive ? "step" : undefined}
-                      className={`flex w-[8.75rem] shrink-0 snap-start items-start gap-2 rounded-2xl border px-3 py-3 text-left transition duration-200 disabled:cursor-not-allowed sm:w-[10rem] sm:gap-3 lg:w-full ${
-                        isActive
-                          ? "border-rose-300 bg-white text-rose-950 shadow-md shadow-rose-100"
-                          : isCompleted
-                            ? "border-rose-100 bg-rose-50/80 text-rose-900 hover:border-rose-200 hover:bg-white"
-                            : "border-transparent bg-transparent text-rose-950/40"
-                      }`}
-                    >
-                      <span
-                        className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold sm:h-8 sm:w-8 ${
+            <div className="mb-5 min-w-0 rounded-2xl border border-rose-100 bg-[#fffaf8] p-3 text-sm leading-6 text-rose-950/60 shadow-sm shadow-rose-100/45 sm:mb-8 sm:rounded-3xl sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-rose-700">
+                  Taslak bu cihazda otomatik kaydedilir.
+                </p>
+                <span
+                  className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${draftSaveStatusClassName}`}
+                  aria-live="polite"
+                >
+                  {draftSaveStatusLabel}
+                </span>
+              </div>
+              {wasDraftRestored && (
+                <p className="mt-1 text-rose-950/65">Kaydedilmiş taslağınız yüklendi.</p>
+              )}
+              <p className="mt-1">
+                Güvenlik nedeniyle fotoğraf ve ses dosyalarını tekrar seçmeniz gerekebilir.
+              </p>
+            </div>
+
+            {setupAccess.mode === "edit" && (
+              <div className="mb-5 min-w-0 rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-3 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8 sm:rounded-3xl sm:p-4">
+                <p className="font-semibold text-fuchsia-700">Bilgilerinizi düzenliyorsunuz.</p>
+                {setupEditStatus && (
+                  <p className="mt-1 font-semibold text-rose-800">
+                    Düzenleme hakkı:{" "}
+                    {getStoryOfUsEditUsageLabel(
+                      setupEditStatus.editsUsed,
+                      setupEditStatus.editLimit,
+                    )}
+                  </p>
+                )}
+                {setupAccess.editableUntil && (
+                  <p className="mt-1">
+                    Bu formu {formatEditableUntil(setupAccess.editableUntil)} tarihine kadar
+                    düzenleyebilirsiniz. {getRemainingEditWindowText(setupAccess.editableUntil)}
+                  </p>
+                )}
+                {setupEditStatus && (
+                  <p className="mt-1 text-fuchsia-700">
+                    {getStoryOfUsEditSubmitNotice(setupEditStatus)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-5">
+              <aside className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-[#fffaf8] p-2 shadow-sm shadow-rose-100/50 sm:rounded-[1.5rem] sm:p-3">
+                <nav
+                  className="flex w-full min-w-0 snap-x gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] lg:grid lg:overflow-visible lg:pb-0 [&::-webkit-scrollbar]:hidden"
+                  aria-label="StoryOfUs setup adımları"
+                >
+                  {STORYOFUS_SETUP_STEPS.map((step, index) => {
+                    const isActive = index === currentStepIndex;
+                    const isCompleted = index < currentStepIndex;
+                    const isLocked = index > currentStepIndex;
+
+                    return (
+                      <button
+                        key={step.id}
+                        type="button"
+                        onClick={() => goToStepById(step.id)}
+                        disabled={isLocked}
+                        aria-current={isActive ? "step" : undefined}
+                        className={`flex w-[8.75rem] shrink-0 snap-start items-start gap-2 rounded-2xl border px-3 py-3 text-left transition duration-200 disabled:cursor-not-allowed sm:w-[10rem] sm:gap-3 lg:w-full ${
                           isActive
-                            ? "bg-rose-500 text-white"
+                            ? "border-rose-300 bg-white text-rose-950 shadow-md shadow-rose-100"
                             : isCompleted
-                              ? "bg-rose-100 text-rose-600"
-                              : "bg-white text-rose-400"
+                              ? "border-rose-100 bg-rose-50/80 text-rose-900 hover:border-rose-200 hover:bg-white"
+                              : "border-transparent bg-transparent text-rose-950/40"
                         }`}
                       >
-                        {isCompleted ? "✓" : index + 1}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block break-words text-xs font-semibold leading-4 sm:text-sm sm:leading-5">
-                          {step.title}
+                        <span
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold sm:h-8 sm:w-8 ${
+                            isActive
+                              ? "bg-rose-500 text-white"
+                              : isCompleted
+                                ? "bg-rose-100 text-rose-600"
+                                : "bg-white text-rose-400"
+                          }`}
+                        >
+                          {isCompleted ? "✓" : index + 1}
                         </span>
-                        <span className="mt-1 hidden text-xs leading-5 text-current opacity-70 sm:block">
-                          {step.description}
+                        <span className="min-w-0">
+                          <span className="block break-words text-xs font-semibold leading-4 sm:text-sm sm:leading-5">
+                            {step.title}
+                          </span>
+                          <span className="mt-1 hidden text-xs leading-5 text-current opacity-70 sm:block">
+                            {step.description}
+                          </span>
                         </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </aside>
+                      </button>
+                    );
+                  })}
+                </nav>
+              </aside>
 
-            <section
-              ref={stepCardRef}
-              className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-white/85 p-3 shadow-lg shadow-rose-100/45 sm:rounded-[1.5rem] sm:p-7"
-            >
-              <div className="mb-5 min-w-0 sm:mb-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
-                  {currentStep.title}
-                </p>
-                <h3 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-2xl">
-                  {getStepHeading(currentStep.id)}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-rose-950/65">
-                  {getStepIntro(currentStep.id)}
-                </p>
-              </div>
+              <section
+                ref={stepCardRef}
+                className="w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-rose-100 bg-white/85 p-3 shadow-lg shadow-rose-100/45 sm:rounded-[1.5rem] sm:p-7"
+              >
+                <div className="mb-5 min-w-0 sm:mb-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
+                    {currentStep.title}
+                  </p>
+                  <h3 className="mt-2 break-words text-xl font-bold text-rose-950 sm:text-2xl">
+                    {getStepHeading(currentStep.id)}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-rose-950/65">
+                    {getStepIntro(currentStep.id)}
+                  </p>
+                </div>
 
-              <StepValidationPanel
-                panelRef={validationPanelRef}
-                notice={displayedValidationNotice}
-                highlightedWarningId={highlightedWarningId}
-                onConfirmSkip={(sectionId) =>
-                  confirmSectionSkip(sectionId, currentStep.id !== "review")
-                }
-                onCancelSkip={cancelValidationWarning}
-              />
+                <StepValidationPanel
+                  panelRef={validationPanelRef}
+                  notice={displayedValidationNotice}
+                  highlightedWarningId={highlightedWarningId}
+                  onConfirmSkip={(sectionId) =>
+                    confirmSectionSkip(sectionId, currentStep.id !== "review")
+                  }
+                  onCancelSkip={cancelValidationWarning}
+                />
 
-              <ConfirmedSkipNotices
-                sections={getStepOptionalSections(currentStep.id)}
-                formData={formData}
-                onUndoSkip={undoSectionSkip}
-              />
-
-              {currentStep.id === "contactCouple" ? (
-                <ContactCoupleStep
-                  value={formData.contactCouple}
-                  siteAccess={formData.siteAccess}
-                  onChange={updateContactCoupleField}
-                  onSiteAccessChange={updateSiteAccessField}
-                  fieldErrors={displayedValidationNotice?.contactFieldErrors ?? {}}
-                  siteAccessErrors={displayedValidationNotice?.siteAccessFieldErrors ?? {}}
-                />
-              ) : currentStep.id === "photosPuzzle" ? (
-                <PhotosPuzzleStep
-                  contactCouple={formData.contactCouple}
-                  openingPhotos={formData.media.openingPhotos}
-                  promptPhotos={formData.media.promptPhotos}
-                  photos={formData.media.photos}
-                  puzzle={formData.media.puzzle}
-                  existingMedia={existingMedia}
-                  onUpdateOpeningPhoto={updateOpeningPhoto}
-                  onRemoveOpeningPhoto={removeOpeningPhoto}
-                  onUpdatePromptPhoto={updatePromptPhoto}
-                  onUpdatePromptPhotoCaption={updatePromptPhotoCaption}
-                  onRemovePromptPhoto={removePromptPhoto}
-                  onAddPhotoFiles={addPhotoFiles}
-                  onUpdatePhotoCaption={updatePhotoCaption}
-                  onRemovePhoto={removePhoto}
-                  onSelectGalleryPhotoForPuzzle={selectGalleryPhotoForPuzzle}
-                  onAddSeparatePuzzlePhoto={addSeparatePuzzlePhoto}
-                  onUpdatePuzzlePhotoCaption={updatePuzzlePhotoCaption}
-                  onRemoveSeparatePuzzlePhoto={removeSeparatePuzzlePhoto}
-                  onClearPuzzleSelection={clearPuzzleSelection}
-                />
-              ) : currentStep.id === "musicVoice" ? (
-                <MusicVoiceStep
-                  music={formData.musicVoice.music}
-                  voiceNote={formData.musicVoice.voiceNote}
-                  voiceNoteSkip={formData.confirmedSkips.voiceNote}
-                  onUpdateMusicField={updateMusicField}
-                  onAddVoiceNoteFile={addVoiceNoteFile}
-                  onRemoveVoiceNote={removeVoiceNote}
-                  onRequestVoiceNoteSkip={requestVoiceNoteSkip}
-                  onConfirmVoiceNoteSkip={confirmVoiceNoteSkip}
-                  onUndoVoiceNoteSkip={undoVoiceNoteSkip}
-                />
-              ) : currentStep.id === "timeline" ? (
-                <TimelineStep
-                  items={formData.timeline}
-                  onAddItem={addTimelineItem}
-                  onUpdateItem={updateTimelineItem}
-                  onUpdateItemPhoto={updateTimelineItemPhoto}
-                  onRemoveItemPhoto={removeTimelineItemPhoto}
-                  onRemoveItem={removeTimelineItem}
-                  onMoveItem={moveTimelineItem}
-                />
-              ) : currentStep.id === "letters" ? (
-                <LettersStep
-                  letters={formData.letters}
-                  loveLetterPhoto={formData.media.loveLetterPhoto}
-                  pendingDefaultConfirmation={pendingDefaultConfirmation}
-                  onAddLoveLetter={addLoveLetter}
-                  onAddOpenWhenLetter={addOpenWhenLetter}
-                  onAddDefaultOpenWhenLetters={addDefaultOpenWhenLetters}
-                  onUpdateLetter={updateLetterItem}
-                  onRestoreLoveLetterDefault={restoreLoveLetterDefaultText}
-                  onConfirmEditableDefault={confirmEditableDefaultContent}
-                  onReturnToEditableDefault={returnToEditableDefaultContent}
-                  onUpdateLoveLetterPhoto={updateLoveLetterPhoto}
-                  onRemoveLoveLetterPhoto={removeLoveLetterPhoto}
-                  onRemoveLetter={removeLetterItem}
-                  onMoveLetter={moveLetterItem}
-                />
-              ) : currentStep.id === "review" ? (
-                <ReviewSubmitStep
+                <ConfirmedSkipNotices
+                  sections={getStepOptionalSections(currentStep.id)}
                   formData={formData}
-                  existingMedia={existingMedia}
-                  onEditStep={goToStepById}
-                  onSubmit={handleSubmitSetup}
-                  isSubmitting={isSubmittingSetup}
-                  submitError={submitError}
-                  legalConsentErrors={legalConsentErrors}
-                  onUpdateLegalConsent={updateLegalConsent}
+                  onUndoSkip={undoSectionSkip}
                 />
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {getStepPlaceholderCards(currentStep.id).map((card) => (
-                    <StepPlaceholder
-                      key={`${currentStep.id}-${card.title}`}
-                      title={card.title}
-                      description={card.description}
-                    />
-                  ))}
-                </div>
-              )}
 
-              <pre className="sr-only" aria-hidden="true">
-                {JSON.stringify(formData, null, 2)}
-              </pre>
+                {currentStep.id === "contactCouple" ? (
+                  <ContactCoupleStep
+                    value={formData.contactCouple}
+                    siteAccess={formData.siteAccess}
+                    onChange={updateContactCoupleField}
+                    onSiteAccessChange={updateSiteAccessField}
+                    fieldErrors={displayedValidationNotice?.contactFieldErrors ?? {}}
+                    siteAccessErrors={displayedValidationNotice?.siteAccessFieldErrors ?? {}}
+                  />
+                ) : currentStep.id === "photosPuzzle" ? (
+                  <PhotosPuzzleStep
+                    contactCouple={formData.contactCouple}
+                    openingPhotos={formData.media.openingPhotos}
+                    promptPhotos={formData.media.promptPhotos}
+                    photos={formData.media.photos}
+                    puzzle={formData.media.puzzle}
+                    existingMedia={existingMedia}
+                    onUpdateOpeningPhoto={updateOpeningPhoto}
+                    onRemoveOpeningPhoto={removeOpeningPhoto}
+                    onUpdatePromptPhoto={updatePromptPhoto}
+                    onUpdatePromptPhotoCaption={updatePromptPhotoCaption}
+                    onRemovePromptPhoto={removePromptPhoto}
+                    onAddPhotoFiles={addPhotoFiles}
+                    onUpdatePhotoCaption={updatePhotoCaption}
+                    onRemovePhoto={removePhoto}
+                    onSelectGalleryPhotoForPuzzle={selectGalleryPhotoForPuzzle}
+                    onAddSeparatePuzzlePhoto={addSeparatePuzzlePhoto}
+                    onUpdatePuzzlePhotoCaption={updatePuzzlePhotoCaption}
+                    onRemoveSeparatePuzzlePhoto={removeSeparatePuzzlePhoto}
+                    onClearPuzzleSelection={clearPuzzleSelection}
+                  />
+                ) : currentStep.id === "musicVoice" ? (
+                  <MusicVoiceStep
+                    music={formData.musicVoice.music}
+                    voiceNote={formData.musicVoice.voiceNote}
+                    voiceNoteSkip={formData.confirmedSkips.voiceNote}
+                    onUpdateMusicField={updateMusicField}
+                    onAddVoiceNoteFile={addVoiceNoteFile}
+                    onRemoveVoiceNote={removeVoiceNote}
+                    onRequestVoiceNoteSkip={requestVoiceNoteSkip}
+                    onConfirmVoiceNoteSkip={confirmVoiceNoteSkip}
+                    onUndoVoiceNoteSkip={undoVoiceNoteSkip}
+                  />
+                ) : currentStep.id === "timeline" ? (
+                  <TimelineStep
+                    items={formData.timeline}
+                    onAddItem={addTimelineItem}
+                    onUpdateItem={updateTimelineItem}
+                    onUpdateItemPhoto={updateTimelineItemPhoto}
+                    onRemoveItemPhoto={removeTimelineItemPhoto}
+                    onRemoveItem={removeTimelineItem}
+                    onMoveItem={moveTimelineItem}
+                  />
+                ) : currentStep.id === "letters" ? (
+                  <LettersStep
+                    letters={formData.letters}
+                    loveLetterPhoto={formData.media.loveLetterPhoto}
+                    pendingDefaultConfirmation={pendingDefaultConfirmation}
+                    onAddLoveLetter={addLoveLetter}
+                    onAddOpenWhenLetter={addOpenWhenLetter}
+                    onAddDefaultOpenWhenLetters={addDefaultOpenWhenLetters}
+                    onUpdateLetter={updateLetterItem}
+                    onRestoreLoveLetterDefault={restoreLoveLetterDefaultText}
+                    onConfirmEditableDefault={confirmEditableDefaultContent}
+                    onReturnToEditableDefault={returnToEditableDefaultContent}
+                    onUpdateLoveLetterPhoto={updateLoveLetterPhoto}
+                    onRemoveLoveLetterPhoto={removeLoveLetterPhoto}
+                    onRemoveLetter={removeLetterItem}
+                    onMoveLetter={moveLetterItem}
+                  />
+                ) : currentStep.id === "review" ? (
+                  <ReviewSubmitStep
+                    formData={formData}
+                    existingMedia={existingMedia}
+                    onEditStep={goToStepById}
+                    onSubmit={handleSubmitSetup}
+                    isSubmitting={isSubmittingSetup}
+                    submitError={submitError}
+                    legalConsentErrors={legalConsentErrors}
+                    onUpdateLegalConsent={updateLegalConsent}
+                    isSubmittedEdit={isSubmittedEditSession}
+                    editStatus={setupEditStatus}
+                    isSubmittedEditOpen={isSubmittedEditOpen}
+                    submitDisabled={finalSubmitUiState.disabled}
+                    submitDisabledReason={finalSubmitUiState.reason}
+                    submitButtonRef={reviewSubmitButtonRef}
+                  />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {getStepPlaceholderCards(currentStep.id).map((card) => (
+                      <StepPlaceholder
+                        key={`${currentStep.id}-${card.title}`}
+                        title={card.title}
+                        description={card.description}
+                      />
+                    ))}
+                  </div>
+                )}
 
-              <div className="sticky bottom-0 z-20 -mx-3 mt-8 border-t border-rose-100 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(244,63,94,0.08)] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none">
-                <div className="mb-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleClearDraft}
-                    className="min-h-10 max-w-full rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-                  >
-                    Taslağı temizle
-                  </button>
+                <pre className="sr-only" aria-hidden="true">
+                  {JSON.stringify(formData, null, 2)}
+                </pre>
+
+                <div className="sticky bottom-0 z-20 -mx-3 mt-8 border-t border-rose-100 bg-white/95 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(244,63,94,0.08)] backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:shadow-none">
+                  <div className="mb-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleClearDraft}
+                      className="min-h-10 max-w-full rounded-full border border-rose-200 bg-white px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                    >
+                      Taslağı temizle
+                    </button>
+                  </div>
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={goToPreviousStep}
+                      disabled={isFirstStep}
+                      className="min-h-12 w-full rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+                    >
+                      Geri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNextStep}
+                      disabled={isLastStep}
+                      className="min-h-12 w-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+                    >
+                      Devam et
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <button
-                    type="button"
-                    onClick={goToPreviousStep}
-                    disabled={isFirstStep}
-                    className="min-h-12 w-full rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
-                  >
-                    Geri
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToNextStep}
-                    disabled={isLastStep}
-                    className="min-h-12 w-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
-                  >
-                    Devam et
-                  </button>
-                </div>
-              </div>
-            </section>
-          </div>
+              </section>
+            </div>
+          </section>
         </section>
-      </section>
-    </main>
+      </main>
+      {pendingEditSubmitConfirmation && (
+        <EditSubmitConfirmationDialog
+          editStatus={pendingEditSubmitConfirmation}
+          isSubmitting={isSubmittingSetup || isConfirmingEditSubmit}
+          returnFocusRef={reviewSubmitButtonRef}
+          onCancel={() => setPendingEditSubmitConfirmation(null)}
+          onConfirm={() => void handleSubmitSetup({ confirmedEditSubmit: true })}
+        />
+      )}
+    </>
   );
 }
 
@@ -2375,6 +2501,102 @@ function getStepIntro(stepId: StoryOfUsSetupStepId) {
     case "review":
       return "Göndermeden önce her şeyi sakince kontrol edin. Gönderimden sonra 3 saatlik düzenleme süreniz başlar.";
   }
+}
+
+function EditSubmitConfirmationDialog({
+  editStatus,
+  isSubmitting,
+  returnFocusRef,
+  onCancel,
+  onConfirm,
+}: {
+  editStatus: StoryOfUsSetupEditStatusInput;
+  isSubmitting: boolean;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const copy = getStoryOfUsEditSubmissionConfirmationCopy(editStatus);
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    cancelButtonRef.current?.focus();
+    const returnFocusElement = returnFocusRef.current;
+
+    return () => {
+      returnFocusElement?.focus();
+    };
+  }, [returnFocusRef]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (!shouldCloseStoryOfUsEditSubmitDialogOnEscape(isSubmitting)) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      onCancel();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSubmitting, onCancel]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-rose-950/30 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="storyofus-edit-submit-title"
+      aria-describedby="storyofus-edit-submit-description"
+    >
+      <section className="w-full max-w-md rounded-[2rem] border border-white/80 bg-white p-6 text-center shadow-2xl shadow-rose-950/20">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-rose-100 bg-rose-50 text-xl">
+          💌
+        </div>
+        <h2 id="storyofus-edit-submit-title" className="mt-4 text-2xl font-bold text-rose-950">
+          {copy.title}
+        </h2>
+        <p
+          id="storyofus-edit-submit-description"
+          className="mt-3 text-sm leading-7 text-rose-950/65"
+        >
+          {copy.body}
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+          <button
+            ref={cancelButtonRef}
+            type="button"
+            onClick={() => {
+              if (!isSubmitting) {
+                onCancel();
+              }
+            }}
+            disabled={isSubmitting}
+            className="min-h-11 rounded-full border border-rose-200 bg-white px-5 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="min-h-11 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {isSubmitting ? "Gönderiliyor..." : copy.confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function getStepPlaceholderCards(stepId: StoryOfUsSetupStepId): PlaceholderCard[] {
@@ -2697,6 +2919,40 @@ function validateLegalConsents(
   }
 
   return errors;
+}
+
+function getFinalSubmitValidationBlocker(formData: StoryOfUsSetupFormData) {
+  const contactValidation = validateCurrentStep("contactCouple", formData);
+
+  if (contactValidation.blockingErrors.length > 0) {
+    return "Devam etmeden önce temel iletişim bilgilerini tamamlamanız gerekiyor.";
+  }
+
+  const lettersValidation = validateCurrentStep("letters", formData);
+
+  if (lettersValidation.blockingErrors.length > 0) {
+    return "Devam etmeden önce mektup fotoğrafını yüklemeniz gerekiyor.";
+  }
+
+  const defaultConfirmation = getPendingEditableDefaultConfirmation(
+    "letters",
+    formData.letters,
+    formData.editableDefaultContent,
+  );
+
+  if (defaultConfirmation) {
+    return "Devam etmeden önce varsayılan mektup metni tercihinizi onaylamanız gerekiyor.";
+  }
+
+  if (getFullSetupWarnings(formData).length > 0) {
+    return "Devam etmeden önce eksik bırakılan bölümleri tamamlamanız veya istemediğinizi onaylamanız gerekiyor.";
+  }
+
+  if (validateLegalConsents(formData.legalConsents, formData.status === "draft").length > 0) {
+    return "Gönderim için onaylarınızı tamamlamamız gerekiyor.";
+  }
+
+  return null;
 }
 
 function isSectionConfirmedSkipped(
@@ -3548,6 +3804,34 @@ function formatExistingMediaName(media: StoryOfUsSetupAccessExistingMediaItem) {
     media.originalFilename || media.storagePath.split("/").pop() || "Yüklenmiş dosya";
   const sizeText = media.sizeBytes > 0 ? ` · ${formatFileSize(media.sizeBytes)}` : "";
   return `${filename}${sizeText}`;
+}
+
+function getSetupEditStatus(
+  access: Extract<SetupAccessUiState, { status: "ready" | "edit_locked" }>,
+): StoryOfUsSetupEditStatusInput {
+  return {
+    editsUsed: access.editsUsed,
+    editLimit: access.editLimit,
+    editableUntil: access.editableUntil,
+    refundRequestUntil: access.refundRequestUntil,
+    editingClosedAt: access.editingClosedAt,
+    editingClosedReason: access.editingClosedReason,
+    status: access.status === "ready" ? access.initialData.status : access.submissionStatus,
+  };
+}
+
+function getSubmissionResultEditStatus(
+  result: StoryOfUsSubmissionResult,
+): StoryOfUsSetupEditStatusInput {
+  return {
+    editsUsed: result.editsUsed,
+    editLimit: result.editLimit,
+    editableUntil: result.editableUntil,
+    refundRequestUntil: result.refundRequestUntil,
+    editingClosedAt: result.editingClosedAt,
+    editingClosedReason: result.editingClosedReason,
+    status: result.status,
+  };
 }
 
 function formatEditableUntil(value: string) {
@@ -4919,15 +5203,37 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
           </>
         ),
       };
-    case "edit_locked":
+    case "edit_locked": {
+      const closedCopy = getStoryOfUsEditingClosedCopy(getSetupEditStatus(access));
       return {
         icon: "💌",
-        title: "Düzenleme süreniz doldu.",
-        body: "Kurulum bilgileriniz alınmış görünüyor. Düzenleme süresi sona erdiği için form artık değiştirilemez.",
-        note: access.editableUntil
-          ? `Son düzenleme zamanı: ${formatEditableUntil(access.editableUntil)}. Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.`
-          : "Bu aşamadan sonra web sitenizin hazırlanma süreci başlar.",
+        title: closedCopy.title,
+        body: (
+          <>
+            {closedCopy.body}{" "}
+            {access.editingClosedReason === "admin_locked" && (
+              <a
+                href="mailto:contact@leony.tech"
+                className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
+              >
+                contact@leony.tech
+              </a>
+            )}
+          </>
+        ),
+        note: [
+          `Düzenleme hakkı: ${getStoryOfUsEditUsageLabel(access.editsUsed, access.editLimit)}.`,
+          access.editableUntil
+            ? `Düzenleme sonu: ${formatEditableUntil(access.editableUntil)}.`
+            : null,
+          access.refundRequestUntil
+            ? `İade talebi süreniz ${formatEditableUntil(access.refundRequestUntil)} tarihine kadar devam eder.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
       };
+    }
     case "error":
       return {
         icon: "!",
@@ -4938,12 +5244,15 @@ function getSetupAccessScreenContent(access: SetupAccessUiState) {
 }
 
 function StoryOfUsSubmittedReentryScreen({
-  editableUntil,
+  editStatus,
   onEnterEditMode,
 }: {
-  editableUntil: string | null;
+  editStatus: StoryOfUsSetupEditStatusInput;
   onEnterEditMode: () => void;
 }) {
+  const canEdit = isStoryOfUsEditingOpen(editStatus);
+  const usageLabel = getStoryOfUsEditUsageLabel(editStatus.editsUsed, editStatus.editLimit);
+
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
       <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
@@ -4963,26 +5272,37 @@ function StoryOfUsSubmittedReentryScreen({
                 Bilgilerinizi aldık 💌
               </h1>
               <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-rose-950/65 sm:text-base">
-                Kurulum formunuz başarıyla gönderildi. Aşağıdaki saate kadar bilgilerinizi yeniden
-                düzenleyebilirsiniz.
+                Kurulum formunuz başarıyla gönderildi. Bilgilerinizi ilk gönderiminizden sonraki 3
+                saat içinde en fazla 2 kez düzenleyebilirsiniz.
               </p>
             </div>
 
             <div className="rounded-3xl border border-rose-100 bg-[#fffaf8] p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/50">
-              {editableUntil ? (
-                <>
-                  <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
-                    Son düzenleme ve iade talebi zamanı
-                  </span>
-                  <span className="mt-2 block text-2xl font-bold text-rose-800 sm:text-3xl">
-                    {formatEditableUntil(editableUntil)}
-                  </span>
-                  <span className="mt-3 block">
-                    Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.
-                  </span>
-                </>
-              ) : (
-                "Bilgilerinizi 3 saatlik düzenleme süresi içinde güncelleyebilirsiniz."
+              <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">
+                Düzenleme hakkı
+              </span>
+              <span className="mt-2 block text-3xl font-bold text-rose-800 sm:text-4xl">
+                {usageLabel}
+              </span>
+              <span className="mt-3 block">
+                Her başarılı kaydetme bir düzenleme hakkı kullanır. Açmak, yenilemek, otomatik
+                taslak kaydı veya fotoğraf yüklemek hak kullanmaz.
+              </span>
+              {editStatus.editableUntil && (
+                <span className="mt-3 block font-semibold text-rose-800">
+                  Düzenleme sonu: {formatEditableUntil(editStatus.editableUntil)}
+                </span>
+              )}
+              {editStatus.editableUntil && (
+                <span className="mt-1 block">
+                  {getRemainingEditWindowText(editStatus.editableUntil)}
+                </span>
+              )}
+              {editStatus.refundRequestUntil && (
+                <span className="mt-3 block">
+                  İade talebi süreniz {formatEditableUntil(editStatus.refundRequestUntil)} tarihine
+                  kadar ayrıca devam eder.
+                </span>
               )}
             </div>
 
@@ -4998,13 +5318,15 @@ function StoryOfUsSubmittedReentryScreen({
             </div>
 
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={onEnterEditMode}
-                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
-              >
-                Bilgilerimi düzenle
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={onEnterEditMode}
+                  className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+                >
+                  Bilgilerimi düzenle
+                </button>
+              )}
               <Link
                 to={storyOfUsDemoCtaConfig.mainPath}
                 className="rounded-full border border-rose-200 bg-white/85 px-6 py-3 text-sm font-semibold text-rose-700 shadow-sm shadow-rose-100 transition hover:border-rose-300 hover:bg-rose-50"
@@ -5020,15 +5342,18 @@ function StoryOfUsSubmittedReentryScreen({
 }
 
 function StoryOfUsSetupSuccessScreen({
-  editableUntil,
   submissionKind,
+  editStatus,
   onEditAgain,
 }: {
-  editableUntil: string | null;
   submissionKind: StoryOfUsSetupSubmissionKind;
+  editStatus: StoryOfUsSetupEditStatusInput;
   onEditAgain: () => void;
 }) {
-  const copy = getStoryOfUsSetupSuccessCopy(submissionKind);
+  const copy = getStoryOfUsSetupSuccessCopy(submissionKind, editStatus);
+  const canEditAgain = isStoryOfUsEditingOpen(editStatus);
+  const usageLabel = getStoryOfUsEditUsageLabel(editStatus.editsUsed, editStatus.editLimit);
+  const remainingEdits = getStoryOfUsRemainingEditCount(editStatus.editsUsed, editStatus.editLimit);
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#fff7f3_0%,#fff1f6_52%,#fffaf7_100%)] px-4 py-8 text-[#3d2323] sm:px-6 sm:py-12">
@@ -5062,9 +5387,8 @@ function StoryOfUsSetupSuccessScreen({
                 adresinden bize yazabilirsiniz.
               </p>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-rose-950/60 sm:text-base">
-                {editableUntil
-                  ? `Bilgilerinizi ${formatEditableUntil(editableUntil)} tarihine kadar düzenleyebilirsiniz. Aynı süre içinde iade talebinizi bize iletebilirsiniz.`
-                  : "Bilgilerinizi 3 saatlik düzenleme süresi içinde güncelleyebilirsiniz."}
+                Şu an kullandığınız düzenleme hakkı:{" "}
+                <span className="font-semibold text-rose-700">{usageLabel}</span>
               </p>
             </div>
 
@@ -5073,18 +5397,23 @@ function StoryOfUsSetupSuccessScreen({
               <span className="mt-2 block font-semibold text-rose-700">
                 Final site giriş şifreniz kaydedildi.
               </span>
-              {editableUntil && (
+              {editStatus.editableUntil && (
                 <span className="mt-2 block font-semibold text-rose-700">
-                  Son düzenleme ve iade talebi zamanı: {formatEditableUntil(editableUntil)}
+                  Düzenleme sonu: {formatEditableUntil(editStatus.editableUntil)}
+                </span>
+              )}
+              {remainingEdits > 0 && canEditAgain && (
+                <span className="mt-2 block text-rose-950/60">
+                  Kalan düzenleme hakkınız: {remainingEdits}.
                 </span>
               )}
             </div>
 
-            {editableUntil && (
+            {editStatus.refundRequestUntil && (
               <div className="rounded-3xl border border-pink-100 bg-white/80 p-5 text-sm leading-7 text-rose-950/65 shadow-sm shadow-rose-100/40">
-                İade talebinizin bu süre dolmadan Leony’ye ulaşması gerekir ve talep bu politika
-                kapsamında işleme alınır. Süre sona erdiğinde bilgileriniz kilitlenir ve
-                kişiselleştirilmiş web sitenizin hazırlanmasına başlanır. Bize{" "}
+                İade talebi süreniz {formatEditableUntil(editStatus.refundRequestUntil)} tarihine
+                kadar devam eder. Düzenleme hakkınız tamamlanmış olsa bile iade talebi süresi ayrı
+                değerlendirilir. Bize{" "}
                 <a
                   href="mailto:contact@leony.tech"
                   className="font-semibold text-rose-600 underline decoration-rose-300 underline-offset-4 transition hover:text-rose-700"
@@ -5099,15 +5428,17 @@ function StoryOfUsSetupSuccessScreen({
               Başvuru durumunuz: Alındı
             </div>
 
-            <div className="flex justify-center pt-1">
-              <button
-                type="button"
-                onClick={onEditAgain}
-                className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
-              >
-                Bilgileri düzenle
-              </button>
-            </div>
+            {canEditAgain && (
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={onEditAgain}
+                  className="rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300"
+                >
+                  Bilgilerimi düzenle
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -5124,6 +5455,12 @@ function ReviewSubmitStep({
   submitError,
   legalConsentErrors,
   onUpdateLegalConsent,
+  isSubmittedEdit,
+  editStatus,
+  isSubmittedEditOpen,
+  submitDisabled,
+  submitDisabledReason,
+  submitButtonRef,
 }: {
   formData: StoryOfUsSetupFormData;
   existingMedia: StoryOfUsSetupAccessExistingMediaItem[];
@@ -5133,6 +5470,12 @@ function ReviewSubmitStep({
   submitError: string | null;
   legalConsentErrors: string[];
   onUpdateLegalConsent: (consentKey: LegalConsentKey, accepted: boolean) => void;
+  isSubmittedEdit: boolean;
+  editStatus: StoryOfUsSetupEditStatusInput | null;
+  isSubmittedEditOpen: boolean;
+  submitDisabled: boolean;
+  submitDisabledReason: string | null;
+  submitButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false);
   const selectedGalleryPuzzlePhoto = getSelectedPuzzlePhoto(
@@ -5169,6 +5512,15 @@ function ReviewSubmitStep({
   const areLegalConsentsComplete =
     validateLegalConsents(formData.legalConsents, shouldRequireServiceStartConsent).length === 0;
   const skippedImportantFields = getSkippedImportantFieldReviewItems(formData);
+  const submitButtonLabel = isSubmitting
+    ? "Gönderiliyor..."
+    : isSubmittedEdit &&
+        editStatus &&
+        getStoryOfUsRemainingEditCount(editStatus.editsUsed, editStatus.editLimit) <= 1
+      ? "Son düzenlemeyi gönder"
+      : isSubmittedEdit
+        ? "Düzenlemeleri kaydet"
+        : "Bilgileri gönder";
 
   return (
     <div className="grid gap-5">
@@ -5644,6 +5996,25 @@ function ReviewSubmitStep({
           Bilgilerinizi güvenli şekilde alacağız. Fotoğraf ve ses dosyaları yalnızca gönderim
           sırasında sunucu tarafında yüklenecek.
         </p>
+        {isSubmittedEdit && editStatus && (
+          <div className="mx-auto mt-4 max-w-2xl rounded-3xl border border-fuchsia-100 bg-white/85 p-4 text-left text-sm leading-6 text-rose-950/65">
+            <p className="font-semibold text-fuchsia-700">
+              Düzenleme hakkı:{" "}
+              {getStoryOfUsEditUsageLabel(editStatus.editsUsed, editStatus.editLimit)}
+            </p>
+            <p className="mt-1">{getStoryOfUsEditSubmitNotice(editStatus)}</p>
+            {editStatus.editableUntil && (
+              <p className="mt-1">
+                Düzenleme sonu: {formatEditableUntil(editStatus.editableUntil)}
+              </p>
+            )}
+            {!isSubmittedEditOpen && (
+              <p className="mt-2 font-semibold text-rose-700">
+                Düzenleme süreniz veya hakkınız sona erdiği için gönderim yapılamaz.
+              </p>
+            )}
+          </div>
+        )}
         <p className="mx-auto mt-3 max-w-2xl text-xs leading-5 text-rose-950/50">
           Eksik bıraktığınız alanlar varsa bir sonraki validation adımında size nazikçe
           hatırlatacağız.
@@ -5653,13 +6024,19 @@ function ReviewSubmitStep({
             {submitError}
           </div>
         )}
+        {!submitError && submitDisabledReason && (
+          <div className="mx-auto mt-5 max-w-xl rounded-3xl border border-rose-200 bg-white/85 p-4 text-sm leading-6 text-rose-700">
+            {submitDisabledReason}
+          </div>
+        )}
         <button
+          ref={submitButtonRef}
           type="button"
           onClick={onSubmit}
-          disabled={isSubmitting}
+          disabled={submitDisabled || (isSubmittedEdit && !isSubmittedEditOpen)}
           className="mt-5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200 transition hover:shadow-rose-300 disabled:cursor-not-allowed disabled:opacity-55"
         >
-          {isSubmitting ? "Gönderiliyor..." : "Bilgileri gönder"}
+          {submitButtonLabel}
         </button>
       </section>
     </div>

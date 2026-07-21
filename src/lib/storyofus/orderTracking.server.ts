@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { normalizeTurkeyMobilePhone } from "./contactValidation";
+import {
+  getStoryOfUsEditUsageLabel,
+  getStoryOfUsEditingStateDescription,
+  getStoryOfUsEditingStateLabel,
+  shouldShowStoryOfUsEditDeadline,
+} from "./setupSuccessCopy";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 type OrderTrackingInput = {
@@ -53,6 +59,10 @@ type OrderTrackingFoundResult = {
   paidAt: string | null;
   submittedAt: string | null;
   editableUntil: string | null;
+  refundRequestUntil: string | null;
+  editUsageLabel: string;
+  editingStatusLabel: string;
+  editingStatusDescription: string;
   deliveredAt: string | null;
   finalSiteUrl: string | null;
 };
@@ -106,6 +116,11 @@ export const getStoryOfUsOrderTracking = createServerFn({ method: "POST" })
           "paid_at",
           "submitted_at",
           "editable_until",
+          "refund_request_until",
+          "edits_used",
+          "edit_limit",
+          "editing_closed_at",
+          "editing_closed_reason",
           "delivered_at",
           "final_site_url",
           "created_at",
@@ -123,6 +138,18 @@ export const getStoryOfUsOrderTracking = createServerFn({ method: "POST" })
     }
 
     const customerStatus = getCustomerStatus(submission);
+    const editStatus = {
+      editsUsed: numberValue(submission.edits_used),
+      editLimit: numberValue(submission.edit_limit) || 2,
+      editableUntil: nullableString(submission.editable_until),
+      refundRequestUntil: nullableString(submission.refund_request_until),
+      editingClosedAt: nullableString(submission.editing_closed_at),
+      editingClosedReason: nullableString(submission.editing_closed_reason),
+      status: stringValue(submission.status),
+    };
+    const visibleEditableUntil = shouldShowStoryOfUsEditDeadline(editStatus)
+      ? editStatus.editableUntil
+      : null;
 
     return {
       status: "found",
@@ -138,7 +165,11 @@ export const getStoryOfUsOrderTracking = createServerFn({ method: "POST" })
       setupLinkSentAt: nullableString(submission.setup_link_sent_at),
       paidAt: nullableString(submission.paid_at),
       submittedAt: nullableString(submission.submitted_at),
-      editableUntil: nullableString(submission.editable_until),
+      editableUntil: visibleEditableUntil,
+      refundRequestUntil: nullableString(submission.refund_request_until),
+      editUsageLabel: getStoryOfUsEditUsageLabel(editStatus.editsUsed, editStatus.editLimit),
+      editingStatusLabel: getStoryOfUsEditingStateLabel(editStatus),
+      editingStatusDescription: getStoryOfUsEditingStateDescription(editStatus),
       deliveredAt: nullableString(submission.delivered_at),
       finalSiteUrl:
         (customerStatus.id === "ready" || customerStatus.id === "delivered") &&
@@ -182,7 +213,7 @@ function doesContactMatch(
 
   return Boolean(
     (normalizedEmail && storedEmail === normalizedEmail) ||
-      (normalizedPhone && storedPhone === normalizedPhone),
+    (normalizedPhone && storedPhone === normalizedPhone),
   );
 }
 
@@ -203,7 +234,10 @@ function getCustomerStatus(submission: Record<string, unknown>): {
     return refundCustomerStatus;
   }
 
-  if (["failed", "cancelled", "refunded"].includes(paymentStatus) || internalStatus === "archived") {
+  if (
+    ["failed", "cancelled", "refunded"].includes(paymentStatus) ||
+    internalStatus === "archived"
+  ) {
     return {
       id: "cancelled",
       label: "İptal edildi",
@@ -414,4 +448,8 @@ function nullableString(value: unknown) {
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }

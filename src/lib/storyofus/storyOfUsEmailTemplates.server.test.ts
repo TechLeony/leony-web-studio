@@ -59,7 +59,7 @@ test("order_created email includes private setup URL and prefilled tracking URL"
   assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
 });
 
-test("setup_submitted email includes edit deadline and final delivery expectation", () => {
+test("setup_submitted email includes 0/2 edit usage, edit deadline, and refund deadline", () => {
   const template = createStoryOfUsEmailTemplate({
     emailType: "setup_submitted",
     customerName: "Elif",
@@ -69,13 +69,20 @@ test("setup_submitted email includes edit deadline and final delivery expectatio
     trackOrderUrl: TRACK_ORDER_URL,
     editableUntil: "2026-07-20T08:25:00.000Z",
     editableUntilLabel: "20 Temmuz 2026 11:25",
+    refundRequestUntil: "2026-07-20T09:25:00.000Z",
+    refundRequestUntilLabel: "20 Temmuz 2026 12:25",
   });
 
   assert.match(template.subject, /bilgileriniz alındı/);
+  assert.match(template.html, /0\/2/);
+  assert.match(template.html, /en fazla 2 kez/);
+  assert.match(template.html, /otomatik taslak kaydı/);
   assert.match(template.html, /20 Temmuz 2026 11:25/);
+  assert.match(template.html, /20 Temmuz 2026 12:25/);
   assert.match(template.html, /24 saat içinde/);
   assert.match(template.html, new RegExp(escapeRegExp(SETUP_URL)));
   assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
+  assert.match(template.text, /Şu an kullandığınız düzenleme hakkı: 0\/2/);
 });
 
 test("final_site_ready email includes final URL and hint but never the passcode", () => {

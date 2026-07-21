@@ -34,6 +34,7 @@ type StoryOfUsEmailSubmissionRow = {
   status?: unknown;
   submitted_at?: unknown;
   editable_until?: unknown;
+  refund_request_until?: unknown;
   final_site_url?: unknown;
   delivered_at?: unknown;
   shopier_payment_url?: unknown;
@@ -268,6 +269,8 @@ async function createSetupSubmittedEmailInput(
   const trackingCode = normalizeTrackingCode(submission.tracking_code);
   const setupToken = normalizeUuid(submission.setup_token);
   const editableUntil = normalizeIsoTimestamp(submission.editable_until);
+  const refundRequestUntil =
+    normalizeIsoTimestamp(submission.refund_request_until) ?? editableUntil;
 
   if (
     !customerEmail ||
@@ -290,6 +293,8 @@ async function createSetupSubmittedEmailInput(
     trackOrderUrl: createStoryOfUsTrackOrderUrl(trackingCode),
     editableUntil,
     editableUntilLabel: formatStoryOfUsEmailDateTime(editableUntil),
+    refundRequestUntil,
+    refundRequestUntilLabel: formatStoryOfUsEmailDateTime(refundRequestUntil),
     idempotencyKey: claimed.eventKey,
   } satisfies SendStoryOfUsEmailInput;
 }
@@ -311,6 +316,7 @@ async function loadEmailSubmission(
         "status",
         "submitted_at",
         "editable_until",
+        "refund_request_until",
         "final_site_url",
         "delivered_at",
         "shopier_payment_url",

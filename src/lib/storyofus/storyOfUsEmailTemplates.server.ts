@@ -33,6 +33,8 @@ export type StoryOfUsSetupSubmittedTemplateInput = {
   trackOrderUrl: string;
   editableUntil: string;
   editableUntilLabel: string;
+  refundRequestUntil?: string;
+  refundRequestUntilLabel?: string;
 };
 
 export type StoryOfUsFinalSiteReadyTemplateInput = {
@@ -190,6 +192,9 @@ function createSetupSubmittedTemplate(
   const safeSetupUrl = escapeHtml(input.setupUrl);
   const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
   const safeEditableUntil = escapeHtml(input.editableUntilLabel);
+  const safeRefundRequestUntil = escapeHtml(
+    input.refundRequestUntilLabel || input.editableUntilLabel,
+  );
   const subject = getStoryOfUsEmailTemplateSubject("setup_submitted", input.orderReference);
 
   return {
@@ -203,7 +208,10 @@ function createSetupSubmittedTemplate(
         <p>Merhaba ${safeCustomerName},</p>
         <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs kurulum bilgileriniz bize ulaştı.</p>
         <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
-        <p>Bilgilerinizi <strong>${safeEditableUntil}</strong> tarihine kadar yeniden düzenleyebilirsiniz. Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.</p>
+        <p>Şu an kullandığınız düzenleme hakkı: <strong>0/2</strong>.</p>
+        <p>Bilgilerinizi ilk gönderiminizden sonraki 3 saat içinde en fazla 2 kez başarılı şekilde yeniden gönderebilirsiniz. Açmak, yenilemek, otomatik taslak kaydı veya fotoğraf yüklemek düzenleme hakkı kullanmaz.</p>
+        <p>Düzenleme sonu: <strong>${safeEditableUntil}</strong>.</p>
+        <p>İade talebi sonu: <strong>${safeRefundRequestUntil}</strong>.</p>
         <p>Düzenleme süresi dolduktan sonra inceleme ve hazırlık süreci başlar. Final StoryOfUs bağlantınızı düzenleme süresi bittikten sonra 24 saat içinde e-posta ile göndereceğiz.</p>
         ${renderButton("Bilgilerimi düzenle", safeSetupUrl)}
         ${renderSecondaryButton("Siparişimi takip et", safeTrackOrderUrl)}
@@ -218,7 +226,10 @@ function createSetupSubmittedTemplate(
       `${input.orderReference} numaralı StoryOfUs kurulum bilgileriniz bize ulaştı.`,
       `Sipariş takip kodunuz: ${input.trackingCode}`,
       "",
-      `Bilgilerinizi ${input.editableUntilLabel} tarihine kadar yeniden düzenleyebilirsiniz. Aynı süre, iade talebinizi bize iletebileceğiniz son zamanı da gösterir.`,
+      "Şu an kullandığınız düzenleme hakkı: 0/2.",
+      "Bilgilerinizi ilk gönderiminizden sonraki 3 saat içinde en fazla 2 kez başarılı şekilde yeniden gönderebilirsiniz. Açmak, yenilemek, otomatik taslak kaydı veya fotoğraf yüklemek düzenleme hakkı kullanmaz.",
+      `Düzenleme sonu: ${input.editableUntilLabel}.`,
+      `İade talebi sonu: ${input.refundRequestUntilLabel || input.editableUntilLabel}.`,
       "Düzenleme süresi dolduktan sonra inceleme ve hazırlık süreci başlar. Final StoryOfUs bağlantınızı düzenleme süresi bittikten sonra 24 saat içinde e-posta ile göndereceğiz.",
       "",
       `Düzenleme bağlantısı: ${input.setupUrl}`,

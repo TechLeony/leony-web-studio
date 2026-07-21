@@ -161,8 +161,23 @@ function TrackingResultCard({ result }: { result: Extract<TrackingResult, { stat
         <TrackingInfo label="Ödeme durumu" value={result.paymentStatusLabel} />
         <TrackingInfo label="Ödeme tarihi" value={formatTrackingDate(result.paidAt)} />
         <TrackingInfo label="Form gönderimi" value={formatTrackingDate(result.submittedAt)} />
-        <TrackingInfo label="Düzenleme sonu" value={formatTrackingDate(result.editableUntil)} />
+        <TrackingInfo label="Düzenleme hakkı" value={result.editUsageLabel} />
+        <TrackingInfo label="Düzenleme durumu" value={result.editingStatusLabel} />
+        {result.editableUntil && (
+          <TrackingInfo label="Düzenleme sonu" value={formatTrackingDate(result.editableUntil)} />
+        )}
+        {result.refundRequestUntil && (
+          <TrackingInfo
+            label="İade talebi sonu"
+            value={formatTrackingDate(result.refundRequestUntil)}
+          />
+        )}
         <TrackingInfo label="Teslim tarihi" value={formatTrackingDate(result.deliveredAt)} />
+      </div>
+
+      <div className="rounded-[1.5rem] border border-fuchsia-100 bg-fuchsia-50/55 p-4 text-sm leading-7 text-rose-950/65">
+        <p className="font-semibold text-fuchsia-700">{result.editingStatusLabel}</p>
+        <p className="mt-1">{result.editingStatusDescription}</p>
       </div>
 
       {result.finalSiteUrl && (
