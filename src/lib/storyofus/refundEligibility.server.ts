@@ -27,6 +27,7 @@ export type StoryOfUsRefundEligibilityInput = {
   paymentStatus: string | null;
   submissionStatus: string | null;
   editableUntil: string | null;
+  refundRequestUntil?: string | null;
   refundStatus: string | null;
 };
 
@@ -53,8 +54,7 @@ export function getStoryOfUsServiceStartConsent({
     acceptedAt,
     policyVersion: STORYOFUS_REFUND_POLICY_VERSION,
     serviceScheduledAt,
-    copy:
-      "Kurulum formunu gönderdikten sonra 3 saat boyunca bilgilerimi düzenleyebileceğimi ve bu süre içinde iade talebinde bulunabileceğimi biliyorum. Bu sürenin sonunda paylaştığım bilgilere göre kişiselleştirilmiş StoryOfUs hizmetinin hazırlanmasına başlanmasını açıkça talep ediyorum. Hazırlık başladıktan sonra yalnızca fikir değişikliğine dayalı standart cayma hakkının uygulanmayabileceği konusunda bilgilendirildim.",
+    copy: "Kurulum formunu gönderdikten sonra 3 saat boyunca bilgilerimi düzenleyebileceğimi ve bu süre içinde iade talebinde bulunabileceğimi biliyorum. Bu sürenin sonunda paylaştığım bilgilere göre kişiselleştirilmiş StoryOfUs hizmetinin hazırlanmasına başlanmasını açıkça talep ediyorum. Hazırlık başladıktan sonra yalnızca fikir değişikliğine dayalı standart cayma hakkının uygulanmayabileceği konusunda bilgilendirildim.",
   };
 }
 
@@ -84,7 +84,9 @@ export function getStoryOfUsRefundRequestEligibility(
     };
   }
 
-  if (!input.editableUntil) {
+  const refundDeadline = input.refundRequestUntil ?? input.editableUntil;
+
+  if (!refundDeadline) {
     return {
       eligible: false,
       reason: "missing_deadline",
@@ -98,9 +100,9 @@ export function getStoryOfUsRefundRequestEligibility(
     };
   }
 
-  const editableUntilTime = new Date(input.editableUntil).getTime();
+  const refundDeadlineTime = new Date(refundDeadline).getTime();
 
-  if (!Number.isFinite(editableUntilTime) || now.getTime() >= editableUntilTime) {
+  if (!Number.isFinite(refundDeadlineTime) || now.getTime() >= refundDeadlineTime) {
     return {
       eligible: false,
       reason: "window_closed",

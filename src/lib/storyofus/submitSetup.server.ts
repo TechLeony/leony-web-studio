@@ -1,10 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import {
-  STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
-  STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
-  getLoveLetterPhotoSubmitError,
-} from "./loveLetterRequirements";
+import { getLoveLetterPhotoSubmitError } from "./loveLetterRequirements";
 import { getLoveLetterDefaultContentSubmitError } from "./editableDefaultContent";
 import { enqueueStoryOfUsEmail } from "./emailOutbox.server";
 import { hashSitePasscode, validateSitePasscode } from "./passcode.server";
@@ -55,9 +51,6 @@ type SubmitPhotoMetadata = {
   mediaId?: string;
   storagePath?: string;
 };
-
-type StoryOfUsMediaSection =
-  "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
 
 type SubmitPuzzleSourceType = "gallery" | "separate";
 
@@ -162,9 +155,15 @@ type SubmitPayload = {
 type SubmissionResult = {
   submissionId: string;
   setupToken: string | null;
-  status: "submitted";
-  submissionKind: "first_submit" | "edit_submit";
+  status: "submitted" | "in_review";
+  submissionKind: "first_submit" | "edit_submit" | "edit_limit_reached";
   editableUntil: string | null;
+  refundRequestUntil: string | null;
+  editsUsed: number;
+  editLimit: number;
+  editingClosedAt: string | null;
+  editingClosedReason: string | null;
+  reviewReadyAt: string | null;
 };
 
 export const submitStoryOfUsSetup = createServerFn({ method: "POST" })
@@ -195,7 +194,7 @@ async function submitStoryOfUsSetupData(payload: SubmitPayload): Promise<Submiss
   const { data: submission, error: submissionError } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
     .select(
-      "id, setup_token, status, payment_status, refund_status, submitted_at, editable_until, site_passcode_hash, site_passcode_set_at",
+      "id, setup_token, status, payment_status, refund_status, submitted_at, editable_until, edits_used, edit_limit, editing_closed_at, site_passcode_hash, site_passcode_set_at",
     )
     .eq("setup_token", setupToken)
     .maybeSingle();
@@ -223,6 +222,10 @@ async function submitStoryOfUsSetupData(payload: SubmitPayload): Promise<Submiss
   }
 
   const isFirstSubmit = submission.status === "draft";
+  const editsUsed = numberValue(submission.edits_used);
+  const editLimit = Math.max(numberValue(submission.edit_limit), 1);
+  const editingClosedAt =
+    typeof submission.editing_closed_at === "string" ? submission.editing_closed_at : null;
   const effectiveEditableUntil = getEffectiveEditableUntil(
     typeof submission.editable_until === "string" ? submission.editable_until : null,
     typeof submission.submitted_at === "string" ? submission.submitted_at : null,
@@ -230,7 +233,9 @@ async function submitStoryOfUsSetupData(payload: SubmitPayload): Promise<Submiss
   const isEditableResubmit =
     submission.status === "submitted" &&
     Boolean(effectiveEditableUntil) &&
-    new Date(effectiveEditableUntil as string).getTime() >= now.getTime();
+    new Date(effectiveEditableUntil as string).getTime() > now.getTime() &&
+    editsUsed < editLimit &&
+    !editingClosedAt;
 
   if (!isFirstSubmit && !isEditableResubmit) {
     throw new Error("This setup form has already been submitted or is not editable.");
@@ -292,52 +297,70 @@ async function submitStoryOfUsSetupData(payload: SubmitPayload): Promise<Submiss
     ? submittedAt
     : submission.site_passcode_set_at;
 
-  await deleteExistingTextDetails(submissionId);
-  await prepareExistingMediaForSubmit(submissionId, payload, isFirstSubmit);
-  await insertCoupleDetails(submissionId, payload);
-  await insertMusicIfNeeded(submissionId, payload);
-  await updateSubmittedMediaMetadata(submissionId, payload);
-  await updatePuzzleSourceSelection(submissionId, payload);
-  await insertTimelineIfNeeded(submissionId, payload);
-  await insertLettersIfNeeded(submissionId, payload);
+  const finalizedSubmission = await finalizeSetupSubmissionWithRpc({
+    setupToken,
+    submissionSnapshot,
+    sitePasscodeHash: String(nextPasscodeHash),
+    sitePasscodeHint: passcodeValidation.normalizedHint,
+    sitePasscodeSetAt: String(nextPasscodeSetAt),
+    serviceStartConsent,
+  });
 
-  const { data: updatedSubmission, error: updateError } = await storyOfUsSupabaseAdmin
-    .from("storyofus_submissions")
-    .update({
-      order_reference: emptyToNull(payload.orderReference),
-      customer_email: emptyToNull(payload.contactCouple.customerEmail),
-      customer_name: emptyToNull(payload.contactCouple.customerName),
-      contact_phone: emptyToNull(payload.contactCouple.contactPhone),
-      status: "submitted",
-      confirmed_skips: payload.confirmedSkips,
-      legal_consents: payload.legalConsents,
-      submission_snapshot: submissionSnapshot,
-      submitted_at: isFirstSubmit ? submittedAt : submission.submitted_at,
-      editable_until: nextEditableUntil,
-      ...(serviceStartConsent ? { service_start_consent: serviceStartConsent } : {}),
-      last_resubmitted_at: isFirstSubmit ? null : submittedAt,
-      site_passcode_hash: nextPasscodeHash,
-      site_passcode_hint: emptyToNull(passcodeValidation.normalizedHint),
-      site_passcode_set_at: nextPasscodeSetAt,
-    })
-    .eq("id", submissionId)
-    .select("id, setup_token, status")
-    .single();
-
-  if (updateError || !updatedSubmission) {
-    throw new Error(`StoryOfUs submission could not be finalized: ${updateError?.message}`);
+  if (finalizedSubmission.submissionKind === "first_submit") {
+    await enqueueSetupSubmittedEmailQuietly(finalizedSubmission.submissionId);
   }
 
-  if (isFirstSubmit) {
-    await enqueueSetupSubmittedEmailQuietly(submissionId);
+  return finalizedSubmission;
+}
+
+type FinalizeSetupSubmissionInput = {
+  setupToken: string;
+  submissionSnapshot: ReturnType<typeof createSubmissionSnapshot>;
+  sitePasscodeHash: string;
+  sitePasscodeHint: string;
+  sitePasscodeSetAt: string;
+  serviceStartConsent: ReturnType<typeof getStoryOfUsServiceStartConsent> | undefined;
+};
+
+async function finalizeSetupSubmissionWithRpc({
+  setupToken,
+  submissionSnapshot,
+  sitePasscodeHash,
+  sitePasscodeHint,
+  sitePasscodeSetAt,
+  serviceStartConsent,
+}: FinalizeSetupSubmissionInput): Promise<SubmissionResult> {
+  const { data, error } = await storyOfUsSupabaseAdmin.rpc("storyofus_finalize_setup_submission", {
+    p_setup_token: setupToken,
+    p_submission_snapshot: submissionSnapshot,
+    p_site_passcode_hash: sitePasscodeHash,
+    p_site_passcode_hint: sitePasscodeHint,
+    p_site_passcode_set_at: sitePasscodeSetAt,
+    p_service_start_consent: serviceStartConsent ?? null,
+  });
+
+  if (error) {
+    throw new Error(`StoryOfUs submission could not be finalized: ${error.message}`);
+  }
+
+  const row = Array.isArray(data) ? data[0] : null;
+
+  if (!row) {
+    throw new Error("StoryOfUs submission could not be finalized.");
   }
 
   return {
-    submissionId,
-    setupToken: (updatedSubmission.setup_token as string | null) ?? null,
-    status: "submitted",
-    submissionKind: isFirstSubmit ? "first_submit" : "edit_submit",
-    editableUntil: nextEditableUntil,
+    submissionId: stringValue(row.submission_id),
+    setupToken: nullableString(row.setup_token),
+    status: normalizeSubmissionStatus(row.status),
+    submissionKind: normalizeSubmissionKind(row.submission_kind),
+    editableUntil: nullableString(row.editable_until),
+    refundRequestUntil: nullableString(row.refund_request_until),
+    editsUsed: numberValue(row.edits_used),
+    editLimit: numberValue(row.edit_limit),
+    editingClosedAt: nullableString(row.editing_closed_at),
+    editingClosedReason: nullableString(row.editing_closed_reason),
+    reviewReadyAt: nullableString(row.review_ready_at),
   };
 }
 
@@ -357,131 +380,6 @@ async function enqueueSetupSubmittedEmailQuietly(submissionId: string) {
     console.warn("[StoryOfUs setup]", {
       eventCode: "setup_submitted_email_enqueue_failed",
     });
-  }
-}
-
-async function deleteExistingTextDetails(submissionId: string) {
-  const tables = [
-    "storyofus_couple_details",
-    "storyofus_music",
-    "storyofus_timeline_items",
-    "storyofus_letters",
-  ];
-
-  for (const table of tables) {
-    const { error } = await storyOfUsSupabaseAdmin
-      .from(table)
-      .delete()
-      .eq("submission_id", submissionId);
-
-    if (error) {
-      throw new Error(`StoryOfUs existing ${table} rows could not be cleared: ${error.message}`);
-    }
-  }
-}
-
-async function prepareExistingMediaForSubmit(
-  submissionId: string,
-  payload: SubmitPayload,
-  isFirstSubmit: boolean,
-) {
-  if (isFirstSubmit) {
-    return;
-  }
-
-  if (isConfirmedSkipped(payload.confirmedSkips, "photos")) {
-    const { error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .delete()
-      .eq("submission_id", submissionId)
-      .eq("section", "gallery");
-
-    if (error) {
-      throw new Error(
-        `StoryOfUs existing gallery media rows could not be cleared: ${error.message}`,
-      );
-    }
-  }
-
-  if (isConfirmedSkipped(payload.confirmedSkips, "puzzle")) {
-    const { error: deleteError } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .delete()
-      .eq("submission_id", submissionId)
-      .eq("section", "puzzle");
-
-    if (deleteError) {
-      throw new Error(
-        `StoryOfUs existing puzzle media rows could not be cleared: ${deleteError.message}`,
-      );
-    }
-
-    const { error: updateError } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .update({ is_puzzle_source: false })
-      .eq("submission_id", submissionId)
-      .eq("is_puzzle_source", true);
-
-    if (updateError) {
-      throw new Error(
-        `StoryOfUs existing puzzle source could not be cleared: ${updateError.message}`,
-      );
-    }
-  }
-
-  if (isConfirmedSkipped(payload.confirmedSkips, "voiceNote")) {
-    const { error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .delete()
-      .eq("submission_id", submissionId)
-      .eq("section", "voice_note");
-
-    if (error) {
-      throw new Error(
-        `StoryOfUs existing voice note media rows could not be cleared: ${error.message}`,
-      );
-    }
-  }
-}
-
-async function insertCoupleDetails(submissionId: string, payload: SubmitPayload) {
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_couple_details").insert({
-    submission_id: submissionId,
-    customer_name: emptyToNull(payload.contactCouple.customerName),
-    customer_email: emptyToNull(payload.contactCouple.customerEmail),
-    contact_phone: emptyToNull(payload.contactCouple.contactPhone),
-    partner_name: emptyToNull(payload.contactCouple.partnerName),
-    couple_display_name: emptyToNull(payload.contactCouple.coupleDisplayName),
-    relationship_start_date: emptyToNull(payload.contactCouple.relationshipStartDate),
-    special_date_label: emptyToNull(payload.contactCouple.specialDateLabel),
-    recipient_nickname: emptyToNull(payload.contactCouple.recipientNickname),
-    relationship_story: emptyToNull(payload.contactCouple.relationshipStory),
-  });
-
-  if (error) {
-    throw new Error(`StoryOfUs couple details could not be saved: ${error.message}`);
-  }
-}
-
-async function insertMusicIfNeeded(submissionId: string, payload: SubmitPayload) {
-  if (
-    isConfirmedSkipped(payload.confirmedSkips, "music") ||
-    isMusicEmpty(payload.musicVoice.music)
-  ) {
-    return;
-  }
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_music").insert({
-    submission_id: submissionId,
-    spotify_url: emptyToNull(payload.musicVoice.music.spotifyUrl),
-    spotify_track_id: emptyToNull(payload.musicVoice.music.spotifyTrackId),
-    song_title: emptyToNull(payload.musicVoice.music.songTitle),
-    artist_name: emptyToNull(payload.musicVoice.music.artistName),
-    start_at_seconds: Math.max(0, Number(payload.musicVoice.music.startAtSeconds) || 0),
-  });
-
-  if (error) {
-    throw new Error(`StoryOfUs music could not be saved: ${error.message}`);
   }
 }
 
@@ -516,259 +414,6 @@ async function validateDurableMediaForSubmit(submissionId: string, payload: Subm
       storagePath: typeof row.storage_path === "string" ? row.storage_path : null,
     })),
   );
-}
-
-async function updateSubmittedMediaMetadata(submissionId: string, payload: SubmitPayload) {
-  const shouldMarkPuzzle =
-    !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
-    payload.media.puzzle.sourceType === "gallery" &&
-    Boolean(payload.media.puzzle.selectedPhotoId);
-
-  await updateSemanticSubmittedPhoto({
-    submissionId,
-    photo: payload.media.openingPhotos?.firstPerson ?? null,
-    section: "opening",
-    semanticKey: "hero_left",
-    sectionItemId: "firstPerson",
-    sortOrder: 0,
-    isPuzzleSource: false,
-  });
-  await updateSemanticSubmittedPhoto({
-    submissionId,
-    photo: payload.media.openingPhotos?.secondPerson ?? null,
-    section: "opening",
-    semanticKey: "hero_right",
-    sectionItemId: "secondPerson",
-    sortOrder: 1,
-    isPuzzleSource: false,
-  });
-
-  for (const prompt of payload.media.promptPhotos ?? []) {
-    await updateSemanticSubmittedPhoto({
-      submissionId,
-      photo: prompt.photo,
-      section: "memory_prompt",
-      semanticKey: prompt.id,
-      sectionItemId: prompt.id,
-      sortOrder: prompt.sortOrder,
-      isPuzzleSource: false,
-    });
-  }
-
-  if (!isConfirmedSkipped(payload.confirmedSkips, "photos")) {
-    for (const photo of payload.media.photos) {
-      await updateExistingMediaMetadata({
-        submissionId,
-        photo,
-        fallbackSection: "gallery",
-        fallbackSemanticKey: photo.semanticKey || "gallery_photo",
-        fallbackSectionItemId: photo.sectionItemId || photo.id,
-        fallbackSortOrder: photo.sortOrder,
-        isPuzzleSource: shouldMarkPuzzle && photo.id === payload.media.puzzle.selectedPhotoId,
-      });
-    }
-  }
-
-  await updateSemanticSubmittedPhoto({
-    submissionId,
-    photo: payload.media.loveLetterPhoto ?? null,
-    section: "letter",
-    semanticKey: STORYOFUS_LOVE_LETTER_PHOTO_SEMANTIC_KEY,
-    sectionItemId: STORYOFUS_LOVE_LETTER_PHOTO_SECTION_ITEM_ID,
-    sortOrder: 0,
-    isPuzzleSource: false,
-  });
-
-  for (const item of payload.timeline) {
-    await updateSemanticSubmittedPhoto({
-      submissionId,
-      photo: item.photo ?? null,
-      section: "timeline",
-      semanticKey: "timeline_item",
-      sectionItemId: item.id,
-      sortOrder: item.sortOrder,
-      isPuzzleSource: false,
-    });
-  }
-
-  if (
-    !isConfirmedSkipped(payload.confirmedSkips, "puzzle") &&
-    payload.media.puzzle.sourceType === "separate" &&
-    payload.media.puzzle.puzzlePhoto
-  ) {
-    await updateExistingMediaMetadata({
-      submissionId,
-      photo: payload.media.puzzle.puzzlePhoto,
-      fallbackSection: "puzzle",
-      fallbackSemanticKey: "puzzle_source",
-      fallbackSectionItemId: "puzzlePhoto",
-      fallbackSortOrder: 0,
-      isPuzzleSource: true,
-    });
-  }
-}
-
-async function updateSemanticSubmittedPhoto({
-  submissionId,
-  photo,
-  section,
-  semanticKey,
-  sectionItemId,
-  sortOrder,
-  isPuzzleSource,
-}: {
-  submissionId: string;
-  photo: SubmitPhotoMetadata | null;
-  section: StoryOfUsMediaSection;
-  semanticKey: string;
-  sectionItemId: string;
-  sortOrder: number;
-  isPuzzleSource: boolean;
-}) {
-  if (!photo) {
-    return;
-  }
-
-  await updateExistingMediaMetadata({
-    submissionId,
-    photo,
-    fallbackSection: section,
-    fallbackSemanticKey: semanticKey,
-    fallbackSectionItemId: sectionItemId,
-    fallbackSortOrder: sortOrder,
-    isPuzzleSource,
-  });
-}
-
-async function updateExistingMediaMetadata({
-  submissionId,
-  photo,
-  fallbackSection,
-  fallbackSemanticKey,
-  fallbackSectionItemId,
-  fallbackSortOrder,
-  isPuzzleSource,
-}: {
-  submissionId: string;
-  photo: SubmitPhotoMetadata;
-  fallbackSection: StoryOfUsMediaSection;
-  fallbackSemanticKey: string;
-  fallbackSectionItemId: string;
-  fallbackSortOrder: number;
-  isPuzzleSource: boolean;
-}) {
-  if (!photo.mediaId) {
-    return;
-  }
-
-  const { error } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .update({
-      caption: emptyToNull(photo.caption),
-      sort_order: photo.sortOrder ?? fallbackSortOrder,
-      semantic_key: emptyToNull(photo.semanticKey || fallbackSemanticKey),
-      section_item_id: emptyToNull(photo.sectionItemId || fallbackSectionItemId),
-      is_puzzle_source: isPuzzleSource,
-    })
-    .eq("id", photo.mediaId)
-    .eq("submission_id", submissionId)
-    .eq("section", fallbackSection);
-
-  if (error) {
-    throw new Error(`StoryOfUs uploaded media metadata could not be updated: ${error.message}`);
-  }
-}
-
-async function updatePuzzleSourceSelection(submissionId: string, payload: SubmitPayload) {
-  const { error: resetError } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .update({ is_puzzle_source: false })
-    .eq("submission_id", submissionId)
-    .eq("is_puzzle_source", true);
-
-  if (resetError) {
-    throw new Error(`StoryOfUs puzzle source could not be reset: ${resetError.message}`);
-  }
-
-  if (isConfirmedSkipped(payload.confirmedSkips, "puzzle")) {
-    return;
-  }
-
-  if (payload.media.puzzle.sourceType === "separate") {
-    const { error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .update({ is_puzzle_source: true })
-      .eq("submission_id", submissionId)
-      .eq("section", "puzzle")
-      .eq("semantic_key", "puzzle_source")
-      .eq("section_item_id", "puzzlePhoto");
-
-    if (error) {
-      throw new Error(`StoryOfUs separate puzzle source could not be marked: ${error.message}`);
-    }
-
-    return;
-  }
-
-  if (payload.media.puzzle.sourceType === "gallery" && payload.media.puzzle.selectedPhotoId) {
-    const { data, error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .update({ is_puzzle_source: true })
-      .eq("submission_id", submissionId)
-      .eq("section", "gallery")
-      .eq("semantic_key", "gallery_photo")
-      .eq("section_item_id", payload.media.puzzle.selectedPhotoId)
-      .eq("media_type", "photo")
-      .select("id");
-
-    if (error) {
-      throw new Error(`StoryOfUs gallery puzzle source could not be marked: ${error.message}`);
-    }
-
-    if ((data ?? []).length !== 1) {
-      throw new Error(STORYOFUS_DURABLE_MEDIA_REQUIRED_MESSAGE);
-    }
-  }
-}
-
-async function insertTimelineIfNeeded(submissionId: string, payload: SubmitPayload) {
-  if (isConfirmedSkipped(payload.confirmedSkips, "timeline") || payload.timeline.length === 0) {
-    return;
-  }
-
-  const rows = payload.timeline.map((item, index) => ({
-    submission_id: submissionId,
-    title: item.title,
-    event_date: emptyToNull(item.eventDate),
-    description: emptyToNull(item.description),
-    sort_order: item.sortOrder ?? index,
-  }));
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_timeline_items").insert(rows);
-
-  if (error) {
-    throw new Error(`StoryOfUs timeline items could not be saved: ${error.message}`);
-  }
-}
-
-async function insertLettersIfNeeded(submissionId: string, payload: SubmitPayload) {
-  if (payload.letters.length === 0) {
-    return;
-  }
-
-  const rows = payload.letters.map((letter, index) => ({
-    submission_id: submissionId,
-    letter_type: letter.type,
-    title: letter.title,
-    body: letter.body,
-    sort_order: letter.sortOrder ?? index,
-  }));
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_letters").insert(rows);
-
-  if (error) {
-    throw new Error(`StoryOfUs letters could not be saved: ${error.message}`);
-  }
 }
 
 function parseSubmissionPayload(formData: FormData): SubmitPayload {
@@ -812,14 +457,6 @@ function createSubmissionSnapshot(payload: SubmitPayload) {
   };
 }
 
-function isConfirmedSkipped(confirmedSkips: ConfirmedSkips, sectionId: keyof ConfirmedSkips) {
-  return confirmedSkips[sectionId]?.confirmed === true;
-}
-
-function isMusicEmpty(music: SubmitPayload["musicVoice"]["music"]) {
-  return !music.spotifyUrl.trim() && !music.songTitle.trim() && !music.artistName.trim();
-}
-
 function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: string | null) {
   if (editableUntil) {
     return editableUntil;
@@ -838,11 +475,26 @@ function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: st
   return new Date(submittedAtTime + 3 * 60 * 60 * 1000).toISOString();
 }
 
-function emptyToNull(value: string | null | undefined) {
-  if (value === null || value === undefined) {
-    return null;
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function nullableString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function normalizeSubmissionStatus(value: unknown): SubmissionResult["status"] {
+  return value === "in_review" ? "in_review" : "submitted";
+}
+
+function normalizeSubmissionKind(value: unknown): SubmissionResult["submissionKind"] {
+  if (value === "edit_submit" || value === "edit_limit_reached") {
+    return value;
   }
 
-  const trimmedValue = value.trim();
-  return trimmedValue.length > 0 ? trimmedValue : null;
+  return "first_submit";
 }

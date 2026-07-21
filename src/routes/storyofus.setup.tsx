@@ -172,9 +172,15 @@ type LegalConsentKey = keyof StoryOfUsLegalConsents;
 type StoryOfUsSubmissionResult = {
   submissionId: string;
   setupToken: string | null;
-  status: "submitted";
+  status: "submitted" | "in_review";
   submissionKind: StoryOfUsSetupSubmissionKind;
   editableUntil: string | null;
+  refundRequestUntil?: string | null;
+  editsUsed?: number;
+  editLimit?: number;
+  editingClosedAt?: string | null;
+  editingClosedReason?: string | null;
+  reviewReadyAt?: string | null;
 };
 
 type DraftSaveStatus = "idle" | "saving" | "saved" | "error";

@@ -463,22 +463,67 @@ describe("StoryOfUs durable media submit boundary", () => {
     assert.doesNotMatch(submitServerSource, /getFileFromFormData/);
   });
 
-  it("validates durable media before final submit persistence mutations", async () => {
+  it("keeps immediate setup media mutations behind the locked RPC boundary", async () => {
+    const mediaUploadSource = await readFile(
+      new URL("./mediaUpload.server.ts", import.meta.url),
+      "utf8",
+    );
+    const uploadIndex = mediaUploadSource.indexOf("await uploadFileToStorage");
+    const commitRpcIndex = mediaUploadSource.indexOf("await commitUploadedMediaWithLockedRpc");
+    const cleanupIndex = mediaUploadSource.indexOf("await cleanupNewlyUploadedObject");
+    const removeRpcIndex = mediaUploadSource.indexOf("await removeMediaWithLockedRpc");
+    const removeStorageIndex = mediaUploadSource.indexOf(
+      "removal.removedStoragePaths.map((path) => removeStorageObject(path))",
+    );
+
+    assert.ok(uploadIndex > 0);
+    assert.ok(commitRpcIndex > uploadIndex);
+    assert.ok(cleanupIndex > commitRpcIndex);
+    assert.ok(removeRpcIndex > 0);
+    assert.ok(removeStorageIndex > removeRpcIndex);
+    assert.match(mediaUploadSource, /storyofus_commit_setup_media_upload/);
+    assert.match(mediaUploadSource, /storyofus_remove_setup_media/);
+    assert.doesNotMatch(mediaUploadSource, /\.from\("storyofus_media"\)/);
+    assert.doesNotMatch(mediaUploadSource, /\.insert\(\{\s*submission_id/s);
+    assert.doesNotMatch(mediaUploadSource, /\.delete\(\)\.in\("id"/);
+  });
+
+  it("validates durable media before the atomic finalization RPC and first-submit email enqueue", async () => {
     const submitServerSource = await readFile(
       new URL("./submitSetup.server.ts", import.meta.url),
       "utf8",
     );
     const validationIndex = submitServerSource.indexOf("await validateDurableMediaForSubmit");
+    const rpcIndex = submitServerSource.indexOf("await finalizeSetupSubmissionWithRpc");
 
     assert.ok(validationIndex > 0);
-    assert.ok(validationIndex < submitServerSource.indexOf("await deleteExistingTextDetails"));
-    assert.ok(validationIndex < submitServerSource.indexOf("await insertCoupleDetails"));
-    assert.ok(validationIndex < submitServerSource.indexOf("await insertMusicIfNeeded"));
-    assert.ok(validationIndex < submitServerSource.indexOf("await updateSubmittedMediaMetadata"));
-    assert.ok(validationIndex < submitServerSource.indexOf("await insertTimelineIfNeeded"));
-    assert.ok(validationIndex < submitServerSource.indexOf("await insertLettersIfNeeded"));
+    assert.ok(rpcIndex > 0);
+    assert.ok(validationIndex < rpcIndex);
     assert.ok(
       validationIndex < submitServerSource.indexOf("await enqueueSetupSubmittedEmailQuietly"),
+    );
+    assert.doesNotMatch(submitServerSource, /deleteExistingTextDetails/);
+    assert.doesNotMatch(submitServerSource, /insertCoupleDetails/);
+    assert.doesNotMatch(submitServerSource, /insertMusicIfNeeded/);
+    assert.doesNotMatch(submitServerSource, /insertTimelineIfNeeded/);
+    assert.doesNotMatch(submitServerSource, /insertLettersIfNeeded/);
+    assert.doesNotMatch(submitServerSource, /\.from\("storyofus_couple_details"\)\.insert/);
+    assert.doesNotMatch(submitServerSource, /\.from\("storyofus_submissions"\)\.update/);
+  });
+
+  it("enqueues setup_submitted only when the atomic RPC reports first_submit", async () => {
+    const submitServerSource = await readFile(
+      new URL("./submitSetup.server.ts", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(
+      submitServerSource,
+      /if \(finalizedSubmission\.submissionKind === "first_submit"\) \{\s+await enqueueSetupSubmittedEmailQuietly\(finalizedSubmission\.submissionId\);/s,
+    );
+    assert.doesNotMatch(
+      submitServerSource,
+      /isFirstSubmit\)\s*\{\s*await enqueueSetupSubmittedEmailQuietly/,
     );
   });
 });

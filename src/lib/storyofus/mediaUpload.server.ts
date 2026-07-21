@@ -19,13 +19,7 @@ const ALLOWED_AUDIO_MIME_TYPES = new Set([
 ]);
 
 type StoryOfUsMediaSection =
-  | "opening"
-  | "memory_prompt"
-  | "gallery"
-  | "timeline"
-  | "letter"
-  | "puzzle"
-  | "voice_note";
+  "opening" | "memory_prompt" | "gallery" | "timeline" | "letter" | "puzzle" | "voice_note";
 
 type UploadMediaResult = {
   mediaId: string;
@@ -71,50 +65,46 @@ export const uploadStoryOfUsSetupMedia = createServerFn({ method: "POST" })
 
     await uploadFileToStorage(storagePath, file);
 
-    const previousRows = await loadExistingSemanticRows(
-      submission.id,
-      section,
-      semanticKey,
-      sectionItemId,
-    );
+    let committedMedia: CommittedMediaUploadRow;
 
-    const { data: insertedMedia, error } = await storyOfUsSupabaseAdmin
-      .from("storyofus_media")
-      .insert({
-        submission_id: submission.id,
-        media_type: mediaType,
+    try {
+      committedMedia = await commitUploadedMediaWithLockedRpc({
+        setupToken,
+        mediaType,
         section,
-        semantic_key: semanticKey,
-        section_item_id: sectionItemId,
-        storage_bucket: STORYOFUS_MEDIA_BUCKET,
-        storage_path: storagePath,
-        original_filename: file.name,
-        mime_type: normalizeStoredMimeType(mediaType, file.type),
-        size_bytes: file.size,
-        caption: caption.trim() || null,
-        sort_order: sortOrder,
-        is_puzzle_source: section === "puzzle" || (section === "gallery" && semanticKey === "puzzle_source"),
-      })
-      .select("id, storage_path, original_filename, mime_type, size_bytes")
-      .single();
-
-    if (error || !insertedMedia) {
-      await removeStorageObject(storagePath);
-      throw new Error(`StoryOfUs media metadata could not be saved: ${error?.message}`);
+        semanticKey,
+        sectionItemId,
+        storagePath,
+        originalFilename: file.name,
+        mimeType: normalizeStoredMimeType(mediaType, file.type),
+        sizeBytes: file.size,
+        caption,
+        sortOrder,
+      });
+    } catch {
+      await cleanupNewlyUploadedObject(storagePath, "uploaded_object_cleanup_failed_after_rpc");
+      throw new Error("Medya yükleme tamamlanamadı. Lütfen tekrar deneyin.");
     }
 
-    await deleteMediaRowsByIds(previousRows.map((row) => row.id));
-    await Promise.all(previousRows.map((row) => removeStorageObject(row.storage_path)));
+    if (committedMedia.result !== "committed") {
+      await cleanupNewlyUploadedObject(
+        storagePath,
+        "uploaded_object_cleanup_failed_after_closed_edit",
+      );
+      throw new Error("Bu kurulum formu artık düzenlenemez.");
+    }
 
-    const previewUrl = await createMediaSignedUrl(String(insertedMedia.storage_path));
+    await Promise.all(committedMedia.replacedStoragePaths.map((path) => removeStorageObject(path)));
+
+    const previewUrl = await createMediaSignedUrl(committedMedia.storagePath);
 
     return {
-      mediaId: String(insertedMedia.id),
+      mediaId: committedMedia.mediaId,
       previewUrl,
-      storagePath: String(insertedMedia.storage_path),
-      originalFilename: String(insertedMedia.original_filename ?? file.name),
-      mimeType: String(insertedMedia.mime_type ?? file.type),
-      sizeBytes: Number(insertedMedia.size_bytes ?? file.size),
+      storagePath: committedMedia.storagePath,
+      originalFilename: committedMedia.originalFilename || file.name,
+      mimeType: committedMedia.mimeType || file.type,
+      sizeBytes: committedMedia.sizeBytes || file.size,
     };
   });
 
@@ -142,21 +132,40 @@ export const removeStoryOfUsSetupMedia = createServerFn({ method: "POST" })
     const section = normalizeSection(data.section);
     const semanticKey = normalizeSemanticValue(data.semanticKey, "media");
     const sectionItemId = normalizeSemanticValue(data.sectionItemId, "item");
-    const submission = await loadEditableSubmission(data.setupToken);
-    const previousRows = await loadExistingSemanticRows(
-      submission.id,
+    await loadEditableSubmission(data.setupToken);
+    const removal = await removeMediaWithLockedRpc({
+      setupToken: data.setupToken,
       section,
       semanticKey,
       sectionItemId,
-    );
+    });
 
-    await deleteMediaRowsByIds(previousRows.map((row) => row.id));
-    await Promise.all(previousRows.map((row) => removeStorageObject(row.storage_path)));
+    if (removal.result !== "removed") {
+      throw new Error("Bu kurulum formu artık düzenlenemez.");
+    }
+
+    await Promise.all(removal.removedStoragePaths.map((path) => removeStorageObject(path)));
 
     return {
-      removed: previousRows.length > 0,
+      removed: removal.removedCount > 0,
     };
   });
+
+type CommittedMediaUploadRow = {
+  result: "committed" | "edit_closed";
+  mediaId: string;
+  storagePath: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  replacedStoragePaths: string[];
+};
+
+type RemovedMediaRow = {
+  result: "removed" | "edit_closed";
+  removedCount: number;
+  removedStoragePaths: string[];
+};
 
 async function loadEditableSubmission(setupToken: string) {
   if (!setupToken) {
@@ -165,7 +174,9 @@ async function loadEditableSubmission(setupToken: string) {
 
   const { data: submission, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("id, status, payment_status, refund_status, submitted_at, editable_until")
+    .select(
+      "id, status, payment_status, refund_status, submitted_at, editable_until, edits_used, edit_limit, editing_closed_at",
+    )
     .eq("setup_token", setupToken)
     .maybeSingle();
 
@@ -181,7 +192,11 @@ async function loadEditableSubmission(setupToken: string) {
     throw new Error("Kurulum formu ödeme onayından sonra aktiftir.");
   }
 
-  if (isStoryOfUsActiveRefundStatus(typeof submission.refund_status === "string" ? submission.refund_status : null)) {
+  if (
+    isStoryOfUsActiveRefundStatus(
+      typeof submission.refund_status === "string" ? submission.refund_status : null,
+    )
+  ) {
     throw new Error("Bu sipariş için kurulum formu geçici olarak kapalıdır.");
   }
 
@@ -190,11 +205,17 @@ async function loadEditableSubmission(setupToken: string) {
     typeof submission.editable_until === "string" ? submission.editable_until : null,
     typeof submission.submitted_at === "string" ? submission.submitted_at : null,
   );
+  const editsUsed = numberValue(submission.edits_used);
+  const editLimit = Math.max(numberValue(submission.edit_limit), 1);
+  const editingClosedAt =
+    typeof submission.editing_closed_at === "string" ? submission.editing_closed_at : null;
   const canEdit =
     status === "draft" ||
     (status === "submitted" &&
       Boolean(editableUntil) &&
-      new Date(editableUntil as string).getTime() > Date.now());
+      new Date(editableUntil as string).getTime() > Date.now() &&
+      editsUsed < editLimit &&
+      !editingClosedAt);
 
   if (!canEdit) {
     throw new Error("Bu kurulum formu artık düzenlenemez.");
@@ -205,40 +226,120 @@ async function loadEditableSubmission(setupToken: string) {
   };
 }
 
-async function loadExistingSemanticRows(
-  submissionId: string,
-  section: StoryOfUsMediaSection,
-  semanticKey: string,
-  sectionItemId: string,
-) {
+async function commitUploadedMediaWithLockedRpc({
+  setupToken,
+  mediaType,
+  section,
+  semanticKey,
+  sectionItemId,
+  storagePath,
+  originalFilename,
+  mimeType,
+  sizeBytes,
+  caption,
+  sortOrder,
+}: {
+  setupToken: string;
+  mediaType: "photo" | "puzzle_photo" | "voice_note";
+  section: StoryOfUsMediaSection;
+  semanticKey: string;
+  sectionItemId: string;
+  storagePath: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  caption: string;
+  sortOrder: number;
+}): Promise<CommittedMediaUploadRow> {
   const { data, error } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .select("id, storage_path")
-    .eq("submission_id", submissionId)
-    .eq("section", section)
-    .eq("semantic_key", semanticKey)
-    .eq("section_item_id", sectionItemId);
+    .rpc("storyofus_commit_setup_media_upload", {
+      p_setup_token: setupToken,
+      p_media_type: mediaType,
+      p_section: section,
+      p_semantic_key: semanticKey,
+      p_section_item_id: sectionItemId,
+      p_storage_bucket: STORYOFUS_MEDIA_BUCKET,
+      p_storage_path: storagePath,
+      p_original_filename: originalFilename,
+      p_mime_type: mimeType,
+      p_size_bytes: sizeBytes,
+      p_caption: caption,
+      p_sort_order: sortOrder,
+    })
+    .single();
 
   if (error) {
-    throw new Error(`StoryOfUs existing media could not be checked: ${error.message}`);
+    throw new Error("Medya yükleme tamamlanamadı. Lütfen tekrar deneyin.");
   }
 
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    storage_path: String(row.storage_path ?? ""),
-  }));
+  return normalizeCommittedMediaUploadRow(data);
 }
 
-async function deleteMediaRowsByIds(ids: string[]) {
-  if (ids.length === 0) {
-    return;
-  }
-
-  const { error } = await storyOfUsSupabaseAdmin.from("storyofus_media").delete().in("id", ids);
+async function removeMediaWithLockedRpc({
+  setupToken,
+  section,
+  semanticKey,
+  sectionItemId,
+}: {
+  setupToken: string;
+  section: StoryOfUsMediaSection;
+  semanticKey: string;
+  sectionItemId: string;
+}): Promise<RemovedMediaRow> {
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .rpc("storyofus_remove_setup_media", {
+      p_setup_token: setupToken,
+      p_section: section,
+      p_semantic_key: semanticKey,
+      p_section_item_id: sectionItemId,
+    })
+    .single();
 
   if (error) {
-    throw new Error(`StoryOfUs media metadata could not be removed: ${error.message}`);
+    throw new Error("Medya kaldırma işlemi tamamlanamadı. Lütfen tekrar deneyin.");
   }
+
+  return normalizeRemovedMediaRow(data);
+}
+
+function normalizeCommittedMediaUploadRow(data: unknown): CommittedMediaUploadRow {
+  const row = normalizeRpcRow(data);
+  const result = row.result === "committed" ? "committed" : "edit_closed";
+
+  return {
+    result,
+    mediaId: String(row.media_id ?? ""),
+    storagePath: String(row.storage_path ?? ""),
+    originalFilename: String(row.original_filename ?? ""),
+    mimeType: String(row.mime_type ?? ""),
+    sizeBytes: Number(row.size_bytes ?? 0),
+    replacedStoragePaths: normalizeStoragePathArray(row.replaced_storage_paths),
+  };
+}
+
+function normalizeRemovedMediaRow(data: unknown): RemovedMediaRow {
+  const row = normalizeRpcRow(data);
+  const result = row.result === "removed" ? "removed" : "edit_closed";
+
+  return {
+    result,
+    removedCount: Number(row.removed_count ?? 0),
+    removedStoragePaths: normalizeStoragePathArray(row.removed_storage_paths),
+  };
+}
+
+function normalizeRpcRow(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== "object") {
+    return {};
+  }
+
+  return data as Record<string, unknown>;
+}
+
+function normalizeStoragePathArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((path): path is string => typeof path === "string" && path.length > 0)
+    : [];
 }
 
 async function uploadFileToStorage(storagePath: string, file: File) {
@@ -260,6 +361,21 @@ async function removeStorageObject(storagePath: string) {
   }
 
   await storyOfUsSupabaseAdmin.storage.from(STORYOFUS_MEDIA_BUCKET).remove([storagePath]);
+}
+
+async function cleanupNewlyUploadedObject(storagePath: string, failureCode: string) {
+  if (!storagePath) {
+    return;
+  }
+
+  const { error } = await storyOfUsSupabaseAdmin.storage
+    .from(STORYOFUS_MEDIA_BUCKET)
+    .remove([storagePath]);
+
+  if (error) {
+    console.error("[StoryOfUs media cleanup]", { code: failureCode });
+    throw new Error("Medya yükleme tamamlanamadı. Lütfen tekrar deneyin.");
+  }
 }
 
 async function createMediaSignedUrl(storagePath: string) {
@@ -371,6 +487,10 @@ function normalizeSemanticValue(value: string, fallback: string) {
 function normalizeSortOrder(value: string) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, Math.min(1000, Math.trunc(parsed))) : 0;
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function getString(formData: FormData, key: string) {

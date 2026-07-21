@@ -110,6 +110,11 @@ export type StoryOfUsSetupAccessResult =
       status: "edit_locked";
       submissionStatus: string;
       editableUntil: string | null;
+      refundRequestUntil: string | null;
+      editsUsed: number;
+      editLimit: number;
+      editingClosedAt: string | null;
+      editingClosedReason: string | null;
     }
   | {
       status: "refund_under_review";
@@ -121,6 +126,11 @@ export type StoryOfUsSetupAccessResult =
       mode: "new" | "edit";
       setupToken: string;
       editableUntil: string | null;
+      refundRequestUntil: string | null;
+      editsUsed: number;
+      editLimit: number;
+      editingClosedAt: string | null;
+      editingClosedReason: string | null;
       initialData: StoryOfUsSetupAccessInitialData;
     };
 
@@ -166,6 +176,11 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
           "service_start_consent",
           "submitted_at",
           "editable_until",
+          "refund_request_until",
+          "edits_used",
+          "edit_limit",
+          "editing_closed_at",
+          "editing_closed_reason",
           "site_passcode_hash",
           "site_passcode_hint",
         ].join(", "),
@@ -211,6 +226,18 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
       typeof submission.editable_until === "string" ? submission.editable_until : null,
       typeof submission.submitted_at === "string" ? submission.submitted_at : null,
     );
+    const refundRequestUntil =
+      typeof submission.refund_request_until === "string"
+        ? submission.refund_request_until
+        : editableUntil;
+    const editsUsed = numberValue(submission.edits_used);
+    const editLimit = Math.max(numberValue(submission.edit_limit), 1);
+    const editingClosedAt =
+      typeof submission.editing_closed_at === "string" ? submission.editing_closed_at : null;
+    const editingClosedReason =
+      typeof submission.editing_closed_reason === "string"
+        ? submission.editing_closed_reason
+        : null;
 
     if (submissionStatus === "draft") {
       return {
@@ -218,17 +245,32 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
         mode: "new",
         setupToken: String(submission.setup_token),
         editableUntil: null,
+        refundRequestUntil: null,
+        editsUsed,
+        editLimit,
+        editingClosedAt: null,
+        editingClosedReason: null,
         initialData: await createInitialData(submission),
       };
     }
 
     if (submissionStatus === "submitted") {
-      if (editableUntil && new Date(editableUntil).getTime() > Date.now()) {
+      if (
+        editableUntil &&
+        new Date(editableUntil).getTime() > Date.now() &&
+        editsUsed < editLimit &&
+        !editingClosedAt
+      ) {
         return {
           status: "ready",
           mode: "edit",
           setupToken: String(submission.setup_token),
           editableUntil,
+          refundRequestUntil,
+          editsUsed,
+          editLimit,
+          editingClosedAt,
+          editingClosedReason,
           initialData: await createInitialData(submission),
         };
       }
@@ -237,6 +279,11 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
         status: "edit_locked",
         submissionStatus,
         editableUntil,
+        refundRequestUntil,
+        editsUsed,
+        editLimit,
+        editingClosedAt,
+        editingClosedReason,
       };
     }
 
@@ -244,6 +291,11 @@ export const getStoryOfUsSetupAccess = createServerFn({ method: "POST" })
       status: "edit_locked",
       submissionStatus,
       editableUntil,
+      refundRequestUntil,
+      editsUsed,
+      editLimit,
+      editingClosedAt,
+      editingClosedReason,
     };
   });
 
@@ -442,6 +494,10 @@ function getEffectiveEditableUntil(editableUntil: string | null, submittedAt: st
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function normalizeMediaSection(value: string): StoryOfUsSetupAccessExistingMediaItem["section"] {
