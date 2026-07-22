@@ -31,7 +31,15 @@ test("Phase 2A backfill preserves deadlines and does not invent edit usage", () 
   assert.doesNotMatch(migrationSql, /editable_until\s*=\s*pg_catalog\.now\(\)\s*\+\s*interval/i);
 });
 
+test("Phase 2A migration does not schema-qualify PostgreSQL conditional expressions", () => {
+  assert.doesNotMatch(migrationSql, /pg_catalog\.(greatest|least|coalesce)\s*\(/i);
+  assert.match(migrationSql, /return greatest\(v_number, 0\);/i);
+  assert.match(migrationSql, /least\(greatest\(coalesce\(p_batch_limit, 50\), 1\), 100\)/i);
+});
+
 test("atomic setup finalization RPC locks the order and owns final persistence", () => {
+  const finalizeSql = extractFunctionSql("storyofus_finalize_setup_submission");
+
   assert.match(
     migrationSql,
     /create or replace function public\.storyofus_finalize_setup_submission/i,
@@ -40,12 +48,14 @@ test("atomic setup finalization RPC locks the order and owns final persistence",
   assert.match(migrationSql, /set search_path = pg_catalog/i);
   assert.match(
     normalizedSql,
-    /where setup_token = pg_catalog\.btrim\(p_setup_token\)::uuid for update;/i,
+    /from public\.storyofus_submissions as submission where submission\.setup_token = pg_catalog\.btrim\(p_setup_token\)::uuid for update;/i,
   );
-  assert.match(migrationSql, /delete from public\.storyofus_couple_details/i);
-  assert.match(migrationSql, /delete from public\.storyofus_music/i);
-  assert.match(migrationSql, /delete from public\.storyofus_timeline_items/i);
-  assert.match(migrationSql, /delete from public\.storyofus_letters/i);
+  assert.doesNotMatch(finalizeSql, /where\s+setup_token\s*=/i);
+  assert.doesNotMatch(finalizeSql, /where\s+submission_id\s*=\s*v_submission\.id/i);
+  assert.match(migrationSql, /delete from public\.storyofus_couple_details as couple_details/i);
+  assert.match(migrationSql, /delete from public\.storyofus_music as music/i);
+  assert.match(migrationSql, /delete from public\.storyofus_timeline_items as timeline_item/i);
+  assert.match(migrationSql, /delete from public\.storyofus_letters as letter/i);
   assert.match(migrationSql, /insert into public\.storyofus_couple_details/i);
   assert.match(migrationSql, /insert into public\.storyofus_music/i);
   assert.match(migrationSql, /insert into public\.storyofus_timeline_items/i);
@@ -66,7 +76,7 @@ test("atomic setup finalization RPC implements first submit and two edit transit
   );
   assert.match(
     normalizedSql,
-    /v_next_review_ready_at := pg_catalog\.coalesce\(v_submission\.review_ready_at, v_now\);/i,
+    /v_next_review_ready_at := coalesce\(v_submission\.review_ready_at, v_now\);/i,
   );
   assert.match(normalizedSql, /v_next_editing_closed_reason := 'edit_limit_reached';/i);
   assert.match(
@@ -163,6 +173,8 @@ test("review-ready worker replacement closes editing without regressing second-e
 });
 
 test("publishing remains blocked until refund request window closes", () => {
+  const publishSql = extractFunctionSql("storyofus_publish_final_site");
+
   assert.match(migrationSql, /create or replace function public\.storyofus_publish_final_site/i);
   assert.match(
     normalizedSql,
@@ -170,12 +182,31 @@ test("publishing remains blocked until refund request window closes", () => {
   );
   assert.match(
     normalizedSql,
-    /and coalesce\(refund_request_until, editable_until\) is not null and coalesce\(refund_request_until, editable_until\) <= v_now/i,
+    /and coalesce\(submission\.refund_request_until, submission\.editable_until\) is not null and coalesce\(submission\.refund_request_until, submission\.editable_until\) <= v_now/i,
   );
   assert.match(
     migrationSql,
-    /pg_catalog\.coalesce\(v_submission\.refund_status, 'none'\) not in \('none', 'rejected'\)/i,
+    /coalesce\(v_submission\.refund_status, 'none'\) not in \('none', 'rejected'\)/i,
   );
+  assert.match(
+    normalizedSql,
+    /from public\.storyofus_submissions as existing_submission where existing_submission\.final_site_slug = v_slug and existing_submission\.id <> v_submission\.id/i,
+  );
+  assert.match(
+    normalizedSql,
+    /from public\.storyofus_email_outbox as outbox where outbox\.submission_id = v_submission\.id and outbox\.email_type = 'final_site_ready'/i,
+  );
+  assert.match(
+    normalizedSql,
+    /from public\.storyofus_couple_details as couple_details where couple_details\.submission_id = v_submission\.id/i,
+  );
+  assert.match(
+    normalizedSql,
+    /from public\.storyofus_media as media where media\.submission_id = v_submission\.id and media\.section = 'letter'/i,
+  );
+  assert.doesNotMatch(publishSql, /where\s+final_site_slug\s*=/i);
+  assert.doesNotMatch(publishSql, /where\s+submission_id\s*=\s*v_submission\.id/i);
+  assert.doesNotMatch(publishSql, /where\s+id\s*=\s*p_submission_id/i);
 });
 
 test("Phase 2A functions are not executable by browser roles", () => {
@@ -219,4 +250,19 @@ function readMigration(filename: string) {
 
 function normalizeSql(sql: string) {
   return sql.replace(/\s+/g, " ").trim();
+}
+
+function extractFunctionSql(functionName: string) {
+  const startMarker = `create or replace function public.${functionName}`;
+  const startIndex = migrationSql.indexOf(startMarker);
+  assert.notEqual(startIndex, -1, `${functionName} must exist in migration`);
+
+  const nextFunctionIndex = migrationSql.indexOf("create or replace function public.", startIndex + 1);
+  const endIndex =
+    nextFunctionIndex === -1
+      ? migrationSql.indexOf("revoke all privileges", startIndex)
+      : nextFunctionIndex;
+
+  assert.notEqual(endIndex, -1, `${functionName} block must have a clear end`);
+  return migrationSql.slice(startIndex, endIndex);
 }

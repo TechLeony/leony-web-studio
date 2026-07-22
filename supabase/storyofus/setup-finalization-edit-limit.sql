@@ -97,336 +97,6 @@ create index if not exists storyofus_submissions_refund_request_until_idx
 on public.storyofus_submissions (refund_request_until)
 where refund_request_until is not null;
 
-create or replace function public.storyofus_finalize_setup_submission(
-  p_setup_token text,
-  p_submission_snapshot jsonb,
-  p_site_passcode_hash text,
-  p_site_passcode_hint text,
-  p_site_passcode_set_at timestamptz,
-  p_service_start_consent jsonb default null
-)
-returns table (
-  submission_id uuid,
-  setup_token uuid,
-  status text,
-  submission_kind text,
-  edits_used integer,
-  edit_limit integer,
-  editable_until timestamptz,
-  refund_request_until timestamptz,
-  editing_closed_at timestamptz,
-  editing_closed_reason text,
-  review_ready_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = pg_catalog
-as $$
-declare
-  v_now timestamptz := pg_catalog.now();
-  v_submission public.storyofus_submissions%rowtype;
-  v_snapshot jsonb := pg_catalog.coalesce(p_submission_snapshot, '{}'::jsonb);
-  v_contact jsonb := pg_catalog.coalesce(v_snapshot -> 'contactCouple', '{}'::jsonb);
-  v_media jsonb := pg_catalog.coalesce(v_snapshot -> 'media', '{}'::jsonb);
-  v_music_voice jsonb := pg_catalog.coalesce(v_snapshot -> 'musicVoice', '{}'::jsonb);
-  v_music jsonb := pg_catalog.coalesce(v_music_voice -> 'music', '{}'::jsonb);
-  v_voice_note jsonb := v_music_voice -> 'voiceNote';
-  v_confirmed_skips jsonb := pg_catalog.coalesce(v_snapshot -> 'confirmedSkips', '{}'::jsonb);
-  v_legal_consents jsonb := pg_catalog.coalesce(v_snapshot -> 'legalConsents', '{}'::jsonb);
-  v_effective_editable_until timestamptz;
-  v_next_editable_until timestamptz;
-  v_next_refund_until timestamptz;
-  v_next_edits_used integer;
-  v_next_status text;
-  v_submission_kind text;
-  v_next_review_ready_at timestamptz;
-  v_next_editing_closed_at timestamptz;
-  v_next_editing_closed_reason text;
-begin
-  if p_setup_token is null
-    or pg_catalog.btrim(p_setup_token) = ''
-    or p_submission_snapshot is null
-    or p_site_passcode_hash is null
-    or pg_catalog.btrim(p_site_passcode_hash) = ''
-    or p_site_passcode_hint is null
-    or pg_catalog.btrim(p_site_passcode_hint) = ''
-    or p_site_passcode_set_at is null then
-    raise exception 'Invalid StoryOfUs setup finalization input.';
-  end if;
-
-  select *
-  into v_submission
-  from public.storyofus_submissions
-  where setup_token = pg_catalog.btrim(p_setup_token)::uuid
-  for update;
-
-  if not found then
-    raise exception 'StoryOfUs setup link is invalid or could not be found.';
-  end if;
-
-  if v_submission.payment_status <> 'paid' then
-    raise exception 'StoryOfUs setup form is not active until payment is approved.';
-  end if;
-
-  if pg_catalog.coalesce(v_submission.refund_status, 'none') in (
-    'requested',
-    'under_review',
-    'approved',
-    'processing',
-    'refunded'
-  ) then
-    raise exception 'This setup form is not editable while refund review is active.';
-  end if;
-
-  if v_submission.status = 'draft' then
-    v_submission_kind := 'first_submit';
-    v_next_editable_until := v_now + interval '3 hours';
-    v_next_refund_until := v_next_editable_until;
-    v_next_edits_used := 0;
-    v_next_status := 'submitted';
-    v_next_review_ready_at := null;
-    v_next_editing_closed_at := null;
-    v_next_editing_closed_reason := null;
-  elsif v_submission.status = 'submitted' then
-    v_effective_editable_until := v_submission.editable_until;
-
-    if v_effective_editable_until is null
-      or v_effective_editable_until <= v_now
-      or v_submission.editing_closed_at is not null then
-      raise exception 'This setup form has already been submitted or is not editable.';
-    end if;
-
-    if v_submission.edits_used >= v_submission.edit_limit then
-      raise exception 'This setup form has reached its edit limit.';
-    end if;
-
-    v_next_edits_used := v_submission.edits_used + 1;
-    v_next_editable_until := v_submission.editable_until;
-    v_next_refund_until := pg_catalog.coalesce(
-      v_submission.refund_request_until,
-      v_submission.editable_until
-    );
-
-    if v_next_edits_used >= v_submission.edit_limit then
-      v_submission_kind := 'edit_limit_reached';
-      v_next_status := 'in_review';
-      v_next_review_ready_at := pg_catalog.coalesce(v_submission.review_ready_at, v_now);
-      v_next_editing_closed_at := pg_catalog.coalesce(v_submission.editing_closed_at, v_now);
-      v_next_editing_closed_reason := 'edit_limit_reached';
-    else
-      v_submission_kind := 'edit_submit';
-      v_next_status := 'submitted';
-      v_next_review_ready_at := null;
-      v_next_editing_closed_at := null;
-      v_next_editing_closed_reason := null;
-    end if;
-  else
-    raise exception 'This setup form has already been submitted or is not editable.';
-  end if;
-
-  if v_submission.status = 'draft'
-    and (
-      p_service_start_consent is null
-      or p_service_start_consent ->> 'accepted' is distinct from 'true'
-    ) then
-    raise exception 'Service start consent is required.';
-  end if;
-
-  perform public.storyofus_validate_finalization_media(v_submission.id, v_snapshot);
-
-  delete from public.storyofus_couple_details
-  where submission_id = v_submission.id;
-
-  delete from public.storyofus_music
-  where submission_id = v_submission.id;
-
-  delete from public.storyofus_timeline_items
-  where submission_id = v_submission.id;
-
-  delete from public.storyofus_letters
-  where submission_id = v_submission.id;
-
-  if v_confirmed_skips #>> '{photos,confirmed}' = 'true' then
-    delete from public.storyofus_media
-    where submission_id = v_submission.id
-      and section = 'gallery';
-  end if;
-
-  if v_confirmed_skips #>> '{puzzle,confirmed}' = 'true' then
-    delete from public.storyofus_media
-    where submission_id = v_submission.id
-      and section = 'puzzle';
-  end if;
-
-  if v_confirmed_skips #>> '{voiceNote,confirmed}' = 'true' then
-    delete from public.storyofus_media
-    where submission_id = v_submission.id
-      and section = 'voice_note';
-  end if;
-
-  update public.storyofus_media
-  set is_puzzle_source = false
-  where submission_id = v_submission.id
-    and is_puzzle_source = true;
-
-  insert into public.storyofus_couple_details (
-    submission_id,
-    customer_name,
-    customer_email,
-    contact_phone,
-    partner_name,
-    couple_display_name,
-    relationship_start_date,
-    special_date_label,
-    recipient_nickname,
-    relationship_story
-  )
-  values (
-    v_submission.id,
-    public.storyofus_empty_to_null(v_contact ->> 'customerName'),
-    public.storyofus_empty_to_null(v_contact ->> 'customerEmail'),
-    public.storyofus_empty_to_null(v_contact ->> 'contactPhone'),
-    public.storyofus_empty_to_null(v_contact ->> 'partnerName'),
-    public.storyofus_empty_to_null(v_contact ->> 'coupleDisplayName'),
-    public.storyofus_to_date(v_contact ->> 'relationshipStartDate'),
-    public.storyofus_empty_to_null(v_contact ->> 'specialDateLabel'),
-    public.storyofus_empty_to_null(v_contact ->> 'recipientNickname'),
-    public.storyofus_empty_to_null(v_contact ->> 'relationshipStory')
-  );
-
-  if v_confirmed_skips #>> '{music,confirmed}' is distinct from 'true'
-    and (
-      public.storyofus_empty_to_null(v_music ->> 'spotifyUrl') is not null
-      or public.storyofus_empty_to_null(v_music ->> 'songTitle') is not null
-      or public.storyofus_empty_to_null(v_music ->> 'artistName') is not null
-    ) then
-    insert into public.storyofus_music (
-      submission_id,
-      spotify_url,
-      spotify_track_id,
-      song_title,
-      artist_name,
-      start_at_seconds
-    )
-    values (
-      v_submission.id,
-      public.storyofus_empty_to_null(v_music ->> 'spotifyUrl'),
-      public.storyofus_empty_to_null(v_music ->> 'spotifyTrackId'),
-      public.storyofus_empty_to_null(v_music ->> 'songTitle'),
-      public.storyofus_empty_to_null(v_music ->> 'artistName'),
-      public.storyofus_to_nonnegative_integer(v_music ->> 'startAtSeconds')
-    );
-  end if;
-
-  perform public.storyofus_apply_media_metadata(v_submission.id, v_snapshot);
-
-  if v_confirmed_skips #>> '{timeline,confirmed}' is distinct from 'true' then
-    insert into public.storyofus_timeline_items (
-      submission_id,
-      title,
-      event_date,
-      description,
-      sort_order
-    )
-    select
-      v_submission.id,
-      public.storyofus_empty_to_null(item.value ->> 'title'),
-      public.storyofus_to_date(item.value ->> 'eventDate'),
-      public.storyofus_empty_to_null(item.value ->> 'description'),
-      public.storyofus_to_nonnegative_integer(item.value ->> 'sortOrder')
-    from pg_catalog.jsonb_array_elements(
-      case
-        when pg_catalog.jsonb_typeof(v_snapshot -> 'timeline') = 'array'
-          then v_snapshot -> 'timeline'
-        else '[]'::jsonb
-      end
-    ) as item(value)
-    where public.storyofus_empty_to_null(item.value ->> 'title') is not null;
-  end if;
-
-  insert into public.storyofus_letters (
-    submission_id,
-    letter_type,
-    title,
-    body,
-    sort_order
-  )
-  select
-    v_submission.id,
-    case when item.value ->> 'type' = 'love_letter' then 'love_letter' else 'open_when' end,
-    pg_catalog.coalesce(public.storyofus_empty_to_null(item.value ->> 'title'), 'Mektup'),
-    pg_catalog.coalesce(public.storyofus_empty_to_null(item.value ->> 'body'), ''),
-    public.storyofus_to_nonnegative_integer(item.value ->> 'sortOrder')
-  from pg_catalog.jsonb_array_elements(
-    case
-      when pg_catalog.jsonb_typeof(v_snapshot -> 'letters') = 'array'
-        then v_snapshot -> 'letters'
-      else '[]'::jsonb
-    end
-  ) as item(value);
-
-  update public.storyofus_submissions as updated_submission
-  set
-    order_reference = public.storyofus_empty_to_null(v_snapshot ->> 'orderReference'),
-    customer_email = public.storyofus_empty_to_null(v_contact ->> 'customerEmail'),
-    customer_name = public.storyofus_empty_to_null(v_contact ->> 'customerName'),
-    contact_phone = public.storyofus_empty_to_null(v_contact ->> 'contactPhone'),
-    status = v_next_status,
-    confirmed_skips = v_confirmed_skips,
-    legal_consents = v_legal_consents,
-    submission_snapshot = v_snapshot,
-    submitted_at = case
-      when v_submission.status = 'draft' then v_now
-      else v_submission.submitted_at
-    end,
-    editable_until = v_next_editable_until,
-    refund_request_until = v_next_refund_until,
-    edit_limit = v_submission.edit_limit,
-    edits_used = v_next_edits_used,
-    editing_closed_at = v_next_editing_closed_at,
-    editing_closed_reason = v_next_editing_closed_reason,
-    review_ready_at = v_next_review_ready_at,
-    service_start_consent = case
-      when v_submission.status = 'draft' then p_service_start_consent
-      else updated_submission.service_start_consent
-    end,
-    last_resubmitted_at = case
-      when v_submission.status = 'draft' then null
-      else v_now
-    end,
-    site_passcode_hash = p_site_passcode_hash,
-    site_passcode_hint = public.storyofus_empty_to_null(p_site_passcode_hint),
-    site_passcode_set_at = p_site_passcode_set_at,
-    updated_at = v_now
-  where updated_submission.id = v_submission.id
-  returning
-    updated_submission.id,
-    updated_submission.setup_token,
-    updated_submission.status,
-    updated_submission.edits_used,
-    updated_submission.edit_limit,
-    updated_submission.editable_until,
-    updated_submission.refund_request_until,
-    updated_submission.editing_closed_at,
-    updated_submission.editing_closed_reason,
-    updated_submission.review_ready_at
-  into
-    submission_id,
-    setup_token,
-    status,
-    edits_used,
-    edit_limit,
-    editable_until,
-    refund_request_until,
-    editing_closed_at,
-    editing_closed_reason,
-    review_ready_at;
-
-  submission_kind := v_submission_kind;
-  return next;
-end;
-$$;
-
 create or replace function public.storyofus_empty_to_null(p_value text)
 returns text
 language sql
@@ -468,7 +138,7 @@ begin
   end if;
 
   v_number := p_value::integer;
-  return pg_catalog.greatest(v_number, 0);
+  return greatest(v_number, 0);
 exception
   when others then
     return 0;
@@ -539,9 +209,9 @@ security definer
 set search_path = pg_catalog
 as $$
 declare
-  v_media jsonb := pg_catalog.coalesce(p_snapshot -> 'media', '{}'::jsonb);
-  v_confirmed_skips jsonb := pg_catalog.coalesce(p_snapshot -> 'confirmedSkips', '{}'::jsonb);
-  v_music_voice jsonb := pg_catalog.coalesce(p_snapshot -> 'musicVoice', '{}'::jsonb);
+  v_media jsonb := coalesce(p_snapshot -> 'media', '{}'::jsonb);
+  v_confirmed_skips jsonb := coalesce(p_snapshot -> 'confirmedSkips', '{}'::jsonb);
+  v_music_voice jsonb := coalesce(p_snapshot -> 'musicVoice', '{}'::jsonb);
   v_photo jsonb;
   v_item jsonb;
   v_gallery_match jsonb;
@@ -760,9 +430,9 @@ security definer
 set search_path = pg_catalog
 as $$
 declare
-  v_media jsonb := pg_catalog.coalesce(p_snapshot -> 'media', '{}'::jsonb);
-  v_confirmed_skips jsonb := pg_catalog.coalesce(p_snapshot -> 'confirmedSkips', '{}'::jsonb);
-  v_music_voice jsonb := pg_catalog.coalesce(p_snapshot -> 'musicVoice', '{}'::jsonb);
+  v_media jsonb := coalesce(p_snapshot -> 'media', '{}'::jsonb);
+  v_confirmed_skips jsonb := coalesce(p_snapshot -> 'confirmedSkips', '{}'::jsonb);
+  v_music_voice jsonb := coalesce(p_snapshot -> 'musicVoice', '{}'::jsonb);
   v_item jsonb;
   v_photo jsonb;
   v_sort_order integer;
@@ -904,6 +574,336 @@ begin
 end;
 $$;
 
+create or replace function public.storyofus_finalize_setup_submission(
+  p_setup_token text,
+  p_submission_snapshot jsonb,
+  p_site_passcode_hash text,
+  p_site_passcode_hint text,
+  p_site_passcode_set_at timestamptz,
+  p_service_start_consent jsonb default null
+)
+returns table (
+  submission_id uuid,
+  setup_token uuid,
+  status text,
+  submission_kind text,
+  edits_used integer,
+  edit_limit integer,
+  editable_until timestamptz,
+  refund_request_until timestamptz,
+  editing_closed_at timestamptz,
+  editing_closed_reason text,
+  review_ready_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = pg_catalog
+as $$
+declare
+  v_now timestamptz := pg_catalog.now();
+  v_submission public.storyofus_submissions%rowtype;
+  v_snapshot jsonb := coalesce(p_submission_snapshot, '{}'::jsonb);
+  v_contact jsonb := coalesce(v_snapshot -> 'contactCouple', '{}'::jsonb);
+  v_media jsonb := coalesce(v_snapshot -> 'media', '{}'::jsonb);
+  v_music_voice jsonb := coalesce(v_snapshot -> 'musicVoice', '{}'::jsonb);
+  v_music jsonb := coalesce(v_music_voice -> 'music', '{}'::jsonb);
+  v_voice_note jsonb := v_music_voice -> 'voiceNote';
+  v_confirmed_skips jsonb := coalesce(v_snapshot -> 'confirmedSkips', '{}'::jsonb);
+  v_legal_consents jsonb := coalesce(v_snapshot -> 'legalConsents', '{}'::jsonb);
+  v_effective_editable_until timestamptz;
+  v_next_editable_until timestamptz;
+  v_next_refund_until timestamptz;
+  v_next_edits_used integer;
+  v_next_status text;
+  v_submission_kind text;
+  v_next_review_ready_at timestamptz;
+  v_next_editing_closed_at timestamptz;
+  v_next_editing_closed_reason text;
+begin
+  if p_setup_token is null
+    or pg_catalog.btrim(p_setup_token) = ''
+    or p_submission_snapshot is null
+    or p_site_passcode_hash is null
+    or pg_catalog.btrim(p_site_passcode_hash) = ''
+    or p_site_passcode_hint is null
+    or pg_catalog.btrim(p_site_passcode_hint) = ''
+    or p_site_passcode_set_at is null then
+    raise exception 'Invalid StoryOfUs setup finalization input.';
+  end if;
+
+  select *
+  into v_submission
+  from public.storyofus_submissions as submission
+  where submission.setup_token = pg_catalog.btrim(p_setup_token)::uuid
+  for update;
+
+  if not found then
+    raise exception 'StoryOfUs setup link is invalid or could not be found.';
+  end if;
+
+  if v_submission.payment_status <> 'paid' then
+    raise exception 'StoryOfUs setup form is not active until payment is approved.';
+  end if;
+
+  if coalesce(v_submission.refund_status, 'none') in (
+    'requested',
+    'under_review',
+    'approved',
+    'processing',
+    'refunded'
+  ) then
+    raise exception 'This setup form is not editable while refund review is active.';
+  end if;
+
+  if v_submission.status = 'draft' then
+    v_submission_kind := 'first_submit';
+    v_next_editable_until := v_now + interval '3 hours';
+    v_next_refund_until := v_next_editable_until;
+    v_next_edits_used := 0;
+    v_next_status := 'submitted';
+    v_next_review_ready_at := null;
+    v_next_editing_closed_at := null;
+    v_next_editing_closed_reason := null;
+  elsif v_submission.status = 'submitted' then
+    v_effective_editable_until := v_submission.editable_until;
+
+    if v_effective_editable_until is null
+      or v_effective_editable_until <= v_now
+      or v_submission.editing_closed_at is not null then
+      raise exception 'This setup form has already been submitted or is not editable.';
+    end if;
+
+    if v_submission.edits_used >= v_submission.edit_limit then
+      raise exception 'This setup form has reached its edit limit.';
+    end if;
+
+    v_next_edits_used := v_submission.edits_used + 1;
+    v_next_editable_until := v_submission.editable_until;
+    v_next_refund_until := coalesce(
+      v_submission.refund_request_until,
+      v_submission.editable_until
+    );
+
+    if v_next_edits_used >= v_submission.edit_limit then
+      v_submission_kind := 'edit_limit_reached';
+      v_next_status := 'in_review';
+      v_next_review_ready_at := coalesce(v_submission.review_ready_at, v_now);
+      v_next_editing_closed_at := coalesce(v_submission.editing_closed_at, v_now);
+      v_next_editing_closed_reason := 'edit_limit_reached';
+    else
+      v_submission_kind := 'edit_submit';
+      v_next_status := 'submitted';
+      v_next_review_ready_at := null;
+      v_next_editing_closed_at := null;
+      v_next_editing_closed_reason := null;
+    end if;
+  else
+    raise exception 'This setup form has already been submitted or is not editable.';
+  end if;
+
+  if v_submission.status = 'draft'
+    and (
+      p_service_start_consent is null
+      or p_service_start_consent ->> 'accepted' is distinct from 'true'
+    ) then
+    raise exception 'Service start consent is required.';
+  end if;
+
+  perform public.storyofus_validate_finalization_media(v_submission.id, v_snapshot);
+
+  delete from public.storyofus_couple_details as couple_details
+  where couple_details.submission_id = v_submission.id;
+
+  delete from public.storyofus_music as music
+  where music.submission_id = v_submission.id;
+
+  delete from public.storyofus_timeline_items as timeline_item
+  where timeline_item.submission_id = v_submission.id;
+
+  delete from public.storyofus_letters as letter
+  where letter.submission_id = v_submission.id;
+
+  if v_confirmed_skips #>> '{photos,confirmed}' = 'true' then
+    delete from public.storyofus_media as media
+    where media.submission_id = v_submission.id
+      and media.section = 'gallery';
+  end if;
+
+  if v_confirmed_skips #>> '{puzzle,confirmed}' = 'true' then
+    delete from public.storyofus_media as media
+    where media.submission_id = v_submission.id
+      and media.section = 'puzzle';
+  end if;
+
+  if v_confirmed_skips #>> '{voiceNote,confirmed}' = 'true' then
+    delete from public.storyofus_media as media
+    where media.submission_id = v_submission.id
+      and media.section = 'voice_note';
+  end if;
+
+  update public.storyofus_media as media
+  set is_puzzle_source = false
+  where media.submission_id = v_submission.id
+    and media.is_puzzle_source = true;
+
+  insert into public.storyofus_couple_details (
+    submission_id,
+    customer_name,
+    customer_email,
+    contact_phone,
+    partner_name,
+    couple_display_name,
+    relationship_start_date,
+    special_date_label,
+    recipient_nickname,
+    relationship_story
+  )
+  values (
+    v_submission.id,
+    public.storyofus_empty_to_null(v_contact ->> 'customerName'),
+    public.storyofus_empty_to_null(v_contact ->> 'customerEmail'),
+    public.storyofus_empty_to_null(v_contact ->> 'contactPhone'),
+    public.storyofus_empty_to_null(v_contact ->> 'partnerName'),
+    public.storyofus_empty_to_null(v_contact ->> 'coupleDisplayName'),
+    public.storyofus_to_date(v_contact ->> 'relationshipStartDate'),
+    public.storyofus_empty_to_null(v_contact ->> 'specialDateLabel'),
+    public.storyofus_empty_to_null(v_contact ->> 'recipientNickname'),
+    public.storyofus_empty_to_null(v_contact ->> 'relationshipStory')
+  );
+
+  if v_confirmed_skips #>> '{music,confirmed}' is distinct from 'true'
+    and (
+      public.storyofus_empty_to_null(v_music ->> 'spotifyUrl') is not null
+      or public.storyofus_empty_to_null(v_music ->> 'songTitle') is not null
+      or public.storyofus_empty_to_null(v_music ->> 'artistName') is not null
+    ) then
+    insert into public.storyofus_music (
+      submission_id,
+      spotify_url,
+      spotify_track_id,
+      song_title,
+      artist_name,
+      start_at_seconds
+    )
+    values (
+      v_submission.id,
+      public.storyofus_empty_to_null(v_music ->> 'spotifyUrl'),
+      public.storyofus_empty_to_null(v_music ->> 'spotifyTrackId'),
+      public.storyofus_empty_to_null(v_music ->> 'songTitle'),
+      public.storyofus_empty_to_null(v_music ->> 'artistName'),
+      public.storyofus_to_nonnegative_integer(v_music ->> 'startAtSeconds')
+    );
+  end if;
+
+  perform public.storyofus_apply_media_metadata(v_submission.id, v_snapshot);
+
+  if v_confirmed_skips #>> '{timeline,confirmed}' is distinct from 'true' then
+    insert into public.storyofus_timeline_items (
+      submission_id,
+      title,
+      event_date,
+      description,
+      sort_order
+    )
+    select
+      v_submission.id,
+      public.storyofus_empty_to_null(item.value ->> 'title'),
+      public.storyofus_to_date(item.value ->> 'eventDate'),
+      public.storyofus_empty_to_null(item.value ->> 'description'),
+      public.storyofus_to_nonnegative_integer(item.value ->> 'sortOrder')
+    from pg_catalog.jsonb_array_elements(
+      case
+        when pg_catalog.jsonb_typeof(v_snapshot -> 'timeline') = 'array'
+          then v_snapshot -> 'timeline'
+        else '[]'::jsonb
+      end
+    ) as item(value)
+    where public.storyofus_empty_to_null(item.value ->> 'title') is not null;
+  end if;
+
+  insert into public.storyofus_letters (
+    submission_id,
+    letter_type,
+    title,
+    body,
+    sort_order
+  )
+  select
+    v_submission.id,
+    case when item.value ->> 'type' = 'love_letter' then 'love_letter' else 'open_when' end,
+    coalesce(public.storyofus_empty_to_null(item.value ->> 'title'), 'Mektup'),
+    coalesce(public.storyofus_empty_to_null(item.value ->> 'body'), ''),
+    public.storyofus_to_nonnegative_integer(item.value ->> 'sortOrder')
+  from pg_catalog.jsonb_array_elements(
+    case
+      when pg_catalog.jsonb_typeof(v_snapshot -> 'letters') = 'array'
+        then v_snapshot -> 'letters'
+      else '[]'::jsonb
+    end
+  ) as item(value);
+
+  update public.storyofus_submissions as updated_submission
+  set
+    order_reference = public.storyofus_empty_to_null(v_snapshot ->> 'orderReference'),
+    customer_email = public.storyofus_empty_to_null(v_contact ->> 'customerEmail'),
+    customer_name = public.storyofus_empty_to_null(v_contact ->> 'customerName'),
+    contact_phone = public.storyofus_empty_to_null(v_contact ->> 'contactPhone'),
+    status = v_next_status,
+    confirmed_skips = v_confirmed_skips,
+    legal_consents = v_legal_consents,
+    submission_snapshot = v_snapshot,
+    submitted_at = case
+      when v_submission.status = 'draft' then v_now
+      else v_submission.submitted_at
+    end,
+    editable_until = v_next_editable_until,
+    refund_request_until = v_next_refund_until,
+    edit_limit = v_submission.edit_limit,
+    edits_used = v_next_edits_used,
+    editing_closed_at = v_next_editing_closed_at,
+    editing_closed_reason = v_next_editing_closed_reason,
+    review_ready_at = v_next_review_ready_at,
+    service_start_consent = case
+      when v_submission.status = 'draft' then p_service_start_consent
+      else updated_submission.service_start_consent
+    end,
+    last_resubmitted_at = case
+      when v_submission.status = 'draft' then null
+      else v_now
+    end,
+    site_passcode_hash = p_site_passcode_hash,
+    site_passcode_hint = public.storyofus_empty_to_null(p_site_passcode_hint),
+    site_passcode_set_at = p_site_passcode_set_at,
+    updated_at = v_now
+  where updated_submission.id = v_submission.id
+  returning
+    updated_submission.id,
+    updated_submission.setup_token,
+    updated_submission.status,
+    updated_submission.edits_used,
+    updated_submission.edit_limit,
+    updated_submission.editable_until,
+    updated_submission.refund_request_until,
+    updated_submission.editing_closed_at,
+    updated_submission.editing_closed_reason,
+    updated_submission.review_ready_at
+  into
+    submission_id,
+    setup_token,
+    status,
+    edits_used,
+    edit_limit,
+    editable_until,
+    refund_request_until,
+    editing_closed_at,
+    editing_closed_reason,
+    review_ready_at;
+
+  submission_kind := v_submission_kind;
+  return next;
+end;
+$$;
+
 create or replace function public.storyofus_commit_setup_media_upload(
   p_setup_token text,
   p_media_type text,
@@ -986,7 +986,7 @@ begin
   end if;
 
   if v_submission.payment_status <> 'paid'
-    or pg_catalog.coalesce(v_submission.refund_status, 'none') in (
+    or coalesce(v_submission.refund_status, 'none') in (
       'requested',
       'under_review',
       'approved',
@@ -1023,7 +1023,7 @@ begin
       and existing.section_item_id = p_section_item_id
     for update
   )
-  select pg_catalog.coalesce(pg_catalog.array_agg(locked_existing.storage_path), array[]::text[])
+  select coalesce(pg_catalog.array_agg(locked_existing.storage_path), array[]::text[])
   into v_replaced_storage_paths
   from locked_existing;
 
@@ -1054,7 +1054,7 @@ begin
     public.storyofus_empty_to_null(p_mime_type),
     p_size_bytes,
     public.storyofus_empty_to_null(p_caption),
-    pg_catalog.greatest(pg_catalog.coalesce(p_sort_order, 0), 0),
+    greatest(coalesce(p_sort_order, 0), 0),
     p_section = 'puzzle' or (p_section = 'gallery' and p_semantic_key = 'puzzle_source')
   )
   returning *
@@ -1134,7 +1134,7 @@ begin
   end if;
 
   if v_submission.payment_status <> 'paid'
-    or pg_catalog.coalesce(v_submission.refund_status, 'none') in (
+    or coalesce(v_submission.refund_status, 'none') in (
       'requested',
       'under_review',
       'approved',
@@ -1171,7 +1171,7 @@ begin
       and existing.section_item_id = p_section_item_id
     for update
   )
-  select pg_catalog.coalesce(pg_catalog.array_agg(locked_existing.storage_path), array[]::text[])
+  select coalesce(pg_catalog.array_agg(locked_existing.storage_path), array[]::text[])
   into v_removed_storage_paths
   from locked_existing;
 
@@ -1204,7 +1204,7 @@ set search_path = pg_catalog
 as $$
 declare
   v_now timestamptz := pg_catalog.now();
-  v_batch_limit integer := pg_catalog.least(pg_catalog.greatest(coalesce(p_batch_limit, 50), 1), 100);
+  v_batch_limit integer := least(greatest(coalesce(p_batch_limit, 50), 1), 100);
   v_eligible_count integer := 0;
   v_promoted_count integer := 0;
 begin
@@ -1304,8 +1304,8 @@ begin
 
   select *
   into v_submission
-  from public.storyofus_submissions
-  where id = p_submission_id
+  from public.storyofus_submissions as submission
+  where submission.id = p_submission_id
   for update;
 
   if not found then
@@ -1323,9 +1323,9 @@ begin
     final_site_url := v_submission.final_site_url;
     email_queued := exists (
       select 1
-      from public.storyofus_email_outbox
-      where submission_id = v_submission.id
-        and email_type = 'final_site_ready'
+      from public.storyofus_email_outbox as outbox
+      where outbox.submission_id = v_submission.id
+        and outbox.email_type = 'final_site_ready'
     );
     return next;
     return;
@@ -1335,7 +1335,7 @@ begin
     or v_submission.status <> 'in_review'
     or coalesce(v_submission.refund_request_until, v_submission.editable_until) is null
     or coalesce(v_submission.refund_request_until, v_submission.editable_until) > v_now
-    or pg_catalog.coalesce(v_submission.refund_status, 'none') not in ('none', 'rejected')
+    or coalesce(v_submission.refund_status, 'none') not in ('none', 'rejected')
     or v_submission.site_passcode_hash is null
     or v_submission.site_passcode_hint is null
     or v_submission.site_passcode_set_at is null then
@@ -1349,8 +1349,8 @@ begin
 
   if not exists (
     select 1
-    from public.storyofus_couple_details
-    where submission_id = v_submission.id
+    from public.storyofus_couple_details as couple_details
+    where couple_details.submission_id = v_submission.id
   ) then
     result := 'missing_setup_data';
     final_site_slug := null;
@@ -1362,15 +1362,15 @@ begin
 
   if not exists (
     select 1
-    from public.storyofus_media
-    where submission_id = v_submission.id
-      and section = 'letter'
-      and semantic_key = 'love_letter_side_photo'
-      and section_item_id = 'loveLetterPhoto'
-      and media_type = 'photo'
-      and storage_bucket = 'storyofus-media'
-      and storage_path is not null
-      and storage_path <> ''
+    from public.storyofus_media as media
+    where media.submission_id = v_submission.id
+      and media.section = 'letter'
+      and media.semantic_key = 'love_letter_side_photo'
+      and media.section_item_id = 'loveLetterPhoto'
+      and media.media_type = 'photo'
+      and media.storage_bucket = 'storyofus-media'
+      and media.storage_path is not null
+      and media.storage_path <> ''
   ) then
     result := 'missing_setup_data';
     final_site_slug := null;
@@ -1382,9 +1382,9 @@ begin
 
   if exists (
     select 1
-    from public.storyofus_submissions
-    where final_site_slug = v_slug
-      and id <> v_submission.id
+    from public.storyofus_submissions as existing_submission
+    where existing_submission.final_site_slug = v_slug
+      and existing_submission.id <> v_submission.id
   ) then
     result := 'slug_conflict';
     final_site_slug := null;
@@ -1394,19 +1394,19 @@ begin
     return;
   end if;
 
-  update public.storyofus_submissions
+  update public.storyofus_submissions as submission
   set
     status = 'published',
     final_site_slug = v_slug,
     final_site_url = v_url,
     delivered_at = v_now,
     updated_at = v_now
-  where id = v_submission.id
-    and status = 'in_review'
-    and payment_status = 'paid'
-    and coalesce(refund_request_until, editable_until) is not null
-    and coalesce(refund_request_until, editable_until) <= v_now
-    and pg_catalog.coalesce(refund_status, 'none') in ('none', 'rejected');
+  where submission.id = v_submission.id
+    and submission.status = 'in_review'
+    and submission.payment_status = 'paid'
+    and coalesce(submission.refund_request_until, submission.editable_until) is not null
+    and coalesce(submission.refund_request_until, submission.editable_until) <= v_now
+    and coalesce(submission.refund_status, 'none') in ('none', 'rejected');
 
   if not found then
     result := 'not_publishable';
@@ -1446,9 +1446,9 @@ begin
   else
     email_queued := exists (
       select 1
-      from public.storyofus_email_outbox
-      where submission_id = v_submission.id
-        and email_type = 'final_site_ready'
+      from public.storyofus_email_outbox as outbox
+      where outbox.submission_id = v_submission.id
+        and outbox.email_type = 'final_site_ready'
     );
   end if;
   return next;
