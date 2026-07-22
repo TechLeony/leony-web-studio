@@ -257,7 +257,10 @@ function extractFunctionSql(functionName: string) {
   const startIndex = migrationSql.indexOf(startMarker);
   assert.notEqual(startIndex, -1, `${functionName} must exist in migration`);
 
-  const nextFunctionIndex = migrationSql.indexOf("create or replace function public.", startIndex + 1);
+  const nextFunctionIndex = migrationSql.indexOf(
+    "create or replace function public.",
+    startIndex + 1,
+  );
   const endIndex =
     nextFunctionIndex === -1
       ? migrationSql.indexOf("revoke all privileges", startIndex)
