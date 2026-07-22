@@ -76,3 +76,31 @@ export function isStoryOfUsEditSubmitDialogConfirmDisabled({
 export function shouldCloseStoryOfUsEditSubmitDialogOnEscape(isSubmitting: boolean) {
   return !isSubmitting;
 }
+
+export function getStoryOfUsFocusTrapTargetIndex({
+  currentIndex,
+  focusableCount,
+  isShiftKey,
+}: {
+  currentIndex: number;
+  focusableCount: number;
+  isShiftKey: boolean;
+}) {
+  if (focusableCount <= 0) {
+    return -1;
+  }
+
+  if (currentIndex < 0) {
+    return isShiftKey ? focusableCount - 1 : 0;
+  }
+
+  if (isShiftKey && currentIndex <= 0) {
+    return focusableCount - 1;
+  }
+
+  if (!isShiftKey && currentIndex >= focusableCount - 1) {
+    return 0;
+  }
+
+  return -1;
+}

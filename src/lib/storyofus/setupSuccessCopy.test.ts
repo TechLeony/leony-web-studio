@@ -9,6 +9,7 @@ import {
   getStoryOfUsEditingStateDescription,
   getStoryOfUsEditingStateLabel,
   getStoryOfUsRemainingEditCount,
+  getStoryOfUsSetupReviewSubmitCopy,
   getStoryOfUsSetupSuccessCopy,
   isStoryOfUsEditingOpen,
   shouldShowStoryOfUsEditDeadline,
@@ -94,9 +95,9 @@ test("admin_locked displays neutral support copy", () => {
 
 test("edit confirmation describes 0/2 transition to 1/2", () => {
   assert.deepEqual(getStoryOfUsEditSubmissionConfirmationCopy({ editsUsed: 0, editLimit: 2 }), {
-    title: "Düzenlemeyi göndermek istiyor musunuz?",
+    title: "Düzenlemeleri göndermek istiyor musunuz?",
     body: "Bu işlemden sonra düzenleme hakkınız 1/2 olacak.",
-    confirmLabel: "Düzenlemeyi gönder",
+    confirmLabel: "Düzenlemeleri kaydet",
   });
 });
 
@@ -175,4 +176,22 @@ test("submitted tracking edit state remains unchanged", () => {
 
   assert.equal(getStoryOfUsEditingStateLabel(editStatus, NOW), "Düzenleme süresi açık");
   assert.equal(shouldShowStoryOfUsEditDeadline(editStatus), true);
+});
+
+test("initial setup review copy does not claim an edit right is consumed", () => {
+  const copy = getStoryOfUsSetupReviewSubmitCopy(false);
+
+  assert.match(copy, /seçtiğiniz anda güvenli şekilde yüklenir/);
+  assert.match(copy, /ilk gönderimden sonra başlayacak düzenleme haklarınızı kullanmaz/);
+  assert.doesNotMatch(copy, /başarıyla gönderdiğinizde bir düzenleme hakkınız kullanılır/);
+});
+
+test("submitted-edit review copy explains only successful final submission consumes an edit", () => {
+  const copy = getStoryOfUsSetupReviewSubmitCopy(true);
+
+  assert.match(copy, /Otomatik kaydetme ve dosya yükleme düzenleme hakkınızı kullanmaz/);
+  assert.match(
+    copy,
+    /yalnızca bu adımı başarıyla gönderdiğinizde bir düzenleme hakkınız kullanılır/,
+  );
 });

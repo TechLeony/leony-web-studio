@@ -21,6 +21,7 @@ import {
   getStoryOfUsEditingStateDescription,
   getStoryOfUsEditingStateLabel,
   getStoryOfUsRemainingEditCount,
+  getStoryOfUsSetupReviewSubmitCopy,
   getStoryOfUsSetupSuccessCopy,
   isStoryOfUsEditingOpen,
   type StoryOfUsSetupEditStatusInput,
@@ -67,6 +68,7 @@ import {
 } from "../lib/storyofus/setupTypes";
 import {
   createStoryOfUsSingleUseAsyncGuard,
+  getStoryOfUsFocusTrapTargetIndex,
   getStoryOfUsFinalSubmitUiState,
   shouldCloseStoryOfUsEditSubmitDialogOnEscape,
 } from "../lib/storyofus/setupSubmitUiState";
@@ -2211,7 +2213,11 @@ function StoryOfUsSetupRoute() {
             </div>
 
             {setupAccess.mode === "edit" && (
-              <div className="mb-5 min-w-0 rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-3 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8 sm:rounded-3xl sm:p-4">
+              <div
+                className="mb-5 min-w-0 rounded-2xl border border-fuchsia-100 bg-gradient-to-br from-white to-fuchsia-50/70 p-3 text-sm leading-6 text-rose-950/65 shadow-sm shadow-fuchsia-100/50 sm:mb-8 sm:rounded-3xl sm:p-4"
+                role="status"
+                aria-live="polite"
+              >
                 <p className="font-semibold text-fuchsia-700">Bilgilerinizi düzenliyorsunuz.</p>
                 {setupEditStatus && (
                   <p className="mt-1 font-semibold text-rose-800">
@@ -2518,6 +2524,7 @@ function EditSubmitConfirmationDialog({
 }) {
   const copy = getStoryOfUsEditSubmissionConfirmationCopy(editStatus);
   const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     cancelButtonRef.current?.focus();
@@ -2530,6 +2537,25 @@ function EditSubmitConfirmationDialog({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Tab") {
+        const focusableElements = getFocusableDialogElements(dialogRef.current);
+        const activeIndex = focusableElements.findIndex(
+          (element) => element === document.activeElement,
+        );
+        const targetIndex = getStoryOfUsFocusTrapTargetIndex({
+          currentIndex: activeIndex,
+          focusableCount: focusableElements.length,
+          isShiftKey: event.shiftKey,
+        });
+
+        if (targetIndex !== -1) {
+          event.preventDefault();
+          focusableElements[targetIndex]?.focus();
+        }
+
+        return;
+      }
+
       if (event.key !== "Escape") {
         return;
       }
@@ -2552,6 +2578,7 @@ function EditSubmitConfirmationDialog({
 
   return (
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 grid place-items-center bg-rose-950/30 px-4 py-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
@@ -2596,6 +2623,30 @@ function EditSubmitConfirmationDialog({
         </div>
       </section>
     </div>
+  );
+}
+
+function getFocusableDialogElements(container: HTMLElement | null) {
+  if (!container) {
+    return [];
+  }
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        "a[href]",
+        "button:not([disabled])",
+        "textarea:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(", "),
+    ),
+  ).filter(
+    (element) =>
+      !element.hasAttribute("disabled") &&
+      element.getAttribute("aria-hidden") !== "true" &&
+      element.offsetParent !== null,
   );
 }
 
@@ -5993,8 +6044,7 @@ function ReviewSubmitStep({
       <section className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 p-5 text-center shadow-sm shadow-rose-100/50">
         <h4 className="text-xl font-bold text-rose-950">Her şey hazır mı?</h4>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-7 text-rose-950/60">
-          Bilgilerinizi güvenli şekilde alacağız. Fotoğraf ve ses dosyaları yalnızca gönderim
-          sırasında sunucu tarafında yüklenecek.
+          {getStoryOfUsSetupReviewSubmitCopy(isSubmittedEdit)}
         </p>
         {isSubmittedEdit && editStatus && (
           <div className="mx-auto mt-4 max-w-2xl rounded-3xl border border-fuchsia-100 bg-white/85 p-4 text-left text-sm leading-6 text-rose-950/65">

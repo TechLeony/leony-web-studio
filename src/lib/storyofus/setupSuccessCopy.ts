@@ -64,10 +64,18 @@ export function getStoryOfUsEditSubmissionConfirmationCopy(
   }
 
   return {
-    title: "Düzenlemeyi göndermek istiyor musunuz?",
+    title: "Düzenlemeleri göndermek istiyor musunuz?",
     body: `Bu işlemden sonra düzenleme hakkınız ${nextEditsUsed}/${editLimit} olacak.`,
-    confirmLabel: "Düzenlemeyi gönder",
+    confirmLabel: "Düzenlemeleri kaydet",
   };
+}
+
+export function getStoryOfUsSetupReviewSubmitCopy(isSubmittedEdit: boolean) {
+  if (isSubmittedEdit) {
+    return "Fotoğraf ve ses dosyalarınız seçtiğiniz anda güvenli şekilde yüklenir. Otomatik kaydetme ve dosya yükleme düzenleme hakkınızı kullanmaz; yalnızca bu adımı başarıyla gönderdiğinizde bir düzenleme hakkınız kullanılır.";
+  }
+
+  return "Fotoğraf ve ses dosyalarınız seçtiğiniz anda güvenli şekilde yüklenir. Otomatik kaydetme ve dosya yükleme, ilk gönderimden sonra başlayacak düzenleme haklarınızı kullanmaz.";
 }
 
 export function getStoryOfUsEditSubmitNotice(editStatus: StoryOfUsSetupEditStatusInput) {

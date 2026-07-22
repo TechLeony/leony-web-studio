@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createStoryOfUsSingleUseAsyncGuard,
+  getStoryOfUsFocusTrapTargetIndex,
   getStoryOfUsFinalSubmitUiState,
   isStoryOfUsEditSubmitDialogConfirmDisabled,
   shouldCloseStoryOfUsEditSubmitDialogOnEscape,
@@ -125,4 +126,39 @@ test("StoryOfUs final submit remains enabled when no blocker exists", () => {
 test("StoryOfUs edit confirmation Escape closes only when idle", () => {
   assert.equal(shouldCloseStoryOfUsEditSubmitDialogOnEscape(false), true);
   assert.equal(shouldCloseStoryOfUsEditSubmitDialogOnEscape(true), false);
+});
+
+test("StoryOfUs edit confirmation focus trap wraps keyboard focus", () => {
+  assert.equal(
+    getStoryOfUsFocusTrapTargetIndex({
+      currentIndex: 1,
+      focusableCount: 2,
+      isShiftKey: false,
+    }),
+    0,
+  );
+  assert.equal(
+    getStoryOfUsFocusTrapTargetIndex({
+      currentIndex: 0,
+      focusableCount: 2,
+      isShiftKey: true,
+    }),
+    1,
+  );
+  assert.equal(
+    getStoryOfUsFocusTrapTargetIndex({
+      currentIndex: 0,
+      focusableCount: 2,
+      isShiftKey: false,
+    }),
+    -1,
+  );
+  assert.equal(
+    getStoryOfUsFocusTrapTargetIndex({
+      currentIndex: -1,
+      focusableCount: 2,
+      isShiftKey: false,
+    }),
+    0,
+  );
 });
