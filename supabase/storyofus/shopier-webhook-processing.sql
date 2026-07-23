@@ -185,7 +185,7 @@ begin
     update public.storyofus_submissions
     set
       payment_status = 'paid',
-      paid_at = pg_catalog.coalesce(paid_at, p_received_at),
+      paid_at = coalesce(paid_at, p_received_at),
       payment_reference = v_payment_reference,
       payment_provider_event_id = v_event_id,
       payment_callback_received_at = p_received_at,

@@ -57,7 +57,7 @@ set search_path = pg_catalog
 as $$
 declare
   v_now timestamptz := pg_catalog.now();
-  v_batch_limit integer := pg_catalog.least(pg_catalog.greatest(coalesce(p_batch_limit, 50), 1), 100);
+  v_batch_limit integer := least(greatest(coalesce(p_batch_limit, 50), 1), 100);
   v_eligible_count integer := 0;
   v_promoted_count integer := 0;
 begin

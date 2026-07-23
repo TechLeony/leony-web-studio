@@ -69,7 +69,7 @@ begin
     or v_submission.status <> 'in_review'
     or v_submission.editable_until is null
     or v_submission.editable_until > v_now
-    or pg_catalog.coalesce(v_submission.refund_status, 'none') not in ('none', 'rejected')
+    or coalesce(v_submission.refund_status, 'none') not in ('none', 'rejected')
     or v_submission.site_passcode_hash is null
     or v_submission.site_passcode_hint is null
     or v_submission.site_passcode_set_at is null then
@@ -120,7 +120,7 @@ begin
     and payment_status = 'paid'
     and editable_until is not null
     and editable_until <= v_now
-    and pg_catalog.coalesce(refund_status, 'none') in ('none', 'rejected');
+    and coalesce(refund_status, 'none') in ('none', 'rejected');
 
   if not found then
     result := 'not_publishable';
