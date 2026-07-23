@@ -85,7 +85,7 @@ test("setup_submitted email includes 0/2 edit usage, edit deadline, and refund d
   assert.match(template.text, /Şu an kullandığınız düzenleme hakkı: 0\/2/);
 });
 
-test("final_site_ready email includes final URL and hint but never the passcode", () => {
+test("final_site_ready email includes final URL and encrypted-page copy but never passcode details", () => {
   const template = createStoryOfUsEmailTemplate({
     emailType: "final_site_ready",
     customerName: "Elif",
@@ -96,7 +96,17 @@ test("final_site_ready email includes final URL and hint but never the passcode"
   } as Parameters<typeof createStoryOfUsEmailTemplate>[0] & { passcode: string });
 
   assert.match(template.html, new RegExp(escapeRegExp(FINAL_URL)));
-  assert.match(template.html, /Tanıştığımız yıl/);
+  assert.match(template.html, /StoryOfUs sayfamı aç/);
+  assert.match(
+    template.html,
+    /Sayfanız, güvenliğiniz için şifrelenmiştir\. Açmak için kurulum sırasında belirlediğiniz dört haneli şifreyi kullanın\./,
+  );
+  assert.match(
+    template.text,
+    /Sayfanız, güvenliğiniz için şifrelenmiştir\. Açmak için kurulum sırasında belirlediğiniz dört haneli şifreyi kullanın\./,
+  );
+  assert.doesNotMatch(template.html, /Tanıştığımız yıl|Şifre ipucunuz/);
+  assert.doesNotMatch(template.text, /Tanıştığımız yıl|Şifre ipucunuz/);
   assert.doesNotMatch(template.html, /2022/);
   assert.doesNotMatch(template.text, /2022/);
 });

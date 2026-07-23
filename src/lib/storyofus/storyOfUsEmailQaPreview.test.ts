@@ -69,6 +69,8 @@ test("final-site-ready email QA includes the final website CTA", () => {
 
   assert.match(preview.html, /StoryOfUs sayfamı aç/);
   assert.match(preview.html, /preview\.local\/storyofus\/site\/qa-final-site/);
+  assert.match(preview.html, /Sayfanız, güvenliğiniz için şifrelenmiştir/);
+  assert.doesNotMatch(preview.html, /Şifre ipucunuz|Tanıştığımız yıl/);
   assert.doesNotMatch(preview.html, /worker|RPC|in_review|published/);
 });
 

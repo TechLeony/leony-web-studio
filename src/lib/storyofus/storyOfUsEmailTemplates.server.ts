@@ -246,10 +246,6 @@ function createFinalSiteReadyTemplate(
   const safeCustomerName = escapeHtml(input.customerName);
   const safeOrderReference = escapeHtml(input.orderReference);
   const safeFinalSiteUrl = escapeHtml(input.finalSiteUrl);
-  const safePasscodeHint =
-    typeof input.passcodeHint === "string" && input.passcodeHint.trim()
-      ? escapeHtml(input.passcodeHint.trim())
-      : null;
   const subject = getStoryOfUsEmailTemplateSubject("final_site_ready", input.orderReference);
 
   return {
@@ -263,8 +259,7 @@ function createFinalSiteReadyTemplate(
         <p>Merhaba ${safeCustomerName},</p>
         <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz hazırlandı.</p>
         <p>Sevgilinize özel romantik web sitenizi aşağıdaki bağlantıdan açabilirsiniz.</p>
-        <p>Sayfada giriş şifresi istenirse, kurulum sırasında sizin belirlediğiniz dört haneli şifreyi kullanabilirsiniz. Güvenliğiniz için bu şifre e-postada paylaşılmaz.</p>
-        ${safePasscodeHint ? `<p>Şifre ipucunuz: <strong>${safePasscodeHint}</strong></p>` : ""}
+        <p>Sayfanız, güvenliğiniz için şifrelenmiştir. Açmak için kurulum sırasında belirlediğiniz dört haneli şifreyi kullanın.</p>
         ${renderButton("StoryOfUs sayfamı aç", safeFinalSiteUrl)}
         ${renderRawLink("Final site bağlantısı", safeFinalSiteUrl)}
         ${renderSupportNote()}
@@ -276,8 +271,7 @@ function createFinalSiteReadyTemplate(
       `${input.orderReference} numaralı StoryOfUs siparişiniz hazırlandı.`,
       "",
       "Sevgilinize özel romantik web sitenizi aşağıdaki bağlantıdan açabilirsiniz.",
-      "Sayfada giriş şifresi istenirse, kurulum sırasında sizin belirlediğiniz dört haneli şifreyi kullanabilirsiniz. Güvenliğiniz için bu şifre e-postada paylaşılmaz.",
-      ...(input.passcodeHint?.trim() ? [`Şifre ipucunuz: ${input.passcodeHint.trim()}`] : []),
+      "Sayfanız, güvenliğiniz için şifrelenmiştir. Açmak için kurulum sırasında belirlediğiniz dört haneli şifreyi kullanın.",
       "",
       `Final site bağlantısı: ${input.finalSiteUrl}`,
       "",
