@@ -112,7 +112,7 @@ function createCheckoutCreatedTemplate(
         <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz oluşturuldu.</p>
         <p>Ödeme tamamlandıktan sonra size özel kurulum bağlantınızı e-posta ile göndereceğiz.</p>
         <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
-        ${renderButton("Ödemeye devam et", safeShopierPaymentUrl)}
+        ${renderButton("Shopier'de ödemeye devam et", safeShopierPaymentUrl)}
         ${renderSecondaryButton("Siparişimi takip et", safeTrackOrderUrl)}
         ${renderRawLink("Ödeme bağlantısı", safeShopierPaymentUrl)}
         ${renderRawLink("Sipariş takip bağlantısı", safeTrackOrderUrl)}

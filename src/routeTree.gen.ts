@@ -28,6 +28,7 @@ import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyof
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 import { Route as StoryofusSiteSiteSlugRouteImport } from './routes/storyofus.site.$siteSlug'
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
+import { Route as StoryofusInternalEmailQaRouteImport } from './routes/storyofus.internal.email-qa'
 import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
 import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
@@ -127,6 +128,12 @@ const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
   path: '/demo',
   getParentRoute: () => StoryofusSetupRoute,
 } as any)
+const StoryofusInternalEmailQaRoute =
+  StoryofusInternalEmailQaRouteImport.update({
+    id: '/storyofus/internal/email-qa',
+    path: '/storyofus/internal/email-qa',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiStoryofusShopierCallbackRoute =
   ApiStoryofusShopierCallbackRouteImport.update({
     id: '/api/storyofus/shopier/callback',
@@ -163,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -186,6 +194,7 @@ export interface FileRoutesByTo {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
+  '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -211,6 +220,7 @@ export interface FileRoutesById {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
+    | '/storyofus/internal/email-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin'
     | '/storyofus'
+    | '/storyofus/internal/email-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
@@ -284,6 +296,7 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
+    | '/storyofus/internal/email-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
@@ -306,6 +319,7 @@ export interface RootRouteChildren {
   StoryofusSetupRoute: typeof StoryofusSetupRouteWithChildren
   StoryofusTrackOrderRoute: typeof StoryofusTrackOrderRoute
   StoryofusIndexRoute: typeof StoryofusIndexRoute
+  StoryofusInternalEmailQaRoute: typeof StoryofusInternalEmailQaRoute
   StoryofusSiteSiteSlugRoute: typeof StoryofusSiteSiteSlugRoute
   StoryofusStylesStyleRoute: typeof StoryofusStylesStyleRoute
   ApiInternalStoryofusEmailWorkerRoute: typeof ApiInternalStoryofusEmailWorkerRoute
@@ -448,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusSetupDemoRouteImport
       parentRoute: typeof StoryofusSetupRoute
     }
+    '/storyofus/internal/email-qa': {
+      id: '/storyofus/internal/email-qa'
+      path: '/storyofus/internal/email-qa'
+      fullPath: '/storyofus/internal/email-qa'
+      preLoaderRoute: typeof StoryofusInternalEmailQaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/storyofus/shopier/callback': {
       id: '/api/storyofus/shopier/callback'
       path: '/api/storyofus/shopier/callback'
@@ -512,6 +533,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryofusSetupRoute: StoryofusSetupRouteWithChildren,
   StoryofusTrackOrderRoute: StoryofusTrackOrderRoute,
   StoryofusIndexRoute: StoryofusIndexRoute,
+  StoryofusInternalEmailQaRoute: StoryofusInternalEmailQaRoute,
   StoryofusSiteSiteSlugRoute: StoryofusSiteSiteSlugRoute,
   StoryofusStylesStyleRoute: StoryofusStylesStyleRoute,
   ApiInternalStoryofusEmailWorkerRoute: ApiInternalStoryofusEmailWorkerRoute,

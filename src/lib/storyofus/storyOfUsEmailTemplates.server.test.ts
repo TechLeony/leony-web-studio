@@ -37,7 +37,7 @@ test("checkout_created email includes payment and prefilled tracking URLs", () =
   });
 
   assert.match(template.subject, /ödeme adımınız hazır/);
-  assert.match(template.html, /Ödemeye devam et/);
+  assert.match(template.html, /Shopier&#39;de ödemeye devam et/);
   assert.match(template.html, new RegExp(escapeRegExp(PAYMENT_URL)));
   assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
   assert.match(template.text, new RegExp(escapeRegExp(TRACKING_CODE)));
