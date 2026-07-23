@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Heart, Camera, Music, PenLine, Palette, Sparkles, Mail, Lock, Clock } from "lucide-react";
 import { GlobalPending } from "@/components/leony/GlobalPending";
 import { storyOfUsDemoCtaConfig } from "../lib/storyofus/demoCtaConfig";
+import { useStoryOfUsDemoNavigation } from "../lib/storyofus/storyOfUsDemoNavigation";
 
 export const Route = createFileRoute("/storyofus/")({
   head: () => ({
@@ -25,22 +25,13 @@ export const Route = createFileRoute("/storyofus/")({
 });
 
 const PINK_BG = "bg-[linear-gradient(180deg,#fff5f7_0%,#ffe4ec_45%,#ffd1de_100%)]";
-const STORYOFUS_LOADING_DURATION_MS = 2000;
 
 function StoryOfUsLanding() {
-  const [demoLoading, setDemoLoading] = useState(false);
-  const navigate = useNavigate();
-
-  async function navigateDemo() {
-    if (demoLoading) return;
-    setDemoLoading(true);
-    await new Promise((resolve) => window.setTimeout(resolve, STORYOFUS_LOADING_DURATION_MS));
-    navigate({ to: storyOfUsDemoCtaConfig.demoPath });
-  }
+  const { isDemoLoading, navigateToDemo } = useStoryOfUsDemoNavigation();
 
   return (
     <div className={`min-h-screen ${PINK_BG} text-rose-950`}>
-      {demoLoading && <GlobalPending />}
+      {isDemoLoading && <GlobalPending />}
       <FloatingHearts />
       <PromoMarqueeBar />
 
@@ -113,8 +104,8 @@ function StoryOfUsLanding() {
 
           <button
             type="button"
-            onClick={navigateDemo}
-            disabled={demoLoading}
+            onClick={navigateToDemo}
+            disabled={isDemoLoading}
             className="mt-2 text-sm text-rose-700 underline underline-offset-4 decoration-rose-300 hover:text-rose-900 disabled:pointer-events-none disabled:opacity-60"
           >
             Örnek hediyeyi görmek için tıklayın →
@@ -228,8 +219,8 @@ function StoryOfUsLanding() {
 
                 <button
                   type="button"
-                  onClick={navigateDemo}
-                  disabled={demoLoading}
+                  onClick={navigateToDemo}
+                  disabled={isDemoLoading}
                   className="mt-7 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-rose-700 px-5 py-3 text-sm font-medium text-white shadow-lg shadow-rose-300/40 transition hover:bg-rose-800 hover:shadow-rose-400/50 disabled:pointer-events-none disabled:opacity-70 sm:w-auto sm:text-base"
                 >
                   Örnek Hediyeyi İncele 💌 <Heart className="h-4 w-4 fill-white" />
@@ -469,19 +460,21 @@ function StoryOfUsLanding() {
               </span>
             </div>
 
-            <a
-              href={storyOfUsDemoCtaConfig.checkoutPath}
-              className="mt-8 inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-fuchsia-600 shadow-xl shadow-rose-900/15 transition-all hover:scale-[1.03] hover:shadow-2xl hover:shadow-rose-900/25 sm:w-auto sm:px-10 sm:py-4 sm:text-base"
-            >
-              <Heart className="h-5 w-5 fill-fuchsia-600 text-fuchsia-600" />{" "}
-              {storyOfUsDemoCtaConfig.primaryCtaLabel}
-            </a>
-            <a
-              href={storyOfUsDemoCtaConfig.trackOrderPath}
-              className="mt-4 inline-flex text-sm font-semibold text-white/90 underline underline-offset-4 decoration-white/40 hover:text-white"
-            >
-              Sipariş takip
-            </a>
+            <div className="mx-auto mt-8 flex w-full max-w-xs flex-col items-center gap-3 sm:max-w-sm">
+              <a
+                href={storyOfUsDemoCtaConfig.checkoutPath}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-sm font-bold text-fuchsia-600 shadow-xl shadow-rose-900/15 transition-all hover:scale-[1.03] hover:shadow-2xl hover:shadow-rose-900/25 sm:w-auto sm:px-10 sm:py-4 sm:text-base"
+              >
+                <Heart className="h-5 w-5 fill-fuchsia-600 text-fuchsia-600" />{" "}
+                {storyOfUsDemoCtaConfig.primaryCtaLabel}
+              </a>
+              <a
+                href={storyOfUsDemoCtaConfig.trackOrderPath}
+                className="inline-flex text-sm font-semibold text-white/90 underline underline-offset-4 decoration-white/40 hover:text-white"
+              >
+                Sipariş takip
+              </a>
+            </div>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 text-sm text-white/90 sm:flex-row sm:flex-wrap sm:gap-0">
               <span className="inline-flex items-center gap-2 px-4">
