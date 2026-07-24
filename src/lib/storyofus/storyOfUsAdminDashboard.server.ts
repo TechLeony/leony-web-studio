@@ -5,12 +5,14 @@ import { SITE } from "@/lib/site";
 
 import {
   calculateStoryOfUsFinancialSummary,
+  calculateStoryOfUsRevenueBuckets,
   classifyStoryOfUsDeliveryDeadline,
   formatStoryOfUsRemainingTime,
   getStoryOfUsAdminDeliveryDeadline,
   getStoryOfUsAdminStatus,
   getStoryOfUsAdminStatusLabel,
   getStoryOfUsPeriodStart,
+  type StoryOfUsAdminFinancialInput,
   type StoryOfUsAdminStatus,
   type StoryOfUsAdminUrgency,
 } from "./storyOfUsAdminDashboard";
@@ -193,14 +195,9 @@ export const getStoryOfUsAdminDashboard = createServerFn({ method: "POST" })
       return Boolean(paidAt && paidAt >= periodStart);
     });
     const commissionConfig = getCommissionConfig();
+    const periodFinancialOrders = periodOrders.map(createFinancialInput);
     const analyticsBase = calculateStoryOfUsFinancialSummary({
-      orders: periodOrders.map((order) => ({
-        amount: order.paymentAmount,
-        refundAmount: order.refundAmount ?? 0,
-        isPaid: order.paymentStatus === "paid",
-        isRefunded: order.refundStatus === "refunded",
-        isFailedOrCancelled: ["failed", "cancelled"].includes(order.paymentStatus),
-      })),
+      orders: periodFinancialOrders,
       commissionRate: commissionConfig.commissionRate,
       commissionVatRate: commissionConfig.commissionVatRate,
     });
@@ -210,7 +207,7 @@ export const getStoryOfUsAdminDashboard = createServerFn({ method: "POST" })
 
     return {
       kpis: createKpis(orders, nowIso, analyticsBase, commissionConfig),
-      revenueSeries: createRevenueSeries(periodOrders, period, commissionConfig),
+      revenueSeries: createRevenueSeries(periodFinancialOrders, period, commissionConfig),
       actions: createActionItems(orders),
       orders: filteredOrders,
       analytics: {
@@ -644,14 +641,13 @@ function createKpis(
 ) {
   const todayStart = getStoryOfUsPeriodStart("today", new Date(nowIso)).toISOString();
   const todayOrders = orders.filter((order) => order.paidAt && order.paidAt >= todayStart);
+  const allTimeAnalytics = calculateStoryOfUsFinancialSummary({
+    orders: orders.map(createFinancialInput),
+    commissionRate: commissionConfig.commissionRate,
+    commissionVatRate: commissionConfig.commissionVatRate,
+  });
   const todayAnalytics = calculateStoryOfUsFinancialSummary({
-    orders: todayOrders.map((order) => ({
-      amount: order.paymentAmount,
-      refundAmount: order.refundAmount ?? 0,
-      isPaid: order.paymentStatus === "paid",
-      isRefunded: order.refundStatus === "refunded",
-      isFailedOrCancelled: ["failed", "cancelled"].includes(order.paymentStatus),
-    })),
+    orders: todayOrders.map(createFinancialInput),
     commissionRate: commissionConfig.commissionRate,
     commissionVatRate: commissionConfig.commissionVatRate,
   });
@@ -670,7 +666,7 @@ function createKpis(
     },
     {
       label: "Paid Orders",
-      value: String(orders.filter((order) => order.paymentStatus === "paid").length),
+      value: String(allTimeAnalytics.paidOrderCount),
       detail: "All time",
     },
     {
@@ -719,42 +715,32 @@ function createKpis(
 }
 
 function createRevenueSeries(
-  orders: StoryOfUsAdminDashboardOrder[],
+  orders: Array<StoryOfUsAdminFinancialInput & { occurredAt: string | null }>,
   period: string,
   commissionConfig: StoryOfUsCommissionConfig,
 ) {
-  const groups = new Map<string, StoryOfUsAdminDashboardOrder[]>();
+  return calculateStoryOfUsRevenueBuckets({
+    orders,
+    getBucketLabel: (order) => getRevenueBucket(order.occurredAt, period),
+    ...commissionConfig,
+  });
+}
 
-  for (const order of orders) {
-    const key = getRevenueBucket(order.paidAt ?? order.createdAt, period);
-
-    if (!key) {
-      continue;
-    }
-
-    groups.set(key, [...(groups.get(key) ?? []), order]);
-  }
-
-  return Array.from(groups.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([label, groupedOrders]) => {
-      const summary = calculateStoryOfUsFinancialSummary({
-        orders: groupedOrders.map((order) => ({
-          amount: order.paymentAmount,
-          refundAmount: order.refundAmount ?? 0,
-          isPaid: order.paymentStatus === "paid",
-          isRefunded: order.refundStatus === "refunded",
-          isFailedOrCancelled: ["failed", "cancelled"].includes(order.paymentStatus),
-        })),
-        ...commissionConfig,
-      });
-
-      return {
-        label,
-        grossRevenue: summary.grossRevenue,
-        estimatedNetRevenue: summary.estimatedNetRevenue,
-      };
-    });
+function createFinancialInput(
+  order: StoryOfUsAdminDashboardOrder & { refundAmount?: number },
+): StoryOfUsAdminFinancialInput & { occurredAt: string | null } {
+  return {
+    id: order.id,
+    amount: order.paymentAmount,
+    refundAmount: order.refundAmount ?? 0,
+    isPaid: order.paymentStatus === "paid",
+    isRefunded: order.refundStatus === "refunded",
+    isFailedOrCancelled:
+      ["failed", "cancelled"].includes(order.paymentStatus) ||
+      ["cancelled", "payment_failed"].includes(order.status),
+    occurredAt: order.paidAt ?? order.createdAt,
+    isStoryOfUsOrder: true,
+  };
 }
 
 function createActionItems(orders: StoryOfUsAdminDashboardOrder[]): StoryOfUsAdminActionItem[] {
@@ -1073,7 +1059,14 @@ function stringValue(value: unknown) {
 }
 
 function numberValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value.trim())
+        : Number.NaN;
+
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function isUuid(value: string) {

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  calculateStoryOfUsRevenueBuckets,
   calculateStoryOfUsFinancialSummary,
   classifyStoryOfUsDeliveryDeadline,
   formatStoryOfUsRemainingTime,
@@ -202,6 +203,162 @@ test("does not invent Shopier fee estimates when commission config is missing", 
   assert.equal(summary.commissionVat, null);
   assert.equal(summary.estimatedNetRevenue, null);
   assert.equal(summary.netRevenueAfterRefunds, null);
+});
+
+test("calculates gross revenue and average order value from normalized paid amounts", () => {
+  const summary = calculateStoryOfUsFinancialSummary({
+    orders: Array.from({ length: 8 }, (_, index) => ({
+      id: `paid-${index}`,
+      amount: "199.00",
+      refundAmount: "0.00",
+      isPaid: true,
+      isRefunded: false,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: true,
+    })),
+  });
+
+  assert.equal(summary.grossRevenue, 1592);
+  assert.equal(summary.paidOrderCount, 8);
+  assert.equal(summary.averageOrderValue, 199);
+});
+
+test("daily revenue buckets use exact normalized paid sums", () => {
+  const series = calculateStoryOfUsRevenueBuckets({
+    orders: [
+      {
+        id: "paid-1",
+        amount: "199.00",
+        refundAmount: 0,
+        isPaid: true,
+        isRefunded: false,
+        isFailedOrCancelled: false,
+        occurredAt: "2026-07-11T09:00:00.000Z",
+      },
+      {
+        id: "paid-2",
+        amount: 199,
+        refundAmount: 0,
+        isPaid: true,
+        isRefunded: false,
+        isFailedOrCancelled: false,
+        occurredAt: "2026-07-11T15:00:00.000Z",
+      },
+      {
+        id: "paid-3",
+        amount: "199.00",
+        refundAmount: 0,
+        isPaid: true,
+        isRefunded: false,
+        isFailedOrCancelled: false,
+        occurredAt: "2026-07-12T10:00:00.000Z",
+      },
+    ],
+    getBucketLabel: (order) => order.occurredAt?.slice(0, 10) ?? null,
+  });
+
+  assert.deepEqual(
+    series.map(({ label, grossRevenue }) => ({ label, grossRevenue })),
+    [
+      { label: "2026-07-11", grossRevenue: 398 },
+      { label: "2026-07-12", grossRevenue: 199 },
+    ],
+  );
+});
+
+test("revenue analytics excludes unpaid, failed, refunded, duplicate, and unrelated rows", () => {
+  const orders = [
+    {
+      id: "valid",
+      amount: "199.00",
+      refundAmount: 0,
+      isPaid: true,
+      isRefunded: false,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: true,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+    {
+      id: "valid",
+      amount: "199.00",
+      refundAmount: 0,
+      isPaid: true,
+      isRefunded: false,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: true,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+    {
+      id: "unpaid",
+      amount: 199,
+      refundAmount: 0,
+      isPaid: false,
+      isRefunded: false,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: true,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+    {
+      id: "failed",
+      amount: 199,
+      refundAmount: 0,
+      isPaid: true,
+      isRefunded: false,
+      isFailedOrCancelled: true,
+      isStoryOfUsOrder: true,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+    {
+      id: "refunded",
+      amount: 199,
+      refundAmount: 199,
+      isPaid: true,
+      isRefunded: true,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: true,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+    {
+      id: "other-product",
+      amount: 199,
+      refundAmount: 0,
+      isPaid: true,
+      isRefunded: false,
+      isFailedOrCancelled: false,
+      isStoryOfUsOrder: false,
+      occurredAt: "2026-07-11T09:00:00.000Z",
+    },
+  ];
+  const summary = calculateStoryOfUsFinancialSummary({ orders });
+  const series = calculateStoryOfUsRevenueBuckets({
+    orders,
+    getBucketLabel: (order) => order.occurredAt?.slice(0, 10) ?? null,
+  });
+
+  assert.equal(summary.grossRevenue, 199);
+  assert.equal(summary.paidOrderCount, 1);
+  assert.equal(summary.averageOrderValue, 199);
+  assert.equal(series.length, 1);
+  assert.equal(series[0]?.grossRevenue, summary.grossRevenue);
+});
+
+test("revenue normalization does not double-convert TRY numeric values", () => {
+  const summary = calculateStoryOfUsFinancialSummary({
+    orders: [
+      {
+        id: "paid",
+        amount: "199.00",
+        refundAmount: "0.00",
+        isPaid: true,
+        isRefunded: false,
+        isFailedOrCancelled: false,
+      },
+    ],
+  });
+
+  assert.equal(summary.grossRevenue, 199);
+  assert.notEqual(summary.grossRevenue, 1.99);
+  assert.notEqual(summary.grossRevenue, 19900);
 });
 
 test("period helper returns stable beginning of selected reporting windows", () => {

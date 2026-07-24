@@ -1019,7 +1019,7 @@ function RevenueChart({
             <YAxis tick={{ fontSize: 12 }} stroke="#64748b" />
             <Tooltip />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="grossRevenue"
               name="Gross Revenue"
               stroke="#2563eb"
@@ -1027,7 +1027,7 @@ function RevenueChart({
               strokeWidth={2}
             />
             <Area
-              type="monotone"
+              type="linear"
               dataKey="estimatedNetRevenue"
               name="Estimated Net Revenue"
               stroke="#0f172a"

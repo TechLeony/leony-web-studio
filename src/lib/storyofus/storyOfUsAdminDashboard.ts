@@ -34,11 +34,13 @@ export type StoryOfUsAdminOrderStatusInput = {
 };
 
 export type StoryOfUsAdminFinancialInput = {
-  amount: number;
-  refundAmount: number;
+  id?: string | null;
+  amount: number | string | null | undefined;
+  refundAmount?: number | string | null | undefined;
   isPaid: boolean;
   isRefunded: boolean;
   isFailedOrCancelled: boolean;
+  isStoryOfUsOrder?: boolean;
 };
 
 export type StoryOfUsAdminFinancialSummary = {
@@ -50,6 +52,12 @@ export type StoryOfUsAdminFinancialSummary = {
   estimatedNetRevenue: number | null;
   refundTotal: number;
   netRevenueAfterRefunds: number | null;
+};
+
+export type StoryOfUsAdminRevenueBucket = {
+  label: string;
+  grossRevenue: number;
+  estimatedNetRevenue: number | null;
 };
 
 export const STORYOFUS_ADMIN_LIFECYCLE_STAGES = [
@@ -219,10 +227,10 @@ export function calculateStoryOfUsFinancialSummary({
   commissionRate?: number | null;
   commissionVatRate?: number | null;
 }): StoryOfUsAdminFinancialSummary {
-  const paidOrders = orders.filter(
-    (order) => order.isPaid && !order.isFailedOrCancelled && !order.isRefunded,
+  const paidOrders = getStoryOfUsRevenueOrders(orders);
+  const grossRevenue = roundMoney(
+    paidOrders.reduce((sum, order) => sum + order.normalizedAmount, 0),
   );
-  const grossRevenue = roundMoney(paidOrders.reduce((sum, order) => sum + order.amount, 0));
   const paidOrderCount = paidOrders.length;
   const commissionConfigured =
     typeof commissionRate === "number" &&
@@ -238,8 +246,13 @@ export function calculateStoryOfUsFinancialSummary({
       : null;
   const refundTotal = roundMoney(
     orders
-      .filter((order) => order.isRefunded)
-      .reduce((sum, order) => sum + (order.refundAmount || order.amount), 0),
+      .filter((order) => order.isStoryOfUsOrder !== false && order.isRefunded)
+      .reduce((sum, order) => {
+        const refundAmount = normalizeStoryOfUsPaidAmount(order.refundAmount);
+        const amount = normalizeStoryOfUsPaidAmount(order.amount);
+
+        return sum + (refundAmount ?? amount ?? 0);
+      }, 0),
   );
   const estimatedNetRevenue =
     estimatedCommission !== null && commissionVat !== null
@@ -257,6 +270,92 @@ export function calculateStoryOfUsFinancialSummary({
     netRevenueAfterRefunds:
       estimatedNetRevenue !== null ? roundMoney(estimatedNetRevenue - refundTotal) : null,
   };
+}
+
+export function getStoryOfUsRevenueOrders(orders: StoryOfUsAdminFinancialInput[]) {
+  const seenIds = new Set<string>();
+
+  return orders.flatMap((order) => {
+    if (
+      order.isStoryOfUsOrder === false ||
+      !order.isPaid ||
+      order.isFailedOrCancelled ||
+      order.isRefunded
+    ) {
+      return [];
+    }
+
+    const id = typeof order.id === "string" ? order.id.trim() : "";
+
+    if (id && seenIds.has(id)) {
+      return [];
+    }
+
+    const normalizedAmount = normalizeStoryOfUsPaidAmount(order.amount);
+
+    if (normalizedAmount === null) {
+      return [];
+    }
+
+    if (id) {
+      seenIds.add(id);
+    }
+
+    return [{ ...order, normalizedAmount }];
+  });
+}
+
+export function normalizeStoryOfUsPaidAmount(value: unknown) {
+  const amount =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value.trim())
+        : Number.NaN;
+
+  return Number.isFinite(amount) && amount > 0 ? roundMoney(amount) : null;
+}
+
+export function calculateStoryOfUsRevenueBuckets<TOrder extends StoryOfUsAdminFinancialInput>({
+  orders,
+  getBucketLabel,
+  commissionRate,
+  commissionVatRate,
+}: {
+  orders: TOrder[];
+  getBucketLabel: (order: TOrder & { normalizedAmount: number }) => string | null;
+  commissionRate?: number | null;
+  commissionVatRate?: number | null;
+}): StoryOfUsAdminRevenueBucket[] {
+  const groups = new Map<string, Array<TOrder & { normalizedAmount: number }>>();
+
+  for (const order of getStoryOfUsRevenueOrders(orders) as Array<
+    TOrder & { normalizedAmount: number }
+  >) {
+    const label = getBucketLabel(order);
+
+    if (!label) {
+      continue;
+    }
+
+    groups.set(label, [...(groups.get(label) ?? []), order]);
+  }
+
+  return Array.from(groups.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([label, groupedOrders]) => {
+      const summary = calculateStoryOfUsFinancialSummary({
+        orders: groupedOrders,
+        commissionRate,
+        commissionVatRate,
+      });
+
+      return {
+        label,
+        grossRevenue: summary.grossRevenue,
+        estimatedNetRevenue: summary.estimatedNetRevenue,
+      };
+    });
 }
 
 export function getStoryOfUsPeriodStart(period: string, now = new Date()) {
