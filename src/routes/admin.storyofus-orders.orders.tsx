@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 
 import { StoryOfUsAdminDashboard } from "@/components/storyofus/StoryOfUsAdminDashboard";
 
@@ -8,5 +8,8 @@ export const Route = createFileRoute("/admin/storyofus-orders/orders")({
 });
 
 function StoryOfUsAdminOrdersRoute() {
-  return <StoryOfUsAdminDashboard view="orders" />;
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isOrdersRoute = pathname.replace(/\/+$/, "") === "/admin/storyofus-orders/orders";
+
+  return isOrdersRoute ? <StoryOfUsAdminDashboard view="orders" /> : <Outlet />;
 }
