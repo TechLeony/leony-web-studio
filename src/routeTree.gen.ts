@@ -30,9 +30,15 @@ import { Route as StoryofusSiteSiteSlugRouteImport } from './routes/storyofus.si
 import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
 import { Route as StoryofusInternalSetupQaRouteImport } from './routes/storyofus.internal.setup-qa'
 import { Route as StoryofusInternalEmailQaRouteImport } from './routes/storyofus.internal.email-qa'
+import { Route as AdminStoryofusOrdersSettingsRouteImport } from './routes/admin.storyofus-orders.settings'
+import { Route as AdminStoryofusOrdersRefundsRouteImport } from './routes/admin.storyofus-orders.refunds'
+import { Route as AdminStoryofusOrdersPreviewsRouteImport } from './routes/admin.storyofus-orders.previews'
+import { Route as AdminStoryofusOrdersOrdersRouteImport } from './routes/admin.storyofus-orders.orders'
+import { Route as AdminStoryofusOrdersAnalyticsRouteImport } from './routes/admin.storyofus-orders.analytics'
 import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
 import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
+import { Route as AdminStoryofusOrdersOrdersOrderIdRouteImport } from './routes/admin.storyofus-orders.orders.$orderId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -141,6 +147,36 @@ const StoryofusInternalEmailQaRoute =
     path: '/storyofus/internal/email-qa',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminStoryofusOrdersSettingsRoute =
+  AdminStoryofusOrdersSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersRefundsRoute =
+  AdminStoryofusOrdersRefundsRouteImport.update({
+    id: '/refunds',
+    path: '/refunds',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersPreviewsRoute =
+  AdminStoryofusOrdersPreviewsRouteImport.update({
+    id: '/previews',
+    path: '/previews',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersOrdersRoute =
+  AdminStoryofusOrdersOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersAnalyticsRoute =
+  AdminStoryofusOrdersAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
 const ApiStoryofusShopierCallbackRoute =
   ApiStoryofusShopierCallbackRouteImport.update({
     id: '/api/storyofus/shopier/callback',
@@ -159,6 +195,12 @@ const ApiInternalStoryofusEmailWorkerRoute =
     path: '/api/internal/storyofus/email-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminStoryofusOrdersOrdersOrderIdRoute =
+  AdminStoryofusOrdersOrdersOrderIdRouteImport.update({
+    id: '/$orderId',
+    path: '/$orderId',
+    getParentRoute: () => AdminStoryofusOrdersOrdersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,7 +208,7 @@ export interface FileRoutesByFullPath {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -177,11 +219,17 @@ export interface FileRoutesByFullPath {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/admin/storyofus-orders/analytics': typeof AdminStoryofusOrdersAnalyticsRoute
+  '/admin/storyofus-orders/orders': typeof AdminStoryofusOrdersOrdersRouteWithChildren
+  '/admin/storyofus-orders/previews': typeof AdminStoryofusOrdersPreviewsRoute
+  '/admin/storyofus-orders/refunds': typeof AdminStoryofusOrdersRefundsRoute
+  '/admin/storyofus-orders/settings': typeof AdminStoryofusOrdersSettingsRoute
   '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/internal/setup-qa': typeof StoryofusInternalSetupQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -191,7 +239,7 @@ export interface FileRoutesByTo {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -202,11 +250,17 @@ export interface FileRoutesByTo {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin': typeof AdminIndexRoute
   '/storyofus': typeof StoryofusIndexRoute
+  '/admin/storyofus-orders/analytics': typeof AdminStoryofusOrdersAnalyticsRoute
+  '/admin/storyofus-orders/orders': typeof AdminStoryofusOrdersOrdersRouteWithChildren
+  '/admin/storyofus-orders/previews': typeof AdminStoryofusOrdersPreviewsRoute
+  '/admin/storyofus-orders/refunds': typeof AdminStoryofusOrdersRefundsRoute
+  '/admin/storyofus-orders/settings': typeof AdminStoryofusOrdersSettingsRoute
   '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/internal/setup-qa': typeof StoryofusInternalSetupQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -218,7 +272,7 @@ export interface FileRoutesById {
   '/kvkk': typeof KvkkRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRoute
+  '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -229,11 +283,17 @@ export interface FileRoutesById {
   '/storyofus/track-order': typeof StoryofusTrackOrderRoute
   '/admin/': typeof AdminIndexRoute
   '/storyofus/': typeof StoryofusIndexRoute
+  '/admin/storyofus-orders/analytics': typeof AdminStoryofusOrdersAnalyticsRoute
+  '/admin/storyofus-orders/orders': typeof AdminStoryofusOrdersOrdersRouteWithChildren
+  '/admin/storyofus-orders/previews': typeof AdminStoryofusOrdersPreviewsRoute
+  '/admin/storyofus-orders/refunds': typeof AdminStoryofusOrdersRefundsRoute
+  '/admin/storyofus-orders/settings': typeof AdminStoryofusOrdersSettingsRoute
   '/storyofus/internal/email-qa': typeof StoryofusInternalEmailQaRoute
   '/storyofus/internal/setup-qa': typeof StoryofusInternalSetupQaRoute
   '/storyofus/setup/demo': typeof StoryofusSetupDemoRoute
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
+  '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -257,11 +317,17 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
+    | '/admin/storyofus-orders/analytics'
+    | '/admin/storyofus-orders/orders'
+    | '/admin/storyofus-orders/previews'
+    | '/admin/storyofus-orders/refunds'
+    | '/admin/storyofus-orders/settings'
     | '/storyofus/internal/email-qa'
     | '/storyofus/internal/setup-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
+    | '/admin/storyofus-orders/orders/$orderId'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -282,11 +348,17 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin'
     | '/storyofus'
+    | '/admin/storyofus-orders/analytics'
+    | '/admin/storyofus-orders/orders'
+    | '/admin/storyofus-orders/previews'
+    | '/admin/storyofus-orders/refunds'
+    | '/admin/storyofus-orders/settings'
     | '/storyofus/internal/email-qa'
     | '/storyofus/internal/setup-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
+    | '/admin/storyofus-orders/orders/$orderId'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -308,11 +380,17 @@ export interface FileRouteTypes {
     | '/storyofus/track-order'
     | '/admin/'
     | '/storyofus/'
+    | '/admin/storyofus-orders/analytics'
+    | '/admin/storyofus-orders/orders'
+    | '/admin/storyofus-orders/previews'
+    | '/admin/storyofus-orders/refunds'
+    | '/admin/storyofus-orders/settings'
     | '/storyofus/internal/email-qa'
     | '/storyofus/internal/setup-qa'
     | '/storyofus/setup/demo'
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
+    | '/admin/storyofus-orders/orders/$orderId'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -490,6 +568,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoryofusInternalEmailQaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/storyofus-orders/settings': {
+      id: '/admin/storyofus-orders/settings'
+      path: '/settings'
+      fullPath: '/admin/storyofus-orders/settings'
+      preLoaderRoute: typeof AdminStoryofusOrdersSettingsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/admin/storyofus-orders/refunds': {
+      id: '/admin/storyofus-orders/refunds'
+      path: '/refunds'
+      fullPath: '/admin/storyofus-orders/refunds'
+      preLoaderRoute: typeof AdminStoryofusOrdersRefundsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/admin/storyofus-orders/previews': {
+      id: '/admin/storyofus-orders/previews'
+      path: '/previews'
+      fullPath: '/admin/storyofus-orders/previews'
+      preLoaderRoute: typeof AdminStoryofusOrdersPreviewsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/admin/storyofus-orders/orders': {
+      id: '/admin/storyofus-orders/orders'
+      path: '/orders'
+      fullPath: '/admin/storyofus-orders/orders'
+      preLoaderRoute: typeof AdminStoryofusOrdersOrdersRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/admin/storyofus-orders/analytics': {
+      id: '/admin/storyofus-orders/analytics'
+      path: '/analytics'
+      fullPath: '/admin/storyofus-orders/analytics'
+      preLoaderRoute: typeof AdminStoryofusOrdersAnalyticsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
     '/api/storyofus/shopier/callback': {
       id: '/api/storyofus/shopier/callback'
       path: '/api/storyofus/shopier/callback'
@@ -511,17 +624,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalStoryofusEmailWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/storyofus-orders/orders/$orderId': {
+      id: '/admin/storyofus-orders/orders/$orderId'
+      path: '/$orderId'
+      fullPath: '/admin/storyofus-orders/orders/$orderId'
+      preLoaderRoute: typeof AdminStoryofusOrdersOrdersOrderIdRouteImport
+      parentRoute: typeof AdminStoryofusOrdersOrdersRoute
+    }
   }
 }
 
+interface AdminStoryofusOrdersOrdersRouteChildren {
+  AdminStoryofusOrdersOrdersOrderIdRoute: typeof AdminStoryofusOrdersOrdersOrderIdRoute
+}
+
+const AdminStoryofusOrdersOrdersRouteChildren: AdminStoryofusOrdersOrdersRouteChildren =
+  {
+    AdminStoryofusOrdersOrdersOrderIdRoute:
+      AdminStoryofusOrdersOrdersOrderIdRoute,
+  }
+
+const AdminStoryofusOrdersOrdersRouteWithChildren =
+  AdminStoryofusOrdersOrdersRoute._addFileChildren(
+    AdminStoryofusOrdersOrdersRouteChildren,
+  )
+
+interface AdminStoryofusOrdersRouteChildren {
+  AdminStoryofusOrdersAnalyticsRoute: typeof AdminStoryofusOrdersAnalyticsRoute
+  AdminStoryofusOrdersOrdersRoute: typeof AdminStoryofusOrdersOrdersRouteWithChildren
+  AdminStoryofusOrdersPreviewsRoute: typeof AdminStoryofusOrdersPreviewsRoute
+  AdminStoryofusOrdersRefundsRoute: typeof AdminStoryofusOrdersRefundsRoute
+  AdminStoryofusOrdersSettingsRoute: typeof AdminStoryofusOrdersSettingsRoute
+}
+
+const AdminStoryofusOrdersRouteChildren: AdminStoryofusOrdersRouteChildren = {
+  AdminStoryofusOrdersAnalyticsRoute: AdminStoryofusOrdersAnalyticsRoute,
+  AdminStoryofusOrdersOrdersRoute: AdminStoryofusOrdersOrdersRouteWithChildren,
+  AdminStoryofusOrdersPreviewsRoute: AdminStoryofusOrdersPreviewsRoute,
+  AdminStoryofusOrdersRefundsRoute: AdminStoryofusOrdersRefundsRoute,
+  AdminStoryofusOrdersSettingsRoute: AdminStoryofusOrdersSettingsRoute,
+}
+
+const AdminStoryofusOrdersRouteWithChildren =
+  AdminStoryofusOrdersRoute._addFileChildren(AdminStoryofusOrdersRouteChildren)
+
 interface AdminRouteChildren {
-  AdminStoryofusOrdersRoute: typeof AdminStoryofusOrdersRoute
+  AdminStoryofusOrdersRoute: typeof AdminStoryofusOrdersRouteWithChildren
   AdminTasksRoute: typeof AdminTasksRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
-  AdminStoryofusOrdersRoute: AdminStoryofusOrdersRoute,
+  AdminStoryofusOrdersRoute: AdminStoryofusOrdersRouteWithChildren,
   AdminTasksRoute: AdminTasksRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

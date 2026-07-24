@@ -3,7 +3,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-import { promoteStoryOfUsReviewReadyOrders } from "../lib/storyofus/reviewReady.server";
+import {
+  processStoryOfUsQueuedDeliveries,
+  promoteStoryOfUsReviewReadyOrders,
+} from "../lib/storyofus/reviewReady.server";
 
 export const Route = createFileRoute("/api/internal/storyofus/review-ready-worker")({
   server: {
@@ -24,18 +27,35 @@ export const Route = createFileRoute("/api/internal/storyofus/review-ready-worke
             return jsonResponse({ ok: false, error: "invalid_request" }, 400);
           }
 
-          const summary = await promoteStoryOfUsReviewReadyOrders(
+          const reviewReadySummary = await promoteStoryOfUsReviewReadyOrders(
             STORYOFUS_REVIEW_READY_WORKER_BATCH_SIZE,
             false,
+          );
+          const deliveryQueueSummary = await processStoryOfUsQueuedDeliveries(
+            STORYOFUS_DELIVERY_QUEUE_WORKER_BATCH_SIZE,
           );
 
           return jsonResponse({
             ok: true,
-            scanned: summary.eligible,
-            eligible: summary.eligible,
-            promoted: summary.promoted,
-            skipped: summary.skipped,
-            failed: summary.failed,
+            scanned: reviewReadySummary.eligible,
+            eligible: reviewReadySummary.eligible,
+            promoted: reviewReadySummary.promoted,
+            skipped: reviewReadySummary.skipped,
+            failed: reviewReadySummary.failed + deliveryQueueSummary.failed,
+            reviewReady: {
+              scanned: reviewReadySummary.eligible,
+              eligible: reviewReadySummary.eligible,
+              promoted: reviewReadySummary.promoted,
+              skipped: reviewReadySummary.skipped,
+              failed: reviewReadySummary.failed,
+            },
+            deliveryQueue: {
+              queued: deliveryQueueSummary.queued,
+              published: deliveryQueueSummary.published,
+              alreadyPublished: deliveryQueueSummary.alreadyPublished,
+              skipped: deliveryQueueSummary.skipped,
+              failed: deliveryQueueSummary.failed,
+            },
           });
         } catch {
           return jsonResponse({ ok: false, error: "internal_error" }, 500);
@@ -46,6 +66,7 @@ export const Route = createFileRoute("/api/internal/storyofus/review-ready-worke
 });
 
 const STORYOFUS_REVIEW_READY_WORKER_BATCH_SIZE = 50;
+const STORYOFUS_DELIVERY_QUEUE_WORKER_BATCH_SIZE = 20;
 const MIN_WORKER_SECRET_LENGTH = 32;
 
 function isAuthorizedRequest(request: Request) {

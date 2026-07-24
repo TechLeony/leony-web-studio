@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { SITE } from "@/lib/site";
 
+import { publishStoryOfUsQueuedFinalSiteById } from "./finalSite.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
@@ -35,6 +36,14 @@ type AdminContext = {
 type ReviewReadyPromotionSummary = {
   eligible: number;
   promoted: number;
+  skipped: number;
+  failed: number;
+};
+
+export type StoryOfUsDeliveryQueueProcessingSummary = {
+  queued: number;
+  published: number;
+  alreadyPublished: number;
   skipped: number;
   failed: number;
 };
@@ -139,6 +148,59 @@ export async function promoteStoryOfUsReviewReadyOrders(
     skipped: Math.max(eligible - promoted, 0),
     failed: 0,
   };
+}
+
+export async function processStoryOfUsQueuedDeliveries(
+  batchLimit = 20,
+): Promise<StoryOfUsDeliveryQueueProcessingSummary> {
+  const limit = Math.max(1, Math.min(Math.trunc(batchLimit), 25));
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .select("id")
+    .eq("status", "queued_for_delivery")
+    .eq("payment_status", "paid")
+    .in("refund_status", ["none", "rejected"])
+    .order("delivery_queued_at", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error("StoryOfUs delivery queue could not be loaded.");
+  }
+
+  const queuedRows = (data ?? []) as Array<Record<string, unknown>>;
+  const summary: StoryOfUsDeliveryQueueProcessingSummary = {
+    queued: queuedRows.length,
+    published: 0,
+    alreadyPublished: 0,
+    skipped: 0,
+    failed: 0,
+  };
+
+  for (const row of queuedRows) {
+    const submissionId = stringValue(row.id);
+
+    if (!isUuid(submissionId)) {
+      summary.skipped += 1;
+      continue;
+    }
+
+    try {
+      const result = await publishStoryOfUsQueuedFinalSiteById(submissionId);
+
+      if (result.status === "published") {
+        summary.published += 1;
+      } else if (result.status === "already_published") {
+        summary.alreadyPublished += 1;
+      } else {
+        summary.skipped += 1;
+      }
+    } catch {
+      summary.failed += 1;
+    }
+  }
+
+  return summary;
 }
 
 export const listStoryOfUsAdminReviewQueue = createServerFn({ method: "GET" })

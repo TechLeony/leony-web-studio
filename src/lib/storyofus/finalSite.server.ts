@@ -318,71 +318,75 @@ export const publishStoryOfUsFinalSite = createServerFn({ method: "POST" })
       };
     }
 
-    const submission = await loadAdminPreviewSubmission(data.submissionId);
+    return publishStoryOfUsQueuedFinalSiteById(data.submissionId);
+  });
 
-    if (!submission) {
-      return {
-        status: "not_found",
-        message: "Sipariş bulunamadı.",
-      };
+export async function publishStoryOfUsQueuedFinalSiteById(
+  submissionId: string,
+): Promise<PublishResult> {
+  const submission = await loadAdminPreviewSubmission(submissionId);
+
+  if (!submission) {
+    return {
+      status: "not_found",
+      message: "Sipariş bulunamadı.",
+    };
+  }
+
+  if (submission.status === "published" && submission.finalSiteSlug && submission.finalSiteUrl) {
+    return {
+      status: "already_published",
+      finalSiteSlug: submission.finalSiteSlug,
+      finalSiteUrl: submission.finalSiteUrl,
+      emailQueued: true,
+    };
+  }
+
+  const hasRequiredLoveLetterPhoto = await hasRequiredLoveLetterPhotoForPublish(submissionId);
+  const requiredMediaError = getLoveLetterPhotoPublishError(hasRequiredLoveLetterPhoto);
+
+  if (requiredMediaError) {
+    return {
+      status: "not_publishable",
+      message: requiredMediaError,
+    };
+  }
+
+  const coupleDetails = await loadCoupleDetails(submissionId);
+  const slugBase = createStoryOfUsFinalSiteSlugBase(
+    coupleDetails?.coupleDisplayName ?? "",
+    coupleDetails?.partnerName ?? "",
+  );
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const finalSiteSlug = createStoryOfUsFinalSiteSlug(slugBase);
+    const finalSiteUrl = createStoryOfUsFinalSiteUrl(finalSiteSlug);
+    const publishResult = await callPublishRpc(submissionId, finalSiteSlug, finalSiteUrl);
+
+    if (publishResult.status === "slug_conflict") {
+      continue;
     }
 
-    if (submission.status === "published" && submission.finalSiteSlug && submission.finalSiteUrl) {
+    if (publishResult.status === "published" || publishResult.status === "already_published") {
       return {
-        status: "already_published",
-        finalSiteSlug: submission.finalSiteSlug,
-        finalSiteUrl: submission.finalSiteUrl,
-        emailQueued: true,
-      };
-    }
-
-    const hasRequiredLoveLetterPhoto = await hasRequiredLoveLetterPhotoForPublish(
-      data.submissionId,
-    );
-    const requiredMediaError = getLoveLetterPhotoPublishError(hasRequiredLoveLetterPhoto);
-
-    if (requiredMediaError) {
-      return {
-        status: "not_publishable",
-        message: requiredMediaError,
-      };
-    }
-
-    const coupleDetails = await loadCoupleDetails(data.submissionId);
-    const slugBase = createStoryOfUsFinalSiteSlugBase(
-      coupleDetails?.coupleDisplayName ?? "",
-      coupleDetails?.partnerName ?? "",
-    );
-
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const finalSiteSlug = createStoryOfUsFinalSiteSlug(slugBase);
-      const finalSiteUrl = createStoryOfUsFinalSiteUrl(finalSiteSlug);
-      const publishResult = await callPublishRpc(data.submissionId, finalSiteSlug, finalSiteUrl);
-
-      if (publishResult.status === "slug_conflict") {
-        continue;
-      }
-
-      if (publishResult.status === "published" || publishResult.status === "already_published") {
-        return {
-          status: publishResult.status,
-          finalSiteSlug: publishResult.finalSiteSlug,
-          finalSiteUrl: publishResult.finalSiteUrl,
-          emailQueued: publishResult.emailQueued,
-        };
-      }
-
-      return {
-        status: "not_publishable",
-        message: getPublishErrorMessage(publishResult.status),
+        status: publishResult.status,
+        finalSiteSlug: publishResult.finalSiteSlug,
+        finalSiteUrl: publishResult.finalSiteUrl,
+        emailQueued: publishResult.emailQueued,
       };
     }
 
     return {
       status: "not_publishable",
-      message: "Benzersiz final bağlantısı oluşturulamadı. Lütfen tekrar deneyin.",
+      message: getPublishErrorMessage(publishResult.status),
     };
-  });
+  }
+
+  return {
+    status: "not_publishable",
+    message: "Benzersiz final bağlantısı oluşturulamadı. Lütfen tekrar deneyin.",
+  };
+}
 
 async function callPublishRpc(
   submissionId: string,
@@ -403,7 +407,7 @@ async function callPublishRpc(
     p_submission_id: submissionId,
     p_final_site_slug: finalSiteSlug,
     p_final_site_url: finalSiteUrl,
-    p_expected_status: "in_review",
+    p_expected_status: "queued_for_delivery",
   });
 
   if (error) {
@@ -500,7 +504,7 @@ async function loadAdminPreviewSubmission(submissionId: string) {
     .from("storyofus_submissions")
     .select("id, status, final_site_slug, final_site_url")
     .eq("id", submissionId)
-    .in("status", ["in_review", "published"])
+    .in("status", ["in_review", "queued_for_delivery", "published"])
     .maybeSingle();
 
   if (error) {
@@ -524,7 +528,7 @@ async function loadAdminPreviewPasscodeSubmission(submissionId: string) {
     .from("storyofus_submissions")
     .select("id, site_passcode_hash")
     .eq("id", submissionId)
-    .in("status", ["in_review", "published"])
+    .in("status", ["in_review", "queued_for_delivery", "published"])
     .maybeSingle();
 
   if (error) {
