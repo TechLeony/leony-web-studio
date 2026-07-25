@@ -279,6 +279,17 @@ export const demoStoryData = {
       "Kalbimin evini senin yanında bulması",
     ],
   },
+  // letter: {
+  //   letterTitle: STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
+  //   letterBody: STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
+  //   signaturePrefix: "Sonsuza dek",
+  //   letterSidePhoto: {
+  //     src: "/demo-assets/arda-ceren-closeup.webp",
+  //     alt: "Ceren ve Arda romantik yakın an",
+  //     caption: "Kalbimin en güzel yeri",
+  //     placeholder: "from-rose-200 via-pink-100 to-fuchsia-200",
+  //   },
+  // },
   letter: {
     letterTitle: STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
     letterBody: STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
@@ -286,6 +297,8 @@ export const demoStoryData = {
     letterSidePhoto: {
       src: "/demo-assets/arda-ceren-closeup.webp",
       alt: "Ceren ve Arda romantik yakın an",
+      photoSrc: "/demo-assets/arda-ceren-closeup.webp",
+      photoAlt: "Ceren ve Arda romantik yakın an",
       caption: "Kalbimin en güzel yeri",
       placeholder: "from-rose-200 via-pink-100 to-fuchsia-200",
     },
