@@ -5,6 +5,10 @@ import { enqueueStoryOfUsEmail } from "../lib/storyofus/emailOutbox.server";
 import { getSuccessfulShopierPaymentEmailEnqueueOutcome } from "../lib/storyofus/shopierWebhookEmailResult";
 import { storyOfUsSupabaseAdmin } from "../lib/storyofus/supabaseAdmin.server";
 import {
+  sendTikTokCompletePayment,
+  shouldSendTikTokCompletePaymentForShopierResult,
+} from "../lib/storyofus/tikTokEvents.server";
+import {
   parseVerifiedStoryOfUsShopierWebhook,
   StoryOfUsShopierWebhookError,
   type NormalizedStoryOfUsShopierOrderWebhook,
@@ -71,6 +75,14 @@ export const Route = createFileRoute("/api/storyofus/shopier/callback")({
         }
 
         if (SUCCESSFUL_PAYMENT_RESULTS.has(rpcResult.result)) {
+          if (shouldSendTikTokCompletePaymentForShopierResult(rpcResult.result)) {
+            await sendTikTokCompletePaymentQuietly({
+              request,
+              submission: lookupResult,
+              webhook,
+            });
+          }
+
           const emailQueued = await ensureOrderCreatedEmailQueued(lookupResult.submissionId);
           const emailOutcome = getSuccessfulShopierPaymentEmailEnqueueOutcome(emailQueued);
 
@@ -123,7 +135,13 @@ type VerifiedPaymentRpcResult =
   | "payment_conflict";
 
 type SubmissionLookupResult =
-  | { status: "found"; submissionId: string }
+  | {
+      status: "found";
+      submissionId: string;
+      customerEmail: string;
+      paymentAmount: number;
+      paymentCurrency: string;
+    }
   | { status: "not_found" }
   | { status: "ambiguous" }
   | { status: "error" };
@@ -173,7 +191,7 @@ async function loadSubmissionByShopierProductId(
 ): Promise<SubmissionLookupResult> {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("id")
+    .select("id, customer_email, payment_amount, payment_currency")
     .eq("shopier_product_id", productId)
     .limit(2);
 
@@ -195,7 +213,13 @@ async function loadSubmissionByShopierProductId(
     return { status: "error" };
   }
 
-  return { status: "found", submissionId };
+  return {
+    status: "found",
+    submissionId,
+    customerEmail: stringValue(data[0]?.customer_email),
+    paymentAmount: numberValue(data[0]?.payment_amount),
+    paymentCurrency: stringValue(data[0]?.payment_currency) || "TRY",
+  };
 }
 
 async function applyVerifiedShopierPayment({
@@ -270,6 +294,37 @@ async function ensureOrderCreatedEmailQueued(submissionId: string) {
   return result.ok;
 }
 
+async function sendTikTokCompletePaymentQuietly({
+  request,
+  submission,
+  webhook,
+}: {
+  request: Request;
+  submission: Extract<SubmissionLookupResult, { status: "found" }>;
+  webhook: NormalizedStoryOfUsShopierOrderWebhook;
+}) {
+  const result = await sendTikTokCompletePayment({
+    submissionId: submission.submissionId,
+    customerEmail: submission.customerEmail,
+    amount: submission.paymentAmount,
+    currency: submission.paymentCurrency,
+    eventTime: new Date(),
+    ip: getRequestIp(request),
+    userAgent: getRequestUserAgent(request),
+  });
+
+  if (result.ok) {
+    return;
+  }
+
+  console.warn("[StoryOfUs TikTok Events]", {
+    eventCode: "storyofus_tiktok_complete_payment_failed",
+    reason: result.reason,
+    submissionId: submission.submissionId,
+    shopierEventId: webhook.eventId,
+  });
+}
+
 function logVerifiedWebhookDiagnostic(
   eventCode: string,
   webhook: Pick<NormalizedStoryOfUsShopierOrderWebhook, "eventId" | "orderId">,
@@ -294,4 +349,40 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function numberValue(value: unknown) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value.trim())
+        : Number.NaN;
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function getRequestIp(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const candidate =
+    forwardedFor?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    "";
+
+  return isSafeIp(candidate) ? candidate : null;
+}
+
+function getRequestUserAgent(request: Request) {
+  const userAgent = request.headers.get("user-agent")?.trim();
+
+  return userAgent && userAgent.length <= 512 ? userAgent : null;
+}
+
+function isSafeIp(value: string) {
+  return /^[0-9a-f:.]{3,45}$/i.test(value);
 }
