@@ -43,6 +43,27 @@ test("checkout_created email includes payment and prefilled tracking URLs", () =
   assert.match(template.text, new RegExp(escapeRegExp(TRACKING_CODE)));
   assert.doesNotMatch(template.html, /Kurulum bilgilerini doldur|Kurulum bağlantısı/);
   assert.doesNotMatch(template.text, /Kurulum bağlantısı|setup\?token/);
+  assert.doesNotMatch(template.html, /geçici bir teknik aksaklık/);
+  assert.doesNotMatch(template.text, /geçici bir teknik aksaklık/);
+});
+
+test("checkout_created delayed variant includes explicit delayed-delivery notice only", () => {
+  const template = createStoryOfUsEmailTemplate({
+    emailType: "checkout_created",
+    customerName: "Elif",
+    orderReference: ORDER_REFERENCE,
+    trackingCode: TRACKING_CODE,
+    shopierPaymentUrl: PAYMENT_URL,
+    trackOrderUrl: TRACK_ORDER_URL,
+    delayedDeliveryNotice: true,
+  });
+
+  assert.match(template.html, /geçici bir teknik aksaklık/);
+  assert.match(template.text, /geçici bir teknik aksaklık/);
+  assert.match(template.html, /Shopier&#39;de ödemeye devam et/);
+  assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
+  assert.doesNotMatch(template.html, /Kurulum bilgilerini doldur|Kurulum bağlantısı/);
+  assert.doesNotMatch(template.text, /Kurulum bağlantısı|setup\?token/);
 });
 
 test("order_created email includes private setup URL and prefilled tracking URL", () => {

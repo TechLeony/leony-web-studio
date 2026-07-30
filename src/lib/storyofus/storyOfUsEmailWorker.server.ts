@@ -207,6 +207,7 @@ async function createCheckoutCreatedEmailInput(
     trackingCode,
     shopierPaymentUrl,
     trackOrderUrl: createStoryOfUsTrackOrderUrl(trackingCode),
+    delayedDeliveryNotice: isDelayedCheckoutCreatedBackfillEventKey(claimed),
     idempotencyKey: claimed.eventKey,
   } satisfies SendStoryOfUsEmailInput;
 }
@@ -480,6 +481,17 @@ function normalizeShopierPaymentUrl(value: unknown) {
   }
 
   return null;
+}
+
+function isDelayedCheckoutCreatedBackfillEventKey(claimed: StoryOfUsClaimedEmailOutboxRow) {
+  return (
+    claimed.emailType === "checkout_created" &&
+    claimed.eventKey === createDelayedCheckoutCreatedBackfillEventKey(claimed.submissionId)
+  );
+}
+
+export function createDelayedCheckoutCreatedBackfillEventKey(submissionId: string) {
+  return `storyofus:checkout_created:delayed:${submissionId}`;
 }
 
 function normalizeIsoTimestamp(value: unknown) {

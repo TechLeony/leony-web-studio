@@ -141,6 +141,7 @@ function normalizeSendStoryOfUsEmailInput(
       trackingCode: input.trackingCode.trim().toUpperCase(),
       shopierPaymentUrl: input.shopierPaymentUrl.trim(),
       trackOrderUrl: input.trackOrderUrl.trim(),
+      delayedDeliveryNotice: input.delayedDeliveryNotice === true,
     };
   }
 

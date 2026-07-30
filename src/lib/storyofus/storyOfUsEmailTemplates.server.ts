@@ -13,6 +13,7 @@ export type StoryOfUsCheckoutCreatedTemplateInput = {
   trackingCode: string;
   shopierPaymentUrl: string;
   trackOrderUrl: string;
+  delayedDeliveryNotice?: boolean;
 };
 
 export type StoryOfUsOrderCreatedTemplateInput = {
@@ -99,6 +100,8 @@ function createCheckoutCreatedTemplate(
   const safeShopierPaymentUrl = escapeHtml(input.shopierPaymentUrl);
   const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
   const subject = getStoryOfUsEmailTemplateSubject("checkout_created", input.orderReference);
+  const delayedNoticeText =
+    "Bu e-posta, sistemimizde yaşanan geçici bir teknik aksaklık nedeniyle size gecikmeli olarak ulaştı. Gecikme için özür dileriz. Teknik ekibimiz sorunu gidermek ve benzer bir durumun tekrar yaşanmaması için gerekli düzenlemeleri yapmaktadır.";
 
   return {
     subject,
@@ -109,6 +112,7 @@ function createCheckoutCreatedTemplate(
         "StoryOfUs siparişiniz oluşturuldu. Ödemeyi tamamlayarak özel kurulum bağlantınızı aktif edebilirsiniz.",
       bodyHtml: `
         <p>Merhaba ${safeCustomerName},</p>
+        ${input.delayedDeliveryNotice ? renderNotice(delayedNoticeText) : ""}
         <p><strong>${safeOrderReference}</strong> numaralı StoryOfUs siparişiniz oluşturuldu.</p>
         <p>Ödeme tamamlandıktan sonra size özel kurulum bağlantınızı e-posta ile göndereceğiz.</p>
         <p>Sipariş takip kodunuz: <strong>${safeTrackingCode}</strong></p>
@@ -122,6 +126,7 @@ function createCheckoutCreatedTemplate(
     text: [
       `Merhaba ${input.customerName},`,
       "",
+      ...(input.delayedDeliveryNotice ? [delayedNoticeText, ""] : []),
       `${input.orderReference} numaralı StoryOfUs siparişiniz oluşturuldu.`,
       "Ödeme tamamlandıktan sonra size özel kurulum bağlantınızı e-posta ile göndereceğiz.",
       "",
@@ -342,6 +347,10 @@ function renderRawLink(label: string, href: string) {
 
 function renderSupportNote() {
   return `<p style="margin:24px 0 0; padding:16px 18px; border-radius:18px; background:#fff1f5; border:1px solid #fbcfe8; color:#7f1d4e; font-size:14px;">Herhangi bir konuda bize <a href="mailto:${SUPPORT_EMAIL}" style="color:#be185d; font-weight:700;">${SUPPORT_EMAIL}</a> adresinden yazabilirsiniz.</p>`;
+}
+
+function renderNotice(value: string) {
+  return `<p style="margin:0 0 18px; padding:16px 18px; border-radius:18px; background:#fff7ed; border:1px solid #fed7aa; color:#7c2d12; font-size:14px; line-height:1.65;">${escapeHtml(value)}</p>`;
 }
 
 function escapeHtml(value: string) {
