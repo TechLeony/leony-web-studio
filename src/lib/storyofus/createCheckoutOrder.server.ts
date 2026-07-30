@@ -196,14 +196,34 @@ async function enqueueCheckoutCreatedEmailQuietly(submissionId: string) {
       emailType: "checkout_created",
     });
 
+    if (result.ok && result.queued) {
+      console.info("[StoryOfUs checkout]", {
+        eventCode: "checkout_created_email_queued",
+        submissionId,
+      });
+      return;
+    }
+
+    if (result.ok && !result.queued) {
+      console.info("[StoryOfUs checkout]", {
+        eventCode: "checkout_created_email_already_queued",
+        submissionId,
+      });
+      return;
+    }
+
     if (!result.ok) {
       console.warn("[StoryOfUs checkout]", {
         eventCode: "checkout_created_email_enqueue_failed",
+        submissionId,
+        errorCode: result.errorCode,
       });
     }
   } catch {
     console.warn("[StoryOfUs checkout]", {
       eventCode: "checkout_created_email_enqueue_failed",
+      submissionId,
+      errorCode: "unexpected_error",
     });
   }
 }

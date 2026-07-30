@@ -7,12 +7,17 @@ const workspaceRoot = process.cwd();
 
 test("customer lifecycle outbox migration only allows the four customer email types", () => {
   const sql = readMigration("email-outbox-customer-lifecycle.sql");
+  const foundationSql = readMigration("email-outbox.sql");
 
   assert.match(sql, /conrelid = 'public\.storyofus_email_outbox'::regclass/);
   assert.match(sql, /'checkout_created'/);
   assert.match(sql, /'order_created'/);
   assert.match(sql, /'setup_submitted'/);
   assert.match(sql, /'final_site_ready'/);
+  assert.match(foundationSql, /'checkout_created'/);
+  assert.match(foundationSql, /'order_created'/);
+  assert.match(foundationSql, /'setup_submitted'/);
+  assert.match(foundationSql, /'final_site_ready'/);
   assert.doesNotMatch(sql, /admin/i);
   assert.doesNotMatch(sql, /grant\s+/i);
   assert.doesNotMatch(sql, /alter table public\.storyofus_email_outbox enable row level security/i);

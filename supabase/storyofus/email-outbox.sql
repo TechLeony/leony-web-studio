@@ -10,7 +10,14 @@ create table if not exists public.storyofus_email_outbox (
     on delete cascade,
 
   email_type text not null
-    check (email_type in ('order_created', 'final_site_ready')),
+    check (
+      email_type in (
+        'checkout_created',
+        'order_created',
+        'setup_submitted',
+        'final_site_ready'
+      )
+    ),
 
   event_key text not null unique,
 

@@ -41,6 +41,8 @@ test("checkout_created email includes payment and prefilled tracking URLs", () =
   assert.match(template.html, new RegExp(escapeRegExp(PAYMENT_URL)));
   assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
   assert.match(template.text, new RegExp(escapeRegExp(TRACKING_CODE)));
+  assert.doesNotMatch(template.html, /Kurulum bilgilerini doldur|Kurulum bağlantısı/);
+  assert.doesNotMatch(template.text, /Kurulum bağlantısı|setup\?token/);
 });
 
 test("order_created email includes private setup URL and prefilled tracking URL", () => {
