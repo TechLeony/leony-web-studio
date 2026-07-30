@@ -5,16 +5,18 @@ import { join } from "node:path";
 
 const workspaceRoot = process.cwd();
 
-test("customer lifecycle outbox migration only allows the four customer email types", () => {
+test("customer lifecycle outbox migration only allows customer email types", () => {
   const sql = readMigration("email-outbox-customer-lifecycle.sql");
   const foundationSql = readMigration("email-outbox.sql");
 
   assert.match(sql, /conrelid = 'public\.storyofus_email_outbox'::regclass/);
   assert.match(sql, /'checkout_created'/);
+  assert.match(sql, /'payment_reminder'/);
   assert.match(sql, /'order_created'/);
   assert.match(sql, /'setup_submitted'/);
   assert.match(sql, /'final_site_ready'/);
   assert.match(foundationSql, /'checkout_created'/);
+  assert.match(foundationSql, /'payment_reminder'/);
   assert.match(foundationSql, /'order_created'/);
   assert.match(foundationSql, /'setup_submitted'/);
   assert.match(foundationSql, /'final_site_ready'/);

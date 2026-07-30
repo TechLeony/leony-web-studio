@@ -31,7 +31,12 @@ test("delayed checkout_created event key validates", () => {
 });
 
 test("delayed event key is rejected for other email types", () => {
-  for (const emailType of ["order_created", "setup_submitted", "final_site_ready"] as const) {
+  for (const emailType of [
+    "payment_reminder",
+    "order_created",
+    "setup_submitted",
+    "final_site_ready",
+  ] as const) {
     assert.equal(
       isValidStoryOfUsEmailEventKey({
         eventKey: `storyofus:checkout_created:delayed:${SUBMISSION_ID}`,

@@ -77,7 +77,7 @@ export const createStoryOfUsCheckoutOrder = createServerFn({ method: "POST" })
     const orderReference = await createUniqueOrderReference();
     const trackingCode = await createUniqueTrackingCode();
     const acceptedAt = new Date().toISOString();
-    const checkoutExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const checkoutExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 
     const { data: insertedSubmission, error } = await storyOfUsSupabaseAdmin
       .from("storyofus_submissions")

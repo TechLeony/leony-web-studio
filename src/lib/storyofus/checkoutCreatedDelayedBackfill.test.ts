@@ -27,13 +27,37 @@ test("normal checkout enqueue does not use the delayed backfill event key", () =
 
 test("email worker enables delayed notice only for the explicit delayed event key", () => {
   const source = readStoryOfUsSource("storyOfUsEmailWorker.server.ts");
+  const delayedHelperStart = source.indexOf("function isDelayedCheckoutCreatedBackfillEventKey");
+  const delayedHelperEnd = source.indexOf(
+    "function createDelayedCheckoutCreatedBackfillEventKey",
+    delayedHelperStart,
+  );
+  const checkoutCreatedStart = source.indexOf("function createCheckoutCreatedEmailInput");
+  const checkoutCreatedEnd = source.indexOf(
+    "function createPaymentReminderEmailInput",
+    checkoutCreatedStart,
+  );
 
-  assert.match(source, /delayedDeliveryNotice:\s*isDelayedCheckoutCreatedBackfillEventKey/);
+  assert.ok(delayedHelperStart >= 0);
+  assert.ok(delayedHelperEnd > delayedHelperStart);
+  assert.ok(checkoutCreatedStart >= 0);
+  assert.ok(checkoutCreatedEnd > checkoutCreatedStart);
+
+  const delayedHelperSource = source.slice(delayedHelperStart, delayedHelperEnd);
+  const checkoutCreatedSource = source.slice(checkoutCreatedStart, checkoutCreatedEnd);
+
   assert.match(
-    source,
+    delayedHelperSource,
     /claimed\.eventKey === createDelayedCheckoutCreatedBackfillEventKey\(claimed\.submissionId\)/,
   );
-  assert.doesNotMatch(source, /created_at|checkout_expires_at|Date\.now\(\).*delayed/s);
+  assert.match(
+    checkoutCreatedSource,
+    /delayedDeliveryNotice:\s*isDelayedCheckoutCreatedBackfillEventKey/,
+  );
+  assert.doesNotMatch(
+    `${delayedHelperSource}\n${checkoutCreatedSource}`,
+    /created_at|checkout_expires_at|Date\.now\(\)/,
+  );
 });
 
 test("one-time delayed checkout SQL targets one exact eligible pending submission", () => {

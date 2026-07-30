@@ -1,8 +1,13 @@
 export type StoryOfUsEmailType =
-  "checkout_created" | "order_created" | "setup_submitted" | "final_site_ready";
+  | "checkout_created"
+  | "payment_reminder"
+  | "order_created"
+  | "setup_submitted"
+  | "final_site_ready";
 
 export const storyOfUsEmailTypeValues = [
   "checkout_created",
+  "payment_reminder",
   "order_created",
   "setup_submitted",
   "final_site_ready",

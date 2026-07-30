@@ -8,6 +8,8 @@ import {
 } from "./emailOutboxProcessing.server";
 import { sendStoryOfUsEmail, type SendStoryOfUsEmailInput } from "./storyOfUsResend.server";
 import { isValidStoryOfUsFinalSiteUrl } from "./finalSiteUtils";
+import { enqueueDueStoryOfUsPaymentReminders } from "./paymentReminder.server";
+import { isEligibleForStoryOfUsPaymentReminderQueue } from "./paymentReminder";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 export type ProcessStoryOfUsEmailOutboxBatchInput = {
@@ -15,6 +17,7 @@ export type ProcessStoryOfUsEmailOutboxBatchInput = {
 };
 
 export type ProcessStoryOfUsEmailOutboxBatchResult = {
+  remindersQueued: number;
   claimed: number;
   sent: number;
   retryScheduled: number;
@@ -25,6 +28,7 @@ export type ProcessStoryOfUsEmailOutboxBatchResult = {
 
 type StoryOfUsEmailSubmissionRow = {
   id?: unknown;
+  created_at?: unknown;
   customer_email?: unknown;
   customer_name?: unknown;
   order_reference?: unknown;
@@ -32,6 +36,8 @@ type StoryOfUsEmailSubmissionRow = {
   setup_token?: unknown;
   payment_status?: unknown;
   status?: unknown;
+  refund_status?: unknown;
+  checkout_expires_at?: unknown;
   submitted_at?: unknown;
   editable_until?: unknown;
   refund_request_until?: unknown;
@@ -51,10 +57,12 @@ const TRACKING_CODE_PATTERN = /^SOT-(\d{8})-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6
 export async function processStoryOfUsEmailOutboxBatch({
   batchSize = DEFAULT_WORKER_BATCH_SIZE,
 }: ProcessStoryOfUsEmailOutboxBatchInput = {}): Promise<ProcessStoryOfUsEmailOutboxBatchResult> {
+  const reminderQueueSummary = await enqueueDueStoryOfUsPaymentReminders();
   const claimedRows = await claimStoryOfUsEmailOutboxBatch({
     batchSize: normalizeBatchSize(batchSize),
   });
   const summary: ProcessStoryOfUsEmailOutboxBatchResult = {
+    remindersQueued: reminderQueueSummary.queued,
     claimed: claimedRows.length,
     sent: 0,
     retryScheduled: 0,
@@ -98,6 +106,19 @@ async function processClaimedStoryOfUsEmail(
 ): Promise<StoryOfUsEmailAttemptOutcome> {
   if (claimed.emailType === "checkout_created") {
     const input = await createCheckoutCreatedEmailInput(claimed);
+
+    if (!input) {
+      return {
+        ok: false,
+        errorCode: "invalid_input",
+      };
+    }
+
+    return sendStoryOfUsEmail(input);
+  }
+
+  if (claimed.emailType === "payment_reminder") {
+    const input = await createPaymentReminderEmailInput(claimed);
 
     if (!input) {
       return {
@@ -225,6 +246,41 @@ async function createCheckoutCreatedEmailInput(
   } satisfies SendStoryOfUsEmailInput;
 }
 
+async function createPaymentReminderEmailInput(
+  claimed: StoryOfUsClaimedEmailOutboxRow,
+): Promise<SendStoryOfUsEmailInput | null> {
+  const submission = await loadEmailSubmission(claimed.submissionId);
+
+  if (!submission || stringValue(submission.id) !== claimed.submissionId) {
+    return null;
+  }
+
+  if (!isEligibleForStoryOfUsPaymentReminderQueue(submission)) {
+    return null;
+  }
+
+  const customerEmail = normalizeEmail(submission.customer_email);
+  const customerName = normalizeRequiredText(submission.customer_name, 160);
+  const orderReference = normalizeOrderReference(submission.order_reference);
+  const trackingCode = normalizeTrackingCode(submission.tracking_code);
+  const shopierPaymentUrl = normalizeShopierPaymentUrl(submission.shopier_payment_url);
+
+  if (!customerEmail || !customerName || !orderReference || !trackingCode || !shopierPaymentUrl) {
+    return null;
+  }
+
+  return {
+    emailType: "payment_reminder",
+    recipientEmail: customerEmail,
+    customerName,
+    orderReference,
+    trackingCode,
+    shopierPaymentUrl,
+    trackOrderUrl: createStoryOfUsTrackOrderUrl(trackingCode),
+    idempotencyKey: claimed.eventKey,
+  } satisfies SendStoryOfUsEmailInput;
+}
+
 async function createOrderCreatedEmailInput(
   claimed: StoryOfUsClaimedEmailOutboxRow,
 ): Promise<SendStoryOfUsEmailInput | null> {
@@ -321,6 +377,7 @@ async function loadEmailSubmission(
     .select(
       [
         "id",
+        "created_at",
         "customer_email",
         "customer_name",
         "order_reference",
@@ -328,6 +385,8 @@ async function loadEmailSubmission(
         "setup_token",
         "payment_status",
         "status",
+        "refund_status",
+        "checkout_expires_at",
         "submitted_at",
         "editable_until",
         "refund_request_until",

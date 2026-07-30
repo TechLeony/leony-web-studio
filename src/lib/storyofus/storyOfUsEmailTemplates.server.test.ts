@@ -14,11 +14,21 @@ const FINAL_URL = "https://leony.tech/storyofus/site/elif-mert";
 test("outbox event types and event keys cover the full customer lifecycle", () => {
   assert.deepEqual(
     [...storyOfUsEmailTypeValues],
-    ["checkout_created", "order_created", "setup_submitted", "final_site_ready"],
+    [
+      "checkout_created",
+      "payment_reminder",
+      "order_created",
+      "setup_submitted",
+      "final_site_ready",
+    ],
   );
   assert.equal(
     createStoryOfUsEmailEventKey("123e4567-e89b-12d3-a456-426614174000", "checkout_created"),
     "storyofus:checkout_created:123e4567-e89b-12d3-a456-426614174000",
+  );
+  assert.equal(
+    createStoryOfUsEmailEventKey("123e4567-e89b-12d3-a456-426614174000", "payment_reminder"),
+    "storyofus:payment_reminder:123e4567-e89b-12d3-a456-426614174000",
   );
   assert.equal(
     createStoryOfUsEmailEventKey("123e4567-e89b-12d3-a456-426614174000", "final_site_ready"),
@@ -45,6 +55,28 @@ test("checkout_created email includes payment and prefilled tracking URLs", () =
   assert.doesNotMatch(template.text, /Kurulum bağlantısı|setup\?token/);
   assert.doesNotMatch(template.html, /geçici bir teknik aksaklık/);
   assert.doesNotMatch(template.text, /geçici bir teknik aksaklık/);
+});
+
+test("payment_reminder email includes payment CTA and no setup link", () => {
+  const template = createStoryOfUsEmailTemplate({
+    emailType: "payment_reminder",
+    customerName: "Elif",
+    orderReference: ORDER_REFERENCE,
+    trackingCode: TRACKING_CODE,
+    shopierPaymentUrl: PAYMENT_URL,
+    trackOrderUrl: TRACK_ORDER_URL,
+  });
+
+  assert.equal(template.subject, "Your StoryOfUs order is waiting for you 💝");
+  assert.match(template.html, /Your order is waiting for you/);
+  assert.match(template.html, /Hi Elif/);
+  assert.match(template.html, /Complete Payment/);
+  assert.match(template.html, /If you experienced any issues/);
+  assert.match(template.html, new RegExp(escapeRegExp(PAYMENT_URL)));
+  assert.match(template.html, new RegExp(escapeRegExp(TRACK_ORDER_URL)));
+  assert.match(template.text, /Complete|Payment link/);
+  assert.doesNotMatch(template.html, /Kurulum bilgilerini doldur|Kurulum bağlantısı|setup\?token/);
+  assert.doesNotMatch(template.text, /Kurulum bağlantısı|setup\?token/);
 });
 
 test("checkout_created delayed variant includes explicit delayed-delivery notice only", () => {

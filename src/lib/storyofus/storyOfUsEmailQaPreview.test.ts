@@ -10,12 +10,18 @@ import {
 } from "./storyOfUsEmailQaPreview.ts";
 import { createStoryOfUsEmailTemplate } from "./storyOfUsEmailTemplates.server.ts";
 
-test("all four StoryOfUs customer email stages are available in QA", () => {
+test("all StoryOfUs customer email stages are available in QA", () => {
   const previews = getStoryOfUsEmailQaPreviews();
 
   assert.deepEqual(
     previews.map((preview) => preview.id),
-    ["checkout_created", "order_created", "setup_submitted", "final_site_ready"],
+    [
+      "checkout_created",
+      "payment_reminder",
+      "order_created",
+      "setup_submitted",
+      "final_site_ready",
+    ],
   );
 });
 
@@ -41,6 +47,16 @@ test("checkout email QA includes tracking and continue-payment CTA", () => {
   assert.match(preview.html, /preview\.local\/storyofus\/track-order\?code=QA-TRACK-2026/);
   assert.match(preview.html, /Shopier&#39;de ödemeye devam et/);
   assert.doesNotMatch(preview.html, /Kurulum bilgilerini doldur/);
+});
+
+test("payment reminder email QA includes inert payment CTA and no setup link", () => {
+  const preview = findPreview("payment_reminder");
+
+  assert.match(preview.subject, /Your StoryOfUs order is waiting for you/);
+  assert.match(preview.html, /Complete Payment/);
+  assert.match(preview.html, /preview\.local\/storyofus\/qa\/inert-shopier-payment/);
+  assert.match(preview.html, /QA-TRACK-2026/);
+  assert.doesNotMatch(preview.html, /Kurulum bilgilerini doldur|setup\?token/);
 });
 
 test("payment-confirmed email QA includes setup and tracking CTAs", () => {

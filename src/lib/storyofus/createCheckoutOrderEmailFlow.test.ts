@@ -20,6 +20,12 @@ test("checkout flow queues the pre-payment email only after Shopier URL persiste
   assert.ok(enqueueIndex < returnPaymentUrlIndex);
 });
 
+test("checkout remains unexpired long enough for a 24-hour payment reminder", () => {
+  const source = readStoryOfUsSource("createCheckoutOrder.server.ts");
+
+  assert.match(source, /Date\.now\(\) \+ 48 \* 60 \* 60 \* 1000/);
+});
+
 test("failed Shopier product creation happens before checkout_created enqueue is reachable", () => {
   const source = readStoryOfUsSource("createCheckoutOrder.server.ts");
   const productPersistIndex = source.indexOf(

@@ -3,11 +3,16 @@ import {
   type StoryOfUsCheckoutCreatedTemplateInput,
   type StoryOfUsFinalSiteReadyTemplateInput,
   type StoryOfUsOrderCreatedTemplateInput,
+  type StoryOfUsPaymentReminderTemplateInput,
   type StoryOfUsSetupSubmittedTemplateInput,
 } from "./storyOfUsEmailTemplates.server";
 
 export type SendStoryOfUsEmailInput =
   | (StoryOfUsCheckoutCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
+  | (StoryOfUsPaymentReminderTemplateInput & {
       recipientEmail: string;
       idempotencyKey: string;
     })
@@ -43,6 +48,10 @@ export type SendStoryOfUsEmailResult =
 
 type NormalizedSendStoryOfUsEmailInput =
   | (StoryOfUsCheckoutCreatedTemplateInput & {
+      recipientEmail: string;
+      idempotencyKey: string;
+    })
+  | (StoryOfUsPaymentReminderTemplateInput & {
       recipientEmail: string;
       idempotencyKey: string;
     })
@@ -145,6 +154,16 @@ function normalizeSendStoryOfUsEmailInput(
     };
   }
 
+  if (input.emailType === "payment_reminder") {
+    return {
+      ...sharedInput,
+      emailType: "payment_reminder",
+      trackingCode: input.trackingCode.trim().toUpperCase(),
+      shopierPaymentUrl: input.shopierPaymentUrl.trim(),
+      trackOrderUrl: input.trackOrderUrl.trim(),
+    };
+  }
+
   if (input.emailType === "order_created") {
     return {
       ...sharedInput,
@@ -220,6 +239,14 @@ function isValidStoryOfUsEmailInput(input: NormalizedSendStoryOfUsEmailInput, pu
   }
 
   if (input.emailType === "checkout_created") {
+    return (
+      isValidTrackingCode(input.trackingCode) &&
+      isValidShopierPaymentUrl(input.shopierPaymentUrl) &&
+      isValidStoryOfUsTrackOrderUrl(input.trackOrderUrl, publicOrigin)
+    );
+  }
+
+  if (input.emailType === "payment_reminder") {
     return (
       isValidTrackingCode(input.trackingCode) &&
       isValidShopierPaymentUrl(input.shopierPaymentUrl) &&

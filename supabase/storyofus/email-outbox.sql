@@ -13,6 +13,7 @@ create table if not exists public.storyofus_email_outbox (
     check (
       email_type in (
         'checkout_created',
+        'payment_reminder',
         'order_created',
         'setup_submitted',
         'final_site_ready'

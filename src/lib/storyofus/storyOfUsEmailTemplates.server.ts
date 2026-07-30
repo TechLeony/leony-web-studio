@@ -16,6 +16,15 @@ export type StoryOfUsCheckoutCreatedTemplateInput = {
   delayedDeliveryNotice?: boolean;
 };
 
+export type StoryOfUsPaymentReminderTemplateInput = {
+  emailType: "payment_reminder";
+  customerName: string;
+  orderReference: string;
+  trackingCode: string;
+  shopierPaymentUrl: string;
+  trackOrderUrl: string;
+};
+
 export type StoryOfUsOrderCreatedTemplateInput = {
   emailType: "order_created";
   customerName: string;
@@ -48,6 +57,7 @@ export type StoryOfUsFinalSiteReadyTemplateInput = {
 
 export type StoryOfUsEmailTemplateInput =
   | StoryOfUsCheckoutCreatedTemplateInput
+  | StoryOfUsPaymentReminderTemplateInput
   | StoryOfUsOrderCreatedTemplateInput
   | StoryOfUsSetupSubmittedTemplateInput
   | StoryOfUsFinalSiteReadyTemplateInput;
@@ -59,6 +69,10 @@ export function createStoryOfUsEmailTemplate(
 ): StoryOfUsEmailTemplate {
   if (input.emailType === "checkout_created") {
     return createCheckoutCreatedTemplate(input);
+  }
+
+  if (input.emailType === "payment_reminder") {
+    return createPaymentReminderTemplate(input);
   }
 
   if (input.emailType === "order_created") {
@@ -78,6 +92,10 @@ export function getStoryOfUsEmailTemplateSubject(
 ) {
   if (emailType === "checkout_created") {
     return `${orderReference} numaralı StoryOfUs ödeme adımınız hazır 💌`;
+  }
+
+  if (emailType === "payment_reminder") {
+    return "Your StoryOfUs order is waiting for you 💝";
   }
 
   if (emailType === "order_created") {
@@ -135,6 +153,52 @@ function createCheckoutCreatedTemplate(
       `Sipariş takip bağlantısı: ${input.trackOrderUrl}`,
       "",
       `Herhangi bir konuda bize ${SUPPORT_EMAIL} adresinden yazabilirsiniz.`,
+    ].join("\n"),
+  };
+}
+
+function createPaymentReminderTemplate(
+  input: StoryOfUsPaymentReminderTemplateInput,
+): StoryOfUsEmailTemplate {
+  const safeCustomerName = escapeHtml(input.customerName);
+  const safeOrderReference = escapeHtml(input.orderReference);
+  const safeTrackingCode = escapeHtml(input.trackingCode);
+  const safeShopierPaymentUrl = escapeHtml(input.shopierPaymentUrl);
+  const safeTrackOrderUrl = escapeHtml(input.trackOrderUrl);
+  const subject = getStoryOfUsEmailTemplateSubject("payment_reminder", input.orderReference);
+
+  return {
+    subject,
+    html: renderEmailShell({
+      eyebrow: "Payment reminder",
+      title: "Your order is waiting for you",
+      preview: "Your StoryOfUs order is waiting. Complete payment to activate your setup link.",
+      bodyHtml: `
+        <p>Hi ${safeCustomerName},</p>
+        <p>You created a StoryOfUs order, but it looks like the payment has not been completed yet.</p>
+        <p>We wanted to send you a small reminder in case you got busy or accidentally closed the payment page.</p>
+        <p>Order reference: <strong>${safeOrderReference}</strong></p>
+        <p>Tracking code: <strong>${safeTrackingCode}</strong></p>
+        ${renderButton("Complete Payment", safeShopierPaymentUrl)}
+        ${renderSecondaryButton("Track my order", safeTrackOrderUrl)}
+        ${renderRawLink("Payment link", safeShopierPaymentUrl)}
+        ${renderRawLink("Track-order link", safeTrackOrderUrl)}
+        <p style="margin:24px 0 0; padding:16px 18px; border-radius:18px; background:#fff1f5; border:1px solid #fbcfe8; color:#7f1d4e; font-size:14px;">If you experienced any issues, simply reply to this email and we will be happy to help.</p>
+      `,
+    }),
+    text: [
+      `Hi ${input.customerName},`,
+      "",
+      "You created a StoryOfUs order, but it looks like the payment has not been completed yet.",
+      "",
+      "We wanted to send you a small reminder in case you got busy or accidentally closed the payment page.",
+      "",
+      `Order reference: ${input.orderReference}`,
+      `Tracking code: ${input.trackingCode}`,
+      `Payment link: ${input.shopierPaymentUrl}`,
+      `Track-order link: ${input.trackOrderUrl}`,
+      "",
+      "If you experienced any issues, simply reply to this email and we will be happy to help.",
     ].join("\n"),
   };
 }

@@ -15,7 +15,11 @@ export const STORYOFUS_EMAIL_QA_FROM = {
 export const STORYOFUS_EMAIL_QA_REPLY_TO = "contact@leony.tech";
 
 export type StoryOfUsEmailQaStageId =
-  "checkout_created" | "order_created" | "setup_submitted" | "final_site_ready";
+  | "checkout_created"
+  | "payment_reminder"
+  | "order_created"
+  | "setup_submitted"
+  | "final_site_ready";
 
 export type StoryOfUsEmailQaPreview = {
   id: StoryOfUsEmailQaStageId;
@@ -80,6 +84,19 @@ export function getStoryOfUsEmailQaTemplateInputs() {
       purpose: "Sipariş kaydı oluşturuldu; müşteri Shopier ödemesini henüz tamamlamadı.",
       templateInput: {
         emailType: "checkout_created",
+        customerName: QA_CUSTOMER_NAME,
+        orderReference: QA_ORDER_REFERENCE,
+        trackingCode: QA_TRACKING_CODE,
+        shopierPaymentUrl: QA_PAYMENT_URL,
+        trackOrderUrl: QA_TRACK_ORDER_URL,
+      },
+    },
+    {
+      id: "payment_reminder",
+      name: "Ödeme hatırlatma",
+      purpose: "Sipariş oluşturulduktan 24 saat sonra ödeme hâlâ bekliyorsa gönderilir.",
+      templateInput: {
+        emailType: "payment_reminder",
         customerName: QA_CUSTOMER_NAME,
         orderReference: QA_ORDER_REFERENCE,
         trackingCode: QA_TRACKING_CODE,
