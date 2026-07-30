@@ -16,6 +16,7 @@ import {
   type StoryOfUsAdminStatus,
   type StoryOfUsAdminUrgency,
 } from "./storyOfUsAdminDashboard";
+import { ensureStoryOfUsAdminPreviewSlug } from "./finalSite.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 export type StoryOfUsAdminDashboardOrder = {
@@ -258,6 +259,7 @@ export const getStoryOfUsAdminDashboardOrderDetail = createServerFn({ method: "P
         return { status: "not_found" };
       }
 
+      await ensureDashboardRowPreviewSlug(row as Record<string, unknown>);
       const emailOutbox = await loadEmailOutbox(data.orderId);
       const deliveryReadiness = await loadDeliveryReadiness(data.orderId);
       const mapped = mapDashboardOrder(row as Record<string, unknown>, nowIso, {
@@ -443,6 +445,7 @@ async function loadDashboardOrders(nowIso: string): Promise<StoryOfUsAdminDashbo
   }
 
   const rows = (data ?? []) as Array<Record<string, unknown>>;
+  await ensureDashboardRowsPreviewSlugs(rows);
   const [outboxRows, deliveryReadiness] = await Promise.all([
     loadAllEmailOutbox(),
     loadAllDeliveryReadiness(),
@@ -455,6 +458,34 @@ async function loadDashboardOrders(nowIso: string): Promise<StoryOfUsAdminDashbo
       deliveryReadiness:
         deliveryReadiness.get(stringValue(row.id)) ?? createEmptyDeliveryReadiness(),
     }),
+  );
+}
+
+async function ensureDashboardRowsPreviewSlugs(rows: Array<Record<string, unknown>>) {
+  await Promise.all(rows.map((row) => ensureDashboardRowPreviewSlug(row)));
+}
+
+async function ensureDashboardRowPreviewSlug(row: Record<string, unknown>) {
+  if (!shouldEnsureAdminPreviewSlug(row)) {
+    return;
+  }
+
+  const finalSiteSlug = await ensureStoryOfUsAdminPreviewSlug(stringValue(row.id));
+
+  if (finalSiteSlug) {
+    row.final_site_slug = finalSiteSlug;
+  }
+}
+
+function shouldEnsureAdminPreviewSlug(row: Record<string, unknown>) {
+  if (nullableString(row.final_site_slug)) {
+    return false;
+  }
+
+  return (
+    ["in_review", "preview_ready", "queued_for_delivery", "published"].includes(
+      stringValue(row.status),
+    ) && Boolean(nullableString(row.review_ready_at) || stringValue(row.status) !== "in_review")
   );
 }
 

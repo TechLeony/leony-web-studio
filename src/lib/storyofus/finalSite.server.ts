@@ -386,7 +386,10 @@ export async function publishStoryOfUsQueuedFinalSiteById(
   );
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const finalSiteSlug = createStoryOfUsFinalSiteSlug(slugBase);
+    const finalSiteSlug =
+      attempt === 0 && submission.finalSiteSlug
+        ? submission.finalSiteSlug
+        : createStoryOfUsFinalSiteSlug(slugBase);
     const finalSiteUrl = createStoryOfUsFinalSiteUrl(finalSiteSlug);
     const publishResult = await callPublishRpc(submissionId, finalSiteSlug, finalSiteUrl);
 
@@ -413,6 +416,41 @@ export async function publishStoryOfUsQueuedFinalSiteById(
     status: "not_publishable",
     message: "Benzersiz final bağlantısı oluşturulamadı. Lütfen tekrar deneyin.",
   };
+}
+
+export async function ensureStoryOfUsAdminPreviewSlug(
+  submissionId: string,
+): Promise<string | null> {
+  if (!isUuid(submissionId)) {
+    return null;
+  }
+
+  const submission = await loadAdminPreviewSubmission(submissionId);
+
+  if (!submission) {
+    return null;
+  }
+
+  if (submission.finalSiteSlug) {
+    return submission.finalSiteSlug;
+  }
+
+  const coupleDetails = await loadCoupleDetails(submissionId);
+  const slugBase = createStoryOfUsFinalSiteSlugBase(
+    coupleDetails?.coupleDisplayName ?? "",
+    coupleDetails?.partnerName ?? "",
+  );
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const finalSiteSlug = createStoryOfUsFinalSiteSlug(slugBase);
+    const result = await persistAdminPreviewSlug(submissionId, finalSiteSlug);
+
+    if (result.status === "stored" || result.status === "already_exists") {
+      return result.finalSiteSlug;
+    }
+  }
+
+  return null;
 }
 
 async function callPublishRpc(
@@ -461,6 +499,80 @@ async function callPublishRpc(
 
   return {
     status: "not_publishable",
+  };
+}
+
+async function persistAdminPreviewSlug(
+  submissionId: string,
+  finalSiteSlug: string,
+): Promise<
+  | {
+      status: "stored" | "already_exists";
+      finalSiteSlug: string;
+    }
+  | {
+      status: "conflict" | "not_available";
+    }
+> {
+  const { data: existing, error: existingError } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .select("id, final_site_slug")
+    .eq("id", submissionId)
+    .in("status", ADMIN_PREVIEW_STATUSES)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error("StoryOfUs admin preview slug could not be loaded.");
+  }
+
+  if (!existing) {
+    return {
+      status: "not_available",
+    };
+  }
+
+  const existingSlug = nullableString(existing.final_site_slug);
+
+  if (existingSlug) {
+    return {
+      status: "already_exists",
+      finalSiteSlug: existingSlug,
+    };
+  }
+
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .update({
+      final_site_slug: finalSiteSlug,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", submissionId)
+    .is("final_site_slug", null)
+    .in("status", ADMIN_PREVIEW_STATUSES)
+    .select("final_site_slug")
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        status: "conflict",
+      };
+    }
+
+    throw new Error("StoryOfUs admin preview slug could not be stored.");
+  }
+
+  const storedSlug = nullableString(data?.final_site_slug);
+
+  if (!storedSlug) {
+    return {
+      status: "conflict",
+    };
+  }
+
+  return {
+    status: "stored",
+    finalSiteSlug: storedSlug,
   };
 }
 

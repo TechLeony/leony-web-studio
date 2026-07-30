@@ -1018,29 +1018,28 @@ function AdminPreviewLink({
 
   if (!order.finalSiteSlug) {
     return (
-      <button
-        type="button"
-        disabled
-        className={`${className} cursor-not-allowed opacity-60`}
-        title="Final site slug is not available yet."
-      >
-        <ExternalLink className="h-4 w-4" />
-        Preview site
-      </button>
+      <div className="grid gap-1">
+        <button type="button" disabled className={`${className} cursor-not-allowed opacity-60`}>
+          <ExternalLink className="h-4 w-4" />
+          Preview site
+        </button>
+        <p className="max-w-48 text-xs font-semibold text-amber-700">
+          Preview unavailable: final site slug is missing.
+        </p>
+      </div>
     );
   }
 
   return (
-    <Link
-      to="/admin/storyofus-orders/site-preview/$siteSlug"
-      params={{ siteSlug: order.finalSiteSlug }}
+    <a
+      href={`/admin/storyofus-orders/site-preview/${encodeURIComponent(order.finalSiteSlug)}`}
       target="_blank"
       rel="noreferrer"
       className={className}
     >
       <ExternalLink className="h-4 w-4" />
       Preview site
-    </Link>
+    </a>
   );
 }
 

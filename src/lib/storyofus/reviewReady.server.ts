@@ -3,7 +3,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { SITE } from "@/lib/site";
 
-import { publishStoryOfUsQueuedFinalSiteById } from "./finalSite.server";
+import {
+  ensureStoryOfUsAdminPreviewSlug,
+  publishStoryOfUsQueuedFinalSiteById,
+} from "./finalSite.server";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 const STORYOFUS_MEDIA_BUCKET = "storyofus-media";
@@ -142,12 +145,38 @@ export async function promoteStoryOfUsReviewReadyOrders(
   const eligible = numberValue(row?.eligible_count);
   const promoted = numberValue(row?.promoted_count);
 
+  if (!dryRun) {
+    await ensureMissingReviewReadyPreviewSlugs(batchLimit);
+  }
+
   return {
     eligible,
     promoted,
     skipped: Math.max(eligible - promoted, 0),
     failed: 0,
   };
+}
+
+async function ensureMissingReviewReadyPreviewSlugs(batchLimit: number) {
+  const limit = Math.max(1, Math.min(Math.trunc(batchLimit), 100));
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .select("id")
+    .eq("status", "in_review")
+    .not("review_ready_at", "is", null)
+    .is("final_site_slug", null)
+    .order("review_ready_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error("StoryOfUs review-ready preview slugs could not be loaded.");
+  }
+
+  await Promise.all(
+    ((data ?? []) as Array<Record<string, unknown>>).map((row) =>
+      ensureStoryOfUsAdminPreviewSlug(stringValue(row.id)),
+    ),
+  );
 }
 
 export async function processStoryOfUsQueuedDeliveries(

@@ -84,15 +84,41 @@ test("admin site preview route uses final-site slug without a public bypass toke
   assert.match(previewRoute, /getStoryOfUsAdminFinalSitePreviewBySlug/);
   assert.match(previewRoute, /<StoryOfUsFinalSiteRenderer site=\{previewState\.site\} \/>/);
   assert.doesNotMatch(previewRoute, /search|query|token|passcode/i);
-  assert.match(dashboard, /to="\/admin\/storyofus-orders\/site-preview\/\$siteSlug"/);
-  assert.match(dashboard, /params=\{\{ siteSlug: order\.finalSiteSlug \}\}/);
+  assert.match(
+    dashboard,
+    /href=\{`\/admin\/storyofus-orders\/site-preview\/\$\{encodeURIComponent\(order\.finalSiteSlug\)\}`\}/,
+  );
+  assert.match(dashboard, /target="_blank"/);
   assert.match(dashboard, /function AdminPreviewLink/);
+  assert.match(dashboard, /Preview unavailable: final site slug is missing\./);
   assert.doesNotMatch(dashboard, /onOpenPreview|setPreviewSite|verifyAccessPin/);
   assert.doesNotMatch(dashboard, /finalSiteUrl\}[\s\S]{0,220}Preview site/);
   assert.match(serverSource, /getStoryOfUsAdminFinalSitePreviewBySlug/);
   assert.match(serverSource, /middleware\(\[requireSupabaseAuth\]\)/);
   assert.match(serverSource, /await assertStoryOfUsAdmin\(context as AdminContext\)/);
   assert.match(serverSource, /eq\("final_site_slug", slug\)/);
+});
+
+test("StoryOfUs admin dashboard preserves final_site_slug for preview links", () => {
+  const serverSource = readSource("src/lib/storyofus/storyOfUsAdminDashboard.server.ts");
+  const reviewWorkerSource = readSource("src/lib/storyofus/reviewReady.server.ts");
+
+  assert.match(serverSource, /"final_site_slug"/);
+  assert.match(serverSource, /finalSiteSlug: stringValue\(row\.final_site_slug\)/);
+  assert.match(serverSource, /ensureStoryOfUsAdminPreviewSlug/);
+  assert.match(serverSource, /row\.final_site_slug = finalSiteSlug/);
+  assert.match(reviewWorkerSource, /ensureMissingReviewReadyPreviewSlugs/);
+  assert.match(reviewWorkerSource, /ensureStoryOfUsAdminPreviewSlug/);
+  assert.match(reviewWorkerSource, /\.is\("final_site_slug", null\)/);
+});
+
+test("public final-site route keeps the customer passcode gate", () => {
+  const publicRoute = readSource("src/routes/storyofus.site.$siteSlug.tsx");
+
+  assert.match(publicRoute, /getStoryOfUsFinalSiteAccess/);
+  assert.match(publicRoute, /verifyStoryOfUsFinalSitePasscode/);
+  assert.match(publicRoute, /<LockKeyhole className="h-7 w-7" \/>/);
+  assert.match(publicRoute, /<form onSubmit=\{handleUnlock\}/);
 });
 
 test("StoryOfUs admin server functions keep admin authorization on private data and actions", () => {
