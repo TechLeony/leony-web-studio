@@ -257,6 +257,33 @@ export const getStoryOfUsAdminFinalSitePreview = createServerFn({ method: "POST"
     };
   });
 
+export const getStoryOfUsAdminFinalSitePreviewBySlug = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => ({
+    siteSlug:
+      data &&
+      typeof data === "object" &&
+      typeof (data as { siteSlug?: unknown }).siteSlug === "string"
+        ? (data as { siteSlug: string }).siteSlug
+        : "",
+  }))
+  .handler(async ({ data, context }) => {
+    await assertStoryOfUsAdmin(context as AdminContext);
+
+    const submission = await loadAdminPreviewSubmissionBySlug(data.siteSlug);
+
+    if (!submission) {
+      return {
+        status: "not_found" as const,
+      };
+    }
+
+    return {
+      status: "found" as const,
+      site: await loadStoryOfUsFinalSiteData(submission.id),
+    };
+  });
+
 export const verifyStoryOfUsAdminPreviewPasscode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => {
@@ -504,7 +531,7 @@ async function loadAdminPreviewSubmission(submissionId: string) {
     .from("storyofus_submissions")
     .select("id, status, final_site_slug, final_site_url")
     .eq("id", submissionId)
-    .in("status", ["in_review", "queued_for_delivery", "published"])
+    .in("status", ADMIN_PREVIEW_STATUSES)
     .maybeSingle();
 
   if (error) {
@@ -523,12 +550,42 @@ async function loadAdminPreviewSubmission(submissionId: string) {
   };
 }
 
+async function loadAdminPreviewSubmissionBySlug(siteSlug: string) {
+  const slug = normalizeStoryOfUsFinalSiteSlug(siteSlug);
+
+  if (!slug) {
+    return null;
+  }
+
+  const { data, error } = await storyOfUsSupabaseAdmin
+    .from("storyofus_submissions")
+    .select("id, status, final_site_slug, final_site_url")
+    .eq("final_site_slug", slug)
+    .in("status", ADMIN_PREVIEW_STATUSES)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("StoryOfUs admin preview data could not be loaded.");
+  }
+
+  if (!data || !stringValue(data.final_site_slug)) {
+    return null;
+  }
+
+  return {
+    id: stringValue(data.id),
+    status: stringValue(data.status),
+    finalSiteSlug: stringValue(data.final_site_slug),
+    finalSiteUrl: nullableString(data.final_site_url),
+  };
+}
+
 async function loadAdminPreviewPasscodeSubmission(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
     .select("id, site_passcode_hash")
     .eq("id", submissionId)
-    .in("status", ["in_review", "queued_for_delivery", "published"])
+    .in("status", ADMIN_PREVIEW_STATUSES)
     .maybeSingle();
 
   if (error) {
@@ -544,6 +601,13 @@ async function loadAdminPreviewPasscodeSubmission(submissionId: string) {
     sitePasscodeHash: stringValue(data.site_passcode_hash),
   };
 }
+
+const ADMIN_PREVIEW_STATUSES = [
+  "in_review",
+  "preview_ready",
+  "queued_for_delivery",
+  "published",
+] as const;
 
 async function hasRequiredLoveLetterPhotoForPublish(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin

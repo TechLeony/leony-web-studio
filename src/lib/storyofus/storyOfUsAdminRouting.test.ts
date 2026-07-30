@@ -72,6 +72,26 @@ test("order detail route receives the orderId parameter and renders the detail v
   assert.match(dashboard, /Order not found\./);
 });
 
+test("admin site preview route uses final-site slug without a public bypass token", () => {
+  const previewRoute = readSource("src/routes/admin.storyofus-orders.site-preview.$siteSlug.tsx");
+  const dashboard = readSource("src/components/storyofus/StoryOfUsAdminDashboard.tsx");
+  const serverSource = readSource("src/lib/storyofus/finalSite.server.ts");
+
+  assert.match(
+    previewRoute,
+    /createFileRoute\("\/admin\/storyofus-orders\/site-preview\/\$siteSlug"\)/,
+  );
+  assert.match(previewRoute, /getStoryOfUsAdminFinalSitePreviewBySlug/);
+  assert.match(previewRoute, /<StoryOfUsFinalSiteRenderer site=\{previewState\.site\} \/>/);
+  assert.doesNotMatch(previewRoute, /search|query|token|passcode/i);
+  assert.match(dashboard, /to="\/admin\/storyofus-orders\/site-preview\/\$siteSlug"/);
+  assert.match(dashboard, /params=\{\{ siteSlug: detail\.finalSiteSlug \}\}/);
+  assert.match(serverSource, /getStoryOfUsAdminFinalSitePreviewBySlug/);
+  assert.match(serverSource, /middleware\(\[requireSupabaseAuth\]\)/);
+  assert.match(serverSource, /await assertStoryOfUsAdmin\(context as AdminContext\)/);
+  assert.match(serverSource, /eq\("final_site_slug", slug\)/);
+});
+
 test("StoryOfUs admin server functions keep admin authorization on private data and actions", () => {
   const source = readSource("src/lib/storyofus/storyOfUsAdminDashboard.server.ts");
 

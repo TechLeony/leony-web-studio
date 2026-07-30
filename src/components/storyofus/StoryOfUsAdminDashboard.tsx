@@ -587,6 +587,18 @@ function OrderDetailView({
             </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:w-64 xl:grid-cols-1">
+            {detail.finalSiteSlug && (
+              <Link
+                to="/admin/storyofus-orders/site-preview/$siteSlug"
+                params={{ siteSlug: detail.finalSiteSlug }}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Preview site
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => onOpenPreview(detail.id)}

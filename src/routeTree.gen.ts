@@ -38,6 +38,7 @@ import { Route as AdminStoryofusOrdersAnalyticsRouteImport } from './routes/admi
 import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
 import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
+import { Route as AdminStoryofusOrdersSitePreviewSiteSlugRouteImport } from './routes/admin.storyofus-orders.site-preview.$siteSlug'
 import { Route as AdminStoryofusOrdersOrdersOrderIdRouteImport } from './routes/admin.storyofus-orders.orders.$orderId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -195,6 +196,12 @@ const ApiInternalStoryofusEmailWorkerRoute =
     path: '/api/internal/storyofus/email-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminStoryofusOrdersSitePreviewSiteSlugRoute =
+  AdminStoryofusOrdersSitePreviewSiteSlugRouteImport.update({
+    id: '/site-preview/$siteSlug',
+    path: '/site-preview/$siteSlug',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
 const AdminStoryofusOrdersOrdersOrderIdRoute =
   AdminStoryofusOrdersOrdersOrderIdRouteImport.update({
     id: '/$orderId',
@@ -230,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
+  '/admin/storyofus-orders/site-preview/$siteSlug': typeof AdminStoryofusOrdersSitePreviewSiteSlugRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
+  '/admin/storyofus-orders/site-preview/$siteSlug': typeof AdminStoryofusOrdersSitePreviewSiteSlugRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -294,6 +303,7 @@ export interface FileRoutesById {
   '/storyofus/site/$siteSlug': typeof StoryofusSiteSiteSlugRoute
   '/storyofus/styles/$style': typeof StoryofusStylesStyleRoute
   '/admin/storyofus-orders/orders/$orderId': typeof AdminStoryofusOrdersOrdersOrderIdRoute
+  '/admin/storyofus-orders/site-preview/$siteSlug': typeof AdminStoryofusOrdersSitePreviewSiteSlugRoute
   '/api/internal/storyofus/email-worker': typeof ApiInternalStoryofusEmailWorkerRoute
   '/api/internal/storyofus/review-ready-worker': typeof ApiInternalStoryofusReviewReadyWorkerRoute
   '/api/storyofus/shopier/callback': typeof ApiStoryofusShopierCallbackRoute
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/admin/storyofus-orders/orders/$orderId'
+    | '/admin/storyofus-orders/site-preview/$siteSlug'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/admin/storyofus-orders/orders/$orderId'
+    | '/admin/storyofus-orders/site-preview/$siteSlug'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -391,6 +403,7 @@ export interface FileRouteTypes {
     | '/storyofus/site/$siteSlug'
     | '/storyofus/styles/$style'
     | '/admin/storyofus-orders/orders/$orderId'
+    | '/admin/storyofus-orders/site-preview/$siteSlug'
     | '/api/internal/storyofus/email-worker'
     | '/api/internal/storyofus/review-ready-worker'
     | '/api/storyofus/shopier/callback'
@@ -624,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalStoryofusEmailWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/storyofus-orders/site-preview/$siteSlug': {
+      id: '/admin/storyofus-orders/site-preview/$siteSlug'
+      path: '/site-preview/$siteSlug'
+      fullPath: '/admin/storyofus-orders/site-preview/$siteSlug'
+      preLoaderRoute: typeof AdminStoryofusOrdersSitePreviewSiteSlugRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
     '/admin/storyofus-orders/orders/$orderId': {
       id: '/admin/storyofus-orders/orders/$orderId'
       path: '/$orderId'
@@ -655,6 +675,7 @@ interface AdminStoryofusOrdersRouteChildren {
   AdminStoryofusOrdersPreviewsRoute: typeof AdminStoryofusOrdersPreviewsRoute
   AdminStoryofusOrdersRefundsRoute: typeof AdminStoryofusOrdersRefundsRoute
   AdminStoryofusOrdersSettingsRoute: typeof AdminStoryofusOrdersSettingsRoute
+  AdminStoryofusOrdersSitePreviewSiteSlugRoute: typeof AdminStoryofusOrdersSitePreviewSiteSlugRoute
 }
 
 const AdminStoryofusOrdersRouteChildren: AdminStoryofusOrdersRouteChildren = {
@@ -663,6 +684,8 @@ const AdminStoryofusOrdersRouteChildren: AdminStoryofusOrdersRouteChildren = {
   AdminStoryofusOrdersPreviewsRoute: AdminStoryofusOrdersPreviewsRoute,
   AdminStoryofusOrdersRefundsRoute: AdminStoryofusOrdersRefundsRoute,
   AdminStoryofusOrdersSettingsRoute: AdminStoryofusOrdersSettingsRoute,
+  AdminStoryofusOrdersSitePreviewSiteSlugRoute:
+    AdminStoryofusOrdersSitePreviewSiteSlugRoute,
 }
 
 const AdminStoryofusOrdersRouteWithChildren =
