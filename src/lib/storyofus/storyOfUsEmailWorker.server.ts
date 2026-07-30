@@ -74,6 +74,19 @@ export async function processStoryOfUsEmailOutboxBatch({
       applyCompletionToSummary(summary, completion);
     } catch {
       summary.processingErrors += 1;
+      try {
+        const completion = await completeStoryOfUsEmailAttempt({
+          claimed,
+          outcome: {
+            ok: false,
+            errorCode: "provider_error",
+          },
+        });
+
+        applyCompletionToSummary(summary, completion);
+      } catch {
+        summary.lockLost += 1;
+      }
     }
   }
 

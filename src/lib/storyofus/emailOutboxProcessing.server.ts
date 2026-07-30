@@ -1,4 +1,8 @@
-import { storyOfUsEmailTypes, type StoryOfUsEmailType } from "./emailOutboxTypes";
+import {
+  isValidStoryOfUsEmailEventKey,
+  storyOfUsEmailTypes,
+  type StoryOfUsEmailType,
+} from "./emailOutboxTypes";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 
 export type StoryOfUsEmailOutboxStatus =
@@ -564,13 +568,15 @@ function parseEmailType(value: unknown): StoryOfUsEmailType {
 }
 
 function parseEventKey(value: unknown, emailType: StoryOfUsEmailType, submissionId: string) {
-  const expectedEventKey = `storyofus:${emailType}:${submissionId}`;
-
   if (
     typeof value !== "string" ||
     value.length === 0 ||
     value.length > 256 ||
-    value !== expectedEventKey
+    !isValidStoryOfUsEmailEventKey({
+      eventKey: value,
+      emailType,
+      submissionId,
+    })
   ) {
     throw new Error("StoryOfUs email outbox event key is invalid.");
   }
