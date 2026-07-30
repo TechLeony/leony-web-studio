@@ -55,6 +55,7 @@ export type StoryOfUsAdminDashboardOrder = {
   paymentAmount: number;
   paymentCurrency: string;
   finalSiteUrl: string | null;
+  finalSiteSlug: string;
   finalEmailStatus: string | null;
   mediaCount: number;
   deliveryBlockers: string[];
@@ -115,7 +116,6 @@ export type StoryOfUsAdminDetail = StoryOfUsAdminDashboardOrder & {
   editingClosedReason: string;
   lastResubmittedAt: string | null;
   serviceStartedAt: string | null;
-  finalSiteSlug: string;
   emailOutbox: Array<{
     emailType: string;
     status: string;
@@ -291,7 +291,6 @@ export const getStoryOfUsAdminDashboardOrderDetail = createServerFn({ method: "P
           editingClosedReason: stringValue((row as Record<string, unknown>).editing_closed_reason),
           lastResubmittedAt: nullableString((row as Record<string, unknown>).last_resubmitted_at),
           serviceStartedAt: nullableString((row as Record<string, unknown>).service_started_at),
-          finalSiteSlug: stringValue((row as Record<string, unknown>).final_site_slug),
           emailOutbox,
           lifecycle: createLifecycle(mapped),
         },
@@ -645,6 +644,7 @@ function mapDashboardOrder(
     paymentAmount: numberValue(row.payment_amount),
     paymentCurrency: stringValue(row.payment_currency) || "TRY",
     finalSiteUrl: nullableString(row.final_site_url),
+    finalSiteSlug: stringValue(row.final_site_slug),
     finalEmailStatus: options.finalEmailStatus,
     mediaCount: options.deliveryReadiness.mediaCount,
     deliveryBlockers: getDeliveryBlockers(row, status, options.deliveryReadiness),

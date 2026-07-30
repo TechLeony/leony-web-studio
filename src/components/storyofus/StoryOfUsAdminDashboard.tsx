@@ -7,7 +7,6 @@ import {
   Clock,
   Copy,
   ExternalLink,
-  Eye,
   MailWarning,
   PackageCheck,
   RefreshCw,
@@ -26,14 +25,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 
-import { StoryOfUsExperience } from "@/components/storyofus/StoryOfUsExperience";
-import { createStoryOfUsExperienceDataFromFinalSite } from "@/components/storyofus/storyOfUsExperienceAdapter";
 import { getStoryOfUsQueueDeliveryDecision } from "@/lib/storyofus/storyOfUsAdminDashboard";
-import {
-  getStoryOfUsAdminFinalSitePreview,
-  type StoryOfUsFinalSiteData,
-  verifyStoryOfUsAdminPreviewPasscode,
-} from "@/lib/storyofus/finalSite.server";
 import {
   getStoryOfUsAdminDashboard,
   getStoryOfUsAdminDashboardOrderDetail,
@@ -87,8 +79,6 @@ export function StoryOfUsAdminDashboard({
 }) {
   const loadDashboard = useServerFn(getStoryOfUsAdminDashboard);
   const loadDetail = useServerFn(getStoryOfUsAdminDashboardOrderDetail);
-  const loadPreview = useServerFn(getStoryOfUsAdminFinalSitePreview);
-  const verifyPreviewPasscode = useServerFn(verifyStoryOfUsAdminPreviewPasscode);
   const queueFinalSiteDelivery = useServerFn(queueStoryOfUsFinalSiteDelivery);
 
   const [period, setPeriod] = useState("30d");
@@ -97,11 +87,8 @@ export function StoryOfUsAdminDashboard({
   const [sort, setSort] = useState("newest");
   const [dashboard, setDashboard] = useState<StoryOfUsAdminOverview | null>(null);
   const [detail, setDetail] = useState<StoryOfUsAdminDetail | null>(null);
-  const [previewSite, setPreviewSite] = useState<StoryOfUsFinalSiteData | null>(null);
-  const [previewSubmissionId, setPreviewSubmissionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [queueing, setQueueing] = useState<string | null>(null);
   const [pendingOptionalQueue, setPendingOptionalQueue] = useState<{
     orderId: string;
@@ -148,27 +135,6 @@ export function StoryOfUsAdminDashboard({
       setErrorMessage(error instanceof Error ? error.message : "Order detail could not be loaded.");
     } finally {
       setDetailLoading(false);
-    }
-  }
-
-  async function openPreview(id: string) {
-    setPreviewLoading(id);
-    setPreviewSite(null);
-    setPreviewSubmissionId(null);
-
-    try {
-      const result = await loadPreview({ data: { submissionId: id } });
-
-      if (result.status === "found") {
-        setPreviewSite(result.site);
-        setPreviewSubmissionId(id);
-      } else {
-        toast.error("Preview is not available for this order.");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Preview could not be loaded.");
-    } finally {
-      setPreviewLoading(null);
     }
   }
 
@@ -275,9 +241,7 @@ export function StoryOfUsAdminDashboard({
                 dashboard={dashboard}
                 period={period}
                 onPeriodChange={setPeriod}
-                onOpenPreview={openPreview}
                 onQueueDelivery={queueDelivery}
-                previewLoading={previewLoading}
                 queueing={queueing}
               />
             )}
@@ -296,18 +260,14 @@ export function StoryOfUsAdminDashboard({
               <OrderDetailView
                 detail={detail}
                 loading={detailLoading}
-                previewLoading={previewLoading}
                 queueing={queueing}
-                onOpenPreview={openPreview}
                 onQueueDelivery={queueDelivery}
               />
             )}
             {view === "previews" && (
               <PreviewPagesView
                 orders={previewOrders}
-                onOpenPreview={openPreview}
                 onQueueDelivery={queueDelivery}
-                previewLoading={previewLoading}
                 queueing={queueing}
               />
             )}
@@ -320,53 +280,6 @@ export function StoryOfUsAdminDashboard({
         ) : null}
       </div>
 
-      {previewSite && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm md:p-6">
-          <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-                  Admin preview
-                </p>
-                <p className="text-sm font-semibold text-slate-950">
-                  This is an admin-only preview. The site is not opened to the customer by
-                  previewing it.
-                </p>
-                {!previewSite.loveLetterPhoto?.previewUrl && (
-                  <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-                    Optional final love letter content is missing. Confirm this with the customer
-                    before queueing delivery.
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewSite(null);
-                  setPreviewSubmissionId(null);
-                }}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Close preview
-              </button>
-            </div>
-            <StoryOfUsExperience
-              story={createStoryOfUsExperienceDataFromFinalSite(previewSite)}
-              accessPinHint={previewSite.passcodeHint}
-              verifyAccessPin={async (passcode) => {
-                const result = await verifyPreviewPasscode({
-                  data: {
-                    submissionId: previewSubmissionId ?? "",
-                    passcode,
-                  },
-                });
-
-                return result.status === "unlocked";
-              }}
-            />
-          </div>
-        </div>
-      )}
       {pendingOptionalQueue && (
         <OptionalMissingContentDialog
           missingItems={pendingOptionalQueue.missingItems}
@@ -451,17 +364,13 @@ function OverviewView({
   dashboard,
   period,
   onPeriodChange,
-  onOpenPreview,
   onQueueDelivery,
-  previewLoading,
   queueing,
 }: {
   dashboard: StoryOfUsAdminOverview;
   period: string;
   onPeriodChange: (period: string) => void;
-  onOpenPreview: (id: string) => void;
   onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
-  previewLoading: string | null;
   queueing: string | null;
 }) {
   return (
@@ -497,9 +406,7 @@ function OverviewView({
         </div>
         <OrderTable
           orders={dashboard.orders.slice(0, 8)}
-          onOpenPreview={onOpenPreview}
           onQueueDelivery={onQueueDelivery}
-          previewLoading={previewLoading}
           queueing={queueing}
         />
       </Panel>
@@ -547,16 +454,12 @@ function OrdersView({
 function OrderDetailView({
   detail,
   loading,
-  previewLoading,
   queueing,
-  onOpenPreview,
   onQueueDelivery,
 }: {
   detail: StoryOfUsAdminDetail | null;
   loading: boolean;
-  previewLoading: string | null;
   queueing: string | null;
-  onOpenPreview: (id: string) => void;
   onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   if (loading) {
@@ -587,27 +490,7 @@ function OrderDetailView({
             </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:w-64 xl:grid-cols-1">
-            {detail.finalSiteSlug && (
-              <Link
-                to="/admin/storyofus-orders/site-preview/$siteSlug"
-                params={{ siteSlug: detail.finalSiteSlug }}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Preview site
-              </Link>
-            )}
-            <button
-              type="button"
-              onClick={() => onOpenPreview(detail.id)}
-              disabled={previewLoading === detail.id}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-            >
-              <Eye className="h-4 w-4" />
-              {previewLoading === detail.id ? "Opening..." : "Open Preview"}
-            </button>
+            <AdminPreviewLink order={detail} size="large" />
             <QueueButton order={detail} queueing={queueing} onQueueDelivery={onQueueDelivery} />
           </div>
         </div>
@@ -689,24 +572,18 @@ function OrderDetailView({
 
 function PreviewPagesView({
   orders,
-  previewLoading,
   queueing,
-  onOpenPreview,
   onQueueDelivery,
 }: {
   orders: StoryOfUsAdminDashboardOrder[];
-  previewLoading: string | null;
   queueing: string | null;
-  onOpenPreview: (id: string) => void;
   onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   return (
     <Panel>
       <OrderTable
         orders={orders}
-        onOpenPreview={onOpenPreview}
         onQueueDelivery={onQueueDelivery}
-        previewLoading={previewLoading}
         queueing={queueing}
         previewMode
       />
@@ -911,17 +788,13 @@ function ActionNeededPanel({ actions }: { actions: StoryOfUsAdminActionItem[] })
 
 function OrderTable({
   orders,
-  previewLoading,
   queueing,
   previewMode = false,
-  onOpenPreview,
   onQueueDelivery,
 }: {
   orders: StoryOfUsAdminDashboardOrder[];
-  previewLoading?: string | null;
   queueing?: string | null;
   previewMode?: boolean;
-  onOpenPreview?: (id: string) => void;
   onQueueDelivery?: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   if (orders.length === 0) {
@@ -984,17 +857,7 @@ function OrderTable({
                   </Link>
                   {(previewMode ||
                     order.status === "review_ready" ||
-                    order.status === "delivered") &&
-                    onOpenPreview && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenPreview(order.id)}
-                        disabled={previewLoading === order.id}
-                        className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
-                      >
-                        {previewLoading === order.id ? "Opening" : "Open Preview"}
-                      </button>
-                    )}
+                    order.status === "delivered") && <AdminPreviewLink order={order} />}
                   {order.status === "review_ready" && onQueueDelivery && (
                     <button
                       type="button"
@@ -1138,6 +1001,46 @@ function QueueButton({
           ? "Queue Delivery"
           : order.statusLabel}
     </button>
+  );
+}
+
+function AdminPreviewLink({
+  order,
+  size = "small",
+}: {
+  order: StoryOfUsAdminDashboardOrder;
+  size?: "small" | "large";
+}) {
+  const className =
+    size === "large"
+      ? "inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
+      : "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50";
+
+  if (!order.finalSiteSlug) {
+    return (
+      <button
+        type="button"
+        disabled
+        className={`${className} cursor-not-allowed opacity-60`}
+        title="Final site slug is not available yet."
+      >
+        <ExternalLink className="h-4 w-4" />
+        Preview site
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      to="/admin/storyofus-orders/site-preview/$siteSlug"
+      params={{ siteSlug: order.finalSiteSlug }}
+      target="_blank"
+      rel="noreferrer"
+      className={className}
+    >
+      <ExternalLink className="h-4 w-4" />
+      Preview site
+    </Link>
   );
 }
 

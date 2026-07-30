@@ -85,7 +85,10 @@ test("admin site preview route uses final-site slug without a public bypass toke
   assert.match(previewRoute, /<StoryOfUsFinalSiteRenderer site=\{previewState\.site\} \/>/);
   assert.doesNotMatch(previewRoute, /search|query|token|passcode/i);
   assert.match(dashboard, /to="\/admin\/storyofus-orders\/site-preview\/\$siteSlug"/);
-  assert.match(dashboard, /params=\{\{ siteSlug: detail\.finalSiteSlug \}\}/);
+  assert.match(dashboard, /params=\{\{ siteSlug: order\.finalSiteSlug \}\}/);
+  assert.match(dashboard, /function AdminPreviewLink/);
+  assert.doesNotMatch(dashboard, /onOpenPreview|setPreviewSite|verifyAccessPin/);
+  assert.doesNotMatch(dashboard, /finalSiteUrl\}[\s\S]{0,220}Preview site/);
   assert.match(serverSource, /getStoryOfUsAdminFinalSitePreviewBySlug/);
   assert.match(serverSource, /middleware\(\[requireSupabaseAuth\]\)/);
   assert.match(serverSource, /await assertStoryOfUsAdmin\(context as AdminContext\)/);
