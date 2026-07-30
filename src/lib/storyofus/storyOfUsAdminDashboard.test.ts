@@ -9,6 +9,7 @@ import {
   getStoryOfUsAdminDeliveryDeadline,
   getStoryOfUsAdminStatus,
   getStoryOfUsAdminStatusLabel,
+  getStoryOfUsQueueDeliveryDecision,
   getStoryOfUsPeriodStart,
 } from "./storyOfUsAdminDashboard.ts";
 
@@ -17,7 +18,7 @@ test("maps checkout-created orders into visible admin lifecycle statuses", () =>
     status: "draft",
     paymentStatus: "pending",
     refundStatus: "none",
-    checkoutExpiresAt: "2026-07-25T12:00:00.000Z",
+    checkoutExpiresAt: "2026-12-25T12:00:00.000Z",
     submittedAt: null,
     editableUntil: null,
     editingClosedAt: null,
@@ -37,8 +38,8 @@ test("maps submitted paid orders to editing until the real edit window ends", ()
       paymentStatus: "paid",
       refundStatus: "none",
       checkoutExpiresAt: null,
-      submittedAt: "2026-07-24T14:00:00.000Z",
-      editableUntil: "2026-07-25T14:00:00.000Z",
+      submittedAt: "2026-12-24T14:00:00.000Z",
+      editableUntil: "2026-12-25T14:00:00.000Z",
       editingClosedAt: null,
       reviewReadyAt: null,
       deliveredAt: null,
@@ -375,4 +376,55 @@ test("period helper returns stable beginning of selected reporting windows", () 
   assert.equal(week.getDate(), 18);
   assert.equal(year.getMonth(), 0);
   assert.equal(year.getDate(), 1);
+});
+
+test("queue delivery decision uses ordinary confirmation when optional content is present", () => {
+  assert.deepEqual(
+    getStoryOfUsQueueDeliveryDecision({
+      status: "review_ready",
+      deliveryBlockers: [],
+      optionalMissingContent: [],
+      isProcessing: false,
+    }),
+    {
+      action: "confirm_standard",
+      missingItems: [],
+    },
+  );
+});
+
+test("queue delivery decision warns for missing optional final love letter content", () => {
+  assert.deepEqual(
+    getStoryOfUsQueueDeliveryDecision({
+      status: "review_ready",
+      deliveryBlockers: [],
+      optionalMissingContent: ["Final Love Letter"],
+      isProcessing: false,
+    }),
+    {
+      action: "confirm_optional_missing",
+      missingItems: ["Final Love Letter"],
+    },
+  );
+});
+
+test("queue delivery decision disables blocking technical issues and active requests", () => {
+  assert.equal(
+    getStoryOfUsQueueDeliveryDecision({
+      status: "review_ready",
+      deliveryBlockers: ["Required setup data is missing"],
+      optionalMissingContent: ["Final Love Letter"],
+      isProcessing: false,
+    }).action,
+    "disabled",
+  );
+  assert.equal(
+    getStoryOfUsQueueDeliveryDecision({
+      status: "review_ready",
+      deliveryBlockers: [],
+      optionalMissingContent: [],
+      isProcessing: true,
+    }).action,
+    "disabled",
+  );
 });

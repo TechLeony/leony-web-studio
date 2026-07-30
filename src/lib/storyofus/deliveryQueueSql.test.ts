@@ -56,6 +56,11 @@ test("delivery queue migration stores a durable queued state before publishing",
     /set[\s\S]{0,160}status = 'published'/i,
     "Queue RPC must not publish the final site.",
   );
+  assert.doesNotMatch(
+    queueSql,
+    /love_letter_side_photo|loveLetterPhoto/i,
+    "Optional final love-letter media must not block delivery queueing.",
+  );
 });
 
 test("publish RPC only publishes orders already queued for delivery", () => {
@@ -72,6 +77,11 @@ test("publish RPC only publishes orders already queued for delivery", () => {
   assert.match(publishSql, /submission\.status = 'queued_for_delivery'/i);
   assert.match(publishSql, /submission\.delivery_queued_at is not null/i);
   assert.match(publishSql, /'storyofus:final_site_ready:' \|\| v_submission\.id::text/i);
+  assert.doesNotMatch(
+    publishSql,
+    /love_letter_side_photo|loveLetterPhoto/i,
+    "Optional final love-letter media must not block publishing after confirmed queueing.",
+  );
 });
 
 test("delivery queue RPCs are service-role only", () => {

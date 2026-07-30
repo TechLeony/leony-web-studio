@@ -119,25 +119,6 @@ begin
     return;
   end if;
 
-  if not exists (
-    select 1
-    from public.storyofus_media as media
-    where media.submission_id = v_submission.id
-      and media.section = 'letter'
-      and media.semantic_key = 'love_letter_side_photo'
-      and media.section_item_id = 'loveLetterPhoto'
-      and media.media_type = 'photo'
-      and media.storage_bucket = 'storyofus-media'
-      and media.storage_path is not null
-      and media.storage_path <> ''
-  ) then
-    result := 'missing_setup_data';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
   update public.storyofus_submissions as submission
   set
     status = 'queued_for_delivery',
@@ -252,26 +233,6 @@ begin
     select 1
     from public.storyofus_couple_details as couple_details
     where couple_details.submission_id = v_submission.id
-  ) then
-    result := 'missing_setup_data';
-    final_site_slug := null;
-    final_site_url := null;
-    email_queued := false;
-    return next;
-    return;
-  end if;
-
-  if not exists (
-    select 1
-    from public.storyofus_media as media
-    where media.submission_id = v_submission.id
-      and media.section = 'letter'
-      and media.semantic_key = 'love_letter_side_photo'
-      and media.section_item_id = 'loveLetterPhoto'
-      and media.media_type = 'photo'
-      and media.storage_bucket = 'storyofus-media'
-      and media.storage_path is not null
-      and media.storage_path <> ''
   ) then
     result := 'missing_setup_data';
     final_site_slug := null;

@@ -57,6 +57,8 @@ export type StoryOfUsAdminDashboardOrder = {
   finalSiteUrl: string | null;
   finalEmailStatus: string | null;
   mediaCount: number;
+  deliveryBlockers: string[];
+  optionalMissingContent: string[];
 };
 
 export type StoryOfUsAdminActionItem = {
@@ -257,10 +259,10 @@ export const getStoryOfUsAdminDashboardOrderDetail = createServerFn({ method: "P
       }
 
       const emailOutbox = await loadEmailOutbox(data.orderId);
-      const mediaCount = await loadMediaCount(data.orderId);
+      const deliveryReadiness = await loadDeliveryReadiness(data.orderId);
       const mapped = mapDashboardOrder(row as Record<string, unknown>, nowIso, {
         finalEmailStatus: getFinalEmailStatus(emailOutbox),
-        mediaCount,
+        deliveryReadiness,
       });
 
       return {
@@ -399,6 +401,9 @@ const DASHBOARD_SELECT = [
   "delivered_at",
   "final_site_url",
   "final_site_slug",
+  "site_passcode_hash",
+  "site_passcode_hint",
+  "site_passcode_set_at",
   "refund_status",
   "refund_requested_at",
   "refund_request_until",
@@ -439,13 +444,17 @@ async function loadDashboardOrders(nowIso: string): Promise<StoryOfUsAdminDashbo
   }
 
   const rows = (data ?? []) as Array<Record<string, unknown>>;
-  const [outboxRows, mediaCounts] = await Promise.all([loadAllEmailOutbox(), loadAllMediaCounts()]);
+  const [outboxRows, deliveryReadiness] = await Promise.all([
+    loadAllEmailOutbox(),
+    loadAllDeliveryReadiness(),
+  ]);
   const outboxBySubmission = groupOutboxBySubmission(outboxRows);
 
   return rows.map((row) =>
     mapDashboardOrder(row, nowIso, {
       finalEmailStatus: getFinalEmailStatus(outboxBySubmission.get(stringValue(row.id)) ?? []),
-      mediaCount: mediaCounts.get(stringValue(row.id)) ?? 0,
+      deliveryReadiness:
+        deliveryReadiness.get(stringValue(row.id)) ?? createEmptyDeliveryReadiness(),
     }),
   );
 }
@@ -483,36 +492,71 @@ async function loadEmailOutbox(submissionId: string): Promise<StoryOfUsAdminDeta
   }));
 }
 
-async function loadAllMediaCounts() {
-  const { data, error } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .select("submission_id, id");
+type DeliveryReadiness = {
+  mediaCount: number;
+  hasCoupleDetails: boolean;
+  hasLoveLetterPhoto: boolean;
+};
 
-  const counts = new Map<string, number>();
+async function loadAllDeliveryReadiness() {
+  const [mediaResult, coupleResult] = await Promise.all([
+    storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .select(
+        "submission_id, id, section, semantic_key, section_item_id, media_type, storage_bucket, storage_path",
+      ),
+    storyOfUsSupabaseAdmin.from("storyofus_couple_details").select("submission_id"),
+  ]);
+  const readiness = new Map<string, DeliveryReadiness>();
 
-  if (error) {
-    return counts;
+  if (!mediaResult.error) {
+    for (const row of (mediaResult.data ?? []) as Array<Record<string, unknown>>) {
+      const submissionId = stringValue(row.submission_id);
+      const current = readiness.get(submissionId) ?? createEmptyDeliveryReadiness();
+      current.mediaCount += 1;
+      current.hasLoveLetterPhoto ||= isLoveLetterPhotoMediaRow(row);
+      readiness.set(submissionId, current);
+    }
   }
 
-  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
-    const submissionId = stringValue(row.submission_id);
-    counts.set(submissionId, (counts.get(submissionId) ?? 0) + 1);
+  if (!coupleResult.error) {
+    for (const row of (coupleResult.data ?? []) as Array<Record<string, unknown>>) {
+      const submissionId = stringValue(row.submission_id);
+      const current = readiness.get(submissionId) ?? createEmptyDeliveryReadiness();
+      current.hasCoupleDetails = true;
+      readiness.set(submissionId, current);
+    }
   }
 
-  return counts;
+  return readiness;
 }
 
-async function loadMediaCount(submissionId: string) {
-  const { data, error } = await storyOfUsSupabaseAdmin
-    .from("storyofus_media")
-    .select("id")
-    .eq("submission_id", submissionId);
+async function loadDeliveryReadiness(submissionId: string) {
+  const [mediaResult, coupleResult] = await Promise.all([
+    storyOfUsSupabaseAdmin
+      .from("storyofus_media")
+      .select(
+        "id, section, semantic_key, section_item_id, media_type, storage_bucket, storage_path",
+      )
+      .eq("submission_id", submissionId),
+    storyOfUsSupabaseAdmin
+      .from("storyofus_couple_details")
+      .select("submission_id")
+      .eq("submission_id", submissionId)
+      .maybeSingle(),
+  ]);
+  const readiness = createEmptyDeliveryReadiness();
 
-  if (error) {
-    return 0;
+  if (!mediaResult.error) {
+    for (const row of (mediaResult.data ?? []) as Array<Record<string, unknown>>) {
+      readiness.mediaCount += 1;
+      readiness.hasLoveLetterPhoto ||= isLoveLetterPhotoMediaRow(row);
+    }
   }
 
-  return (data ?? []).length;
+  readiness.hasCoupleDetails = !coupleResult.error && Boolean(coupleResult.data);
+
+  return readiness;
 }
 
 async function assertStoryOfUsAdmin(context: AdminContext) {
@@ -538,7 +582,7 @@ function mapDashboardOrder(
   nowIso: string,
   options: {
     finalEmailStatus: string | null;
-    mediaCount: number;
+    deliveryReadiness: DeliveryReadiness;
   },
 ): StoryOfUsAdminDashboardOrder & { refundAmount?: number } {
   const editingClosedAt =
@@ -602,9 +646,64 @@ function mapDashboardOrder(
     paymentCurrency: stringValue(row.payment_currency) || "TRY",
     finalSiteUrl: nullableString(row.final_site_url),
     finalEmailStatus: options.finalEmailStatus,
-    mediaCount: options.mediaCount,
+    mediaCount: options.deliveryReadiness.mediaCount,
+    deliveryBlockers: getDeliveryBlockers(row, status, options.deliveryReadiness),
+    optionalMissingContent: getOptionalMissingContent(status, options.deliveryReadiness),
     refundAmount: numberValue(row.refund_amount),
   };
+}
+
+function createEmptyDeliveryReadiness(): DeliveryReadiness {
+  return {
+    mediaCount: 0,
+    hasCoupleDetails: false,
+    hasLoveLetterPhoto: false,
+  };
+}
+
+function isLoveLetterPhotoMediaRow(row: Record<string, unknown>) {
+  return (
+    stringValue(row.section) === "letter" &&
+    stringValue(row.semantic_key) === "love_letter_side_photo" &&
+    stringValue(row.section_item_id) === "loveLetterPhoto" &&
+    stringValue(row.media_type) === "photo" &&
+    stringValue(row.storage_bucket) === "storyofus-media" &&
+    stringValue(row.storage_path).trim() !== ""
+  );
+}
+
+function getDeliveryBlockers(
+  row: Record<string, unknown>,
+  status: StoryOfUsAdminStatus,
+  readiness: DeliveryReadiness,
+) {
+  if (status !== "review_ready") {
+    return [];
+  }
+
+  const blockers: string[] = [];
+
+  if (!readiness.hasCoupleDetails) {
+    blockers.push("Required setup data is missing");
+  }
+
+  if (
+    !nullableString(row.site_passcode_hash) ||
+    !nullableString(row.site_passcode_hint) ||
+    !nullableString(row.site_passcode_set_at)
+  ) {
+    blockers.push("Site passcode is missing");
+  }
+
+  return blockers;
+}
+
+function getOptionalMissingContent(status: StoryOfUsAdminStatus, readiness: DeliveryReadiness) {
+  if (status !== "review_ready" || readiness.hasLoveLetterPhoto) {
+    return [];
+  }
+
+  return ["Final Love Letter"];
 }
 
 function createLifecycle(order: StoryOfUsAdminDashboardOrder): StoryOfUsAdminDetail["lifecycle"] {

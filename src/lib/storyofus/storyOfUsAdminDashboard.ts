@@ -60,6 +60,20 @@ export type StoryOfUsAdminRevenueBucket = {
   estimatedNetRevenue: number | null;
 };
 
+export type StoryOfUsQueueDeliveryDecision =
+  | {
+      action: "confirm_standard";
+      missingItems: [];
+    }
+  | {
+      action: "confirm_optional_missing";
+      missingItems: string[];
+    }
+  | {
+      action: "disabled";
+      missingItems: string[];
+    };
+
 export const STORYOFUS_ADMIN_LIFECYCLE_STAGES = [
   "Checkout",
   "Payment",
@@ -69,6 +83,37 @@ export const STORYOFUS_ADMIN_LIFECYCLE_STAGES = [
   "Queued",
   "Delivered",
 ] as const;
+
+export function getStoryOfUsQueueDeliveryDecision({
+  status,
+  deliveryBlockers = [],
+  optionalMissingContent = [],
+  isProcessing = false,
+}: {
+  status: StoryOfUsAdminStatus;
+  deliveryBlockers?: string[];
+  optionalMissingContent?: string[];
+  isProcessing?: boolean;
+}): StoryOfUsQueueDeliveryDecision {
+  if (isProcessing || status !== "review_ready" || deliveryBlockers.length > 0) {
+    return {
+      action: "disabled",
+      missingItems: optionalMissingContent,
+    };
+  }
+
+  if (optionalMissingContent.length > 0) {
+    return {
+      action: "confirm_optional_missing",
+      missingItems: optionalMissingContent,
+    };
+  }
+
+  return {
+    action: "confirm_standard",
+    missingItems: [],
+  };
+}
 
 export function getStoryOfUsAdminStatus(
   input: StoryOfUsAdminOrderStatusInput,

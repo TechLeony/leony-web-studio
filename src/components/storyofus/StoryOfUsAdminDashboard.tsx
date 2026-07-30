@@ -28,6 +28,7 @@ import { toast } from "sonner";
 
 import { StoryOfUsExperience } from "@/components/storyofus/StoryOfUsExperience";
 import { createStoryOfUsExperienceDataFromFinalSite } from "@/components/storyofus/storyOfUsExperienceAdapter";
+import { getStoryOfUsQueueDeliveryDecision } from "@/lib/storyofus/storyOfUsAdminDashboard";
 import {
   getStoryOfUsAdminFinalSitePreview,
   type StoryOfUsFinalSiteData,
@@ -102,6 +103,10 @@ export function StoryOfUsAdminDashboard({
   const [detailLoading, setDetailLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [queueing, setQueueing] = useState<string | null>(null);
+  const [pendingOptionalQueue, setPendingOptionalQueue] = useState<{
+    orderId: string;
+    missingItems: string[];
+  } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function reloadDashboard() {
@@ -167,7 +172,27 @@ export function StoryOfUsAdminDashboard({
     }
   }
 
-  async function queueDelivery(id: string) {
+  async function queueDelivery(order: StoryOfUsAdminDashboardOrder) {
+    const decision = getStoryOfUsQueueDeliveryDecision({
+      status: order.status,
+      deliveryBlockers: order.deliveryBlockers,
+      optionalMissingContent: order.optionalMissingContent,
+      isProcessing: queueing === order.id,
+    });
+
+    if (decision.action === "disabled") {
+      toast.error(order.deliveryBlockers[0] ?? "This order cannot be queued for delivery.");
+      return;
+    }
+
+    if (decision.action === "confirm_optional_missing") {
+      setPendingOptionalQueue({
+        orderId: order.id,
+        missingItems: decision.missingItems,
+      });
+      return;
+    }
+
     const confirmed = window.confirm(
       "Queue delivery for this order? This protected action stores the order in the delivery queue. The worker will publish the final site and queue the customer email.",
     );
@@ -176,7 +201,16 @@ export function StoryOfUsAdminDashboard({
       return;
     }
 
+    await executeQueueDelivery(order.id);
+  }
+
+  async function executeQueueDelivery(id: string) {
+    if (queueing) {
+      return;
+    }
+
     setQueueing(id);
+    setPendingOptionalQueue(null);
 
     try {
       const result = await queueFinalSiteDelivery({ data: { orderId: id } });
@@ -300,7 +334,8 @@ export function StoryOfUsAdminDashboard({
                 </p>
                 {!previewSite.loveLetterPhoto?.previewUrl && (
                   <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-                    Required love-letter photo is missing. Do not queue delivery until it is fixed.
+                    Optional final love letter content is missing. Confirm this with the customer
+                    before queueing delivery.
                   </p>
                 )}
               </div>
@@ -331,6 +366,18 @@ export function StoryOfUsAdminDashboard({
             />
           </div>
         </div>
+      )}
+      {pendingOptionalQueue && (
+        <OptionalMissingContentDialog
+          missingItems={pendingOptionalQueue.missingItems}
+          processing={queueing === pendingOptionalQueue.orderId}
+          onCancel={() => {
+            if (!queueing) {
+              setPendingOptionalQueue(null);
+            }
+          }}
+          onConfirm={() => executeQueueDelivery(pendingOptionalQueue.orderId)}
+        />
       )}
     </main>
   );
@@ -413,7 +460,7 @@ function OverviewView({
   period: string;
   onPeriodChange: (period: string) => void;
   onOpenPreview: (id: string) => void;
-  onQueueDelivery: (id: string) => void;
+  onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
   previewLoading: string | null;
   queueing: string | null;
 }) {
@@ -510,7 +557,7 @@ function OrderDetailView({
   previewLoading: string | null;
   queueing: string | null;
   onOpenPreview: (id: string) => void;
-  onQueueDelivery: (id: string) => void;
+  onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   if (loading) {
     return <EmptyState>Loading order detail...</EmptyState>;
@@ -639,7 +686,7 @@ function PreviewPagesView({
   previewLoading: string | null;
   queueing: string | null;
   onOpenPreview: (id: string) => void;
-  onQueueDelivery: (id: string) => void;
+  onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   return (
     <Panel>
@@ -863,7 +910,7 @@ function OrderTable({
   queueing?: string | null;
   previewMode?: boolean;
   onOpenPreview?: (id: string) => void;
-  onQueueDelivery?: (id: string) => void;
+  onQueueDelivery?: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
   if (orders.length === 0) {
     return <EmptyState>No orders match this view.</EmptyState>;
@@ -939,8 +986,15 @@ function OrderTable({
                   {order.status === "review_ready" && onQueueDelivery && (
                     <button
                       type="button"
-                      onClick={() => onQueueDelivery(order.id)}
-                      disabled={queueing === order.id}
+                      onClick={() => onQueueDelivery(order)}
+                      disabled={
+                        getStoryOfUsQueueDeliveryDecision({
+                          status: order.status,
+                          deliveryBlockers: order.deliveryBlockers,
+                          optionalMissingContent: order.optionalMissingContent,
+                          isProcessing: queueing === order.id,
+                        }).action === "disabled"
+                      }
                       className="inline-flex h-9 items-center justify-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white disabled:opacity-60"
                     >
                       {queueing === order.id ? "Queueing" : "Queue Delivery"}
@@ -1048,14 +1102,20 @@ function QueueButton({
 }: {
   order: StoryOfUsAdminDashboardOrder;
   queueing: string | null;
-  onQueueDelivery: (id: string) => void;
+  onQueueDelivery: (order: StoryOfUsAdminDashboardOrder) => void;
 }) {
-  const disabled = order.status !== "review_ready" || queueing === order.id;
+  const decision = getStoryOfUsQueueDeliveryDecision({
+    status: order.status,
+    deliveryBlockers: order.deliveryBlockers,
+    optionalMissingContent: order.optionalMissingContent,
+    isProcessing: queueing === order.id,
+  });
+  const disabled = decision.action === "disabled";
 
   return (
     <button
       type="button"
-      onClick={() => onQueueDelivery(order.id)}
+      onClick={() => onQueueDelivery(order)}
       disabled={disabled}
       className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
     >
@@ -1066,6 +1126,63 @@ function QueueButton({
           ? "Queue Delivery"
           : order.statusLabel}
     </button>
+  );
+}
+
+function OptionalMissingContentDialog({
+  missingItems,
+  processing,
+  onCancel,
+  onConfirm,
+}: {
+  missingItems: string[];
+  processing: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="optional-missing-content-title"
+        aria-describedby="optional-missing-content-description"
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+      >
+        <h2 id="optional-missing-content-title" className="text-lg font-bold text-slate-950">
+          Optional content is missing
+        </h2>
+        <div id="optional-missing-content-description" className="mt-3 text-sm text-slate-600">
+          <p>The following optional content is missing:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 font-semibold text-slate-900">
+            {missingItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="mt-3">
+            Have you confirmed this with the customer and do you want to continue?
+          </p>
+        </div>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={processing}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={processing}
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+          >
+            {processing ? "Queueing..." : "Yes, queue delivery"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
