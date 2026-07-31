@@ -49,6 +49,24 @@ test("maps submitted paid orders to editing until the real edit window ends", ()
   );
 });
 
+test("does not label half-closed submitted orders as review ready without durable review timestamp", () => {
+  assert.equal(
+    getStoryOfUsAdminStatus({
+      status: "submitted",
+      paymentStatus: "paid",
+      refundStatus: "none",
+      checkoutExpiresAt: null,
+      submittedAt: "2026-07-24T14:00:00.000Z",
+      editableUntil: "2026-07-24T17:00:00.000Z",
+      editingClosedAt: "2026-07-24T17:00:00.000Z",
+      reviewReadyAt: null,
+      deliveredAt: null,
+      finalSiteUrl: null,
+    }),
+    "editing",
+  );
+});
+
 test("maps real review and delivery states from stored fields", () => {
   assert.equal(
     getStoryOfUsAdminStatus({

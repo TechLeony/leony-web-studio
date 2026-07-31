@@ -1210,13 +1210,13 @@ declare
 begin
   select pg_catalog.count(*)::integer
   into v_eligible_count
-  from public.storyofus_submissions
-  where payment_status = 'paid'
-    and status = 'submitted'
-    and editable_until is not null
-    and editable_until <= v_now
-    and coalesce(refund_status, 'none') in ('none', 'rejected')
-    and editing_closed_at is null;
+  from public.storyofus_submissions as submission
+  where submission.payment_status = 'paid'
+    and submission.status = 'submitted'
+    and submission.editable_until is not null
+    and submission.editable_until <= v_now
+    and coalesce(submission.refund_status, 'none') in ('none', 'rejected')
+    and submission.review_ready_at is null;
 
   if p_dry_run then
     eligible_count := v_eligible_count;
@@ -1226,15 +1226,15 @@ begin
   end if;
 
   with eligible as (
-    select id
-    from public.storyofus_submissions
-    where payment_status = 'paid'
-      and status = 'submitted'
-      and editable_until is not null
-      and editable_until <= v_now
-      and coalesce(refund_status, 'none') in ('none', 'rejected')
-      and editing_closed_at is null
-    order by editable_until asc, created_at asc, id asc
+    select submission.id
+    from public.storyofus_submissions as submission
+    where submission.payment_status = 'paid'
+      and submission.status = 'submitted'
+      and submission.editable_until is not null
+      and submission.editable_until <= v_now
+      and coalesce(submission.refund_status, 'none') in ('none', 'rejected')
+      and submission.review_ready_at is null
+    order by submission.editable_until asc, submission.created_at asc, submission.id asc
     limit v_batch_limit
     for update skip locked
   ),
@@ -1253,7 +1253,7 @@ begin
       and submission.editable_until is not null
       and submission.editable_until <= v_now
       and coalesce(submission.refund_status, 'none') in ('none', 'rejected')
-      and submission.editing_closed_at is null
+      and submission.review_ready_at is null
     returning submission.id
   )
   select pg_catalog.count(*)::integer

@@ -167,7 +167,7 @@ export function getStoryOfUsAdminStatus(
   }
 
   if (input.status === "submitted") {
-    if (input.editingClosedAt || isPast(input.editableUntil) || input.reviewReadyAt) {
+    if (input.reviewReadyAt) {
       return "review_ready";
     }
 

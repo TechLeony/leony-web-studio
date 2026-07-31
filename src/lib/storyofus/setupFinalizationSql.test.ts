@@ -156,12 +156,23 @@ test("setup media remove RPC locks edit access before deleting media", () => {
 });
 
 test("review-ready worker replacement closes editing without regressing second-edit in_review orders", () => {
+  const promoteSql = extractFunctionSql("storyofus_promote_review_ready_orders");
+
   assert.match(
     migrationSql,
     /create or replace function public\.storyofus_promote_review_ready_orders/i,
   );
-  assert.match(migrationSql, /and status = 'submitted'/i);
-  assert.match(migrationSql, /and editing_closed_at is null/i);
+  assert.match(promoteSql, /and submission\.status = 'submitted'/i);
+  assert.doesNotMatch(
+    promoteSql,
+    /editing_closed_at is null/i,
+    "Review-ready promotion must not skip rows already marked editing-closed.",
+  );
+  assert.match(
+    promoteSql,
+    /and submission\.review_ready_at is null/i,
+    "Review-ready promotion should be idempotent through the durable review timestamp.",
+  );
   assert.match(
     migrationSql,
     /editing_closed_at = coalesce\(submission\.editing_closed_at, submission\.editable_until, v_now\)/i,
