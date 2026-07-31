@@ -1954,6 +1954,46 @@ function IntroGate({
   );
 }
 
+export function StoryOfUsDemoIntroGate({
+  accessPinHint,
+  verifyAccessPin,
+  criticalImageUrls = [],
+  onEnter,
+}: {
+  accessPinHint?: string;
+  verifyAccessPin?: (pin: string) => Promise<boolean | { ok: boolean; message?: string }>;
+  criticalImageUrls?: string[];
+  onEnter: () => void;
+}) {
+  return (
+    <IntroGate
+      intro={demoStoryData.intro}
+      accessPinHint={accessPinHint ?? demoStoryData.accessPinHint}
+      verifyAccessPin={verifyAccessPin}
+      criticalImageUrls={criticalImageUrls}
+      themeStyle={createStoryOfUsThemeStyle(demoStoryData)}
+      decor={demoStoryData.decor}
+      onEnter={onEnter}
+    />
+  );
+}
+
+function createStoryOfUsThemeStyle(story: StoryOfUsExperienceData) {
+  return {
+    "--sou-primary": story.theme.primaryColor,
+    "--sou-secondary": story.theme.secondaryColor,
+    "--sou-accent": story.theme.accentColor,
+    "--sou-bg": story.theme.backgroundColor,
+    "--sou-bg-end": story.theme.backgroundEndColor,
+    "--sou-text": story.theme.textColor,
+    "--sou-muted": story.theme.mutedTextColor,
+    "--sou-card": story.theme.cardColor,
+    "--sou-font-heading": story.theme.fontHeading,
+    "--sou-font-body": story.theme.fontBody,
+    "--sou-font-accent": story.theme.fontAccent,
+  } as CSSProperties;
+}
+
 function HeroPhotoCard({
   photo,
   rotation,

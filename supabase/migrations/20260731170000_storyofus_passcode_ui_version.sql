@@ -1,9 +1,6 @@
 begin;
 
 alter table public.storyofus_submissions
-  add column if not exists delivery_queued_at timestamptz;
-
-alter table public.storyofus_submissions
   add column if not exists passcode_ui_version text;
 
 alter table public.storyofus_submissions
@@ -15,150 +12,6 @@ alter table public.storyofus_submissions
     passcode_ui_version is null
     or passcode_ui_version in ('demo_v1')
   );
-
-do $$
-declare
-  constraint_record record;
-begin
-  for constraint_record in
-    select conname
-    from pg_catalog.pg_constraint
-    where conrelid = 'public.storyofus_submissions'::pg_catalog.regclass
-      and contype = 'c'
-      and pg_catalog.pg_get_constraintdef(oid) ilike '%status%'
-      and pg_catalog.pg_get_constraintdef(oid) ilike '%draft%'
-      and pg_catalog.pg_get_constraintdef(oid) ilike '%submitted%'
-  loop
-    execute pg_catalog.format(
-      'alter table public.storyofus_submissions drop constraint if exists %I',
-      constraint_record.conname
-    );
-  end loop;
-end $$;
-
-alter table public.storyofus_submissions
-  add constraint storyofus_submissions_status_check
-  check (
-    status in (
-      'draft',
-      'submitted',
-      'in_review',
-      'queued_for_delivery',
-      'published',
-      'archived'
-    )
-  );
-
-create index if not exists storyofus_submissions_delivery_queue_idx
-on public.storyofus_submissions (delivery_queued_at, created_at, id)
-where status = 'queued_for_delivery'
-  and payment_status = 'paid';
-
-create or replace function public.storyofus_queue_final_site_delivery(
-  p_submission_id uuid
-)
-returns table (
-  result text,
-  status text,
-  delivery_queued_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = pg_catalog
-as $$
-declare
-  v_now timestamptz := pg_catalog.now();
-  v_submission public.storyofus_submissions%rowtype;
-begin
-  if p_submission_id is null then
-    raise exception 'Invalid StoryOfUs queue input.';
-  end if;
-
-  select *
-  into v_submission
-  from public.storyofus_submissions as submission
-  where submission.id = p_submission_id
-  for update;
-
-  if not found then
-    result := 'not_found';
-    status := null;
-    delivery_queued_at := null;
-    return next;
-    return;
-  end if;
-
-  if v_submission.status = 'queued_for_delivery' then
-    result := 'already_queued';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
-  if v_submission.status = 'published' then
-    result := 'not_queueable';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
-  if v_submission.payment_status <> 'paid'
-    or v_submission.status <> 'in_review'
-    or v_submission.review_ready_at is null
-    or coalesce(v_submission.refund_request_until, v_submission.editable_until) is null
-    or coalesce(v_submission.refund_request_until, v_submission.editable_until) > v_now
-    or coalesce(v_submission.refund_status, 'none') not in ('none', 'rejected')
-    or v_submission.site_passcode_hash is null
-    or v_submission.site_passcode_hint is null
-    or v_submission.site_passcode_set_at is null then
-    result := 'not_queueable';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
-  if not exists (
-    select 1
-    from public.storyofus_couple_details as couple_details
-    where couple_details.submission_id = v_submission.id
-  ) then
-    result := 'missing_setup_data';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
-  update public.storyofus_submissions as submission
-  set
-    status = 'queued_for_delivery',
-    delivery_queued_at = coalesce(submission.delivery_queued_at, v_now),
-    updated_at = v_now
-  where submission.id = v_submission.id
-    and submission.status = 'in_review'
-    and submission.review_ready_at is not null
-    and submission.payment_status = 'paid'
-    and coalesce(submission.refund_request_until, submission.editable_until) is not null
-    and coalesce(submission.refund_request_until, submission.editable_until) <= v_now
-    and coalesce(submission.refund_status, 'none') in ('none', 'rejected')
-  returning submission.status, submission.delivery_queued_at
-  into status, delivery_queued_at;
-
-  if not found then
-    result := 'not_queueable';
-    status := v_submission.status;
-    delivery_queued_at := v_submission.delivery_queued_at;
-    return next;
-    return;
-  end if;
-
-  result := 'queued';
-  return next;
-end;
-$$;
 
 create or replace function public.storyofus_publish_final_site(
   p_submission_id uuid,
@@ -332,21 +185,13 @@ begin
 end;
 $$;
 
-revoke all privileges on function public.storyofus_queue_final_site_delivery(uuid)
-from public, anon, authenticated;
-
 revoke all privileges on function public.storyofus_publish_final_site(uuid, text, text, text)
 from public, anon, authenticated;
-
-grant execute on function public.storyofus_queue_final_site_delivery(uuid)
-to service_role;
 
 grant execute on function public.storyofus_publish_final_site(uuid, text, text, text)
 to service_role;
 
 grant select, update on table public.storyofus_submissions to service_role;
-grant select on table public.storyofus_couple_details to service_role;
-grant select on table public.storyofus_media to service_role;
 grant select, insert on table public.storyofus_email_outbox to service_role;
 
 commit;

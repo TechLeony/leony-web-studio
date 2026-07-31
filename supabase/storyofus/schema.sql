@@ -48,6 +48,11 @@ create table if not exists public.storyofus_submissions (
   checkout_expires_at timestamptz,
   delivered_at timestamptz,
   final_site_url text,
+  passcode_ui_version text
+    check (
+      passcode_ui_version is null
+      or passcode_ui_version in ('demo_v1')
+    ),
   site_passcode_hash text,
   site_passcode_hint text,
   site_passcode_set_at timestamptz,

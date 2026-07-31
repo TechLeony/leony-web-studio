@@ -76,6 +76,11 @@ test("publish RPC only publishes orders already queued for delivery", () => {
   assert.match(publishSql, /v_submission\.delivery_queued_at is null/i);
   assert.match(publishSql, /submission\.status = 'queued_for_delivery'/i);
   assert.match(publishSql, /submission\.delivery_queued_at is not null/i);
+  assert.match(
+    publishSql,
+    /passcode_ui_version = coalesce\(submission\.passcode_ui_version, 'demo_v1'\)/i,
+    "Newly published orders must opt in to the demo passcode UI without backfilling existing published orders.",
+  );
   assert.match(publishSql, /'storyofus:final_site_ready:' \|\| v_submission\.id::text/i);
   assert.doesNotMatch(
     publishSql,

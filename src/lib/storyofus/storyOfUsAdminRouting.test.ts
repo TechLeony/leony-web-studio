@@ -114,11 +114,30 @@ test("StoryOfUs admin dashboard preserves final_site_slug for preview links", ()
 
 test("public final-site route keeps the customer passcode gate", () => {
   const publicRoute = readSource("src/routes/storyofus.site.$siteSlug.tsx");
+  const serverSource = readSource("src/lib/storyofus/finalSite.server.ts");
 
   assert.match(publicRoute, /getStoryOfUsFinalSiteAccess/);
   assert.match(publicRoute, /verifyStoryOfUsFinalSitePasscode/);
+  assert.match(publicRoute, /passcodeUiVersion === "demo_v1"/);
+  assert.match(publicRoute, /<StoryOfUsDemoIntroGate/);
+  assert.match(publicRoute, /<LegacyPasscodeGate/);
   assert.match(publicRoute, /<LockKeyhole className="h-7 w-7" \/>/);
-  assert.match(publicRoute, /<form onSubmit=\{handleUnlock\}/);
+  assert.match(publicRoute, /onSubmit=\{handleUnlock\}/);
+  assert.match(publicRoute, /<form[\s\S]{0,80}onSubmit=\{onSubmit\}/);
+  assert.match(publicRoute, /verifyAccessPin=\{verifyDemoPasscode\}/);
+  assert.match(serverSource, /site_passcode_hint, passcode_ui_version/);
+  assert.match(serverSource, /resolveStoryOfUsFinalSitePasscodeUiVersion/);
+});
+
+test("demo final-site passcode gate reuses the committed demo intro component", () => {
+  const publicRoute = readSource("src/routes/storyofus.site.$siteSlug.tsx");
+  const experience = readSource("src/components/storyofus/StoryOfUsExperience.tsx");
+
+  assert.match(publicRoute, /import \{ StoryOfUsDemoIntroGate \}/);
+  assert.match(experience, /export function StoryOfUsDemoIntroGate/);
+  assert.match(experience, /<IntroGate/);
+  assert.match(experience, /intro=\{demoStoryData\.intro\}/);
+  assert.match(experience, /decor=\{demoStoryData\.decor\}/);
 });
 
 test("StoryOfUs admin server functions keep admin authorization on private data and actions", () => {

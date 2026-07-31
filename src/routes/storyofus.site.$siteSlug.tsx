@@ -1,14 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Heart, LockKeyhole } from "lucide-react";
 
 import { StoryOfUsFinalSiteRenderer } from "@/components/storyofus/FinalSiteRenderer";
+import { StoryOfUsDemoIntroGate } from "@/components/storyofus/StoryOfUsExperience";
 import {
   getStoryOfUsFinalSiteAccess,
   verifyStoryOfUsFinalSitePasscode,
   type StoryOfUsFinalSiteData,
 } from "@/lib/storyofus/finalSite.server";
+import type { StoryOfUsFinalSitePasscodeUiVersion } from "@/lib/storyofus/finalSitePasscodeUiVersion";
 import { waitForStoryOfUsFinalSiteReveal } from "@/lib/storyofus/finalSiteUnlockTransition";
 
 export const Route = createFileRoute("/storyofus/site/$siteSlug")({
@@ -29,6 +31,7 @@ type AccessState =
       status: "locked";
       coupleDisplayName: string;
       passcodeHint: string;
+      passcodeUiVersion: StoryOfUsFinalSitePasscodeUiVersion;
     }
   | {
       status: "unlocked";
@@ -47,6 +50,7 @@ function StoryOfUsFinalSiteRoute() {
   const [passcode, setPasscode] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const demoUnlockedSiteRef = useRef<StoryOfUsFinalSiteData | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -63,6 +67,7 @@ function StoryOfUsFinalSiteRoute() {
           status: "locked",
           coupleDisplayName: result.coupleDisplayName,
           passcodeHint: result.passcodeHint,
+          passcodeUiVersion: result.passcodeUiVersion,
         });
       } else {
         setAccessState({
@@ -125,6 +130,44 @@ function StoryOfUsFinalSiteRoute() {
     }
   }
 
+  async function verifyDemoPasscode(passcodeValue: string) {
+    const result = await verifyPasscode({
+      data: {
+        siteSlug,
+        passcode: passcodeValue,
+      },
+    });
+
+    if (result.status === "unlocked") {
+      demoUnlockedSiteRef.current = result.site;
+      return true;
+    }
+
+    if (result.status === "not_found") {
+      setAccessState({
+        status: "not_found",
+      });
+    }
+
+    return false;
+  }
+
+  function enterDemoUnlockedSite() {
+    const site = demoUnlockedSiteRef.current;
+
+    if (!site) {
+      setAccessState({
+        status: "not_found",
+      });
+      return;
+    }
+
+    setAccessState({
+      status: "unlocked",
+      site,
+    });
+  }
+
   if (accessState.status === "loading") {
     return <FinalSiteShell message="StoryOfUs sayfanız hazırlanıyor..." />;
   }
@@ -150,6 +193,49 @@ function StoryOfUsFinalSiteRoute() {
     return <FinalSiteRevealTransition />;
   }
 
+  if (accessState.passcodeUiVersion === "demo_v1") {
+    return (
+      <StoryOfUsDemoIntroGate
+        accessPinHint={accessState.passcodeHint}
+        verifyAccessPin={verifyDemoPasscode}
+        onEnter={enterDemoUnlockedSite}
+      />
+    );
+  }
+
+  return (
+    <LegacyPasscodeGate
+      coupleDisplayName={accessState.coupleDisplayName}
+      passcode={passcode}
+      passcodeHint={accessState.passcodeHint}
+      errorMessage={errorMessage}
+      isUnlocking={isUnlocking}
+      onPasscodeChange={(value) => {
+        setPasscode(value);
+        setErrorMessage(null);
+      }}
+      onSubmit={handleUnlock}
+    />
+  );
+}
+
+function LegacyPasscodeGate({
+  coupleDisplayName,
+  passcode,
+  passcodeHint,
+  errorMessage,
+  isUnlocking,
+  onPasscodeChange,
+  onSubmit,
+}: {
+  coupleDisplayName: string;
+  passcode: string;
+  passcodeHint: string;
+  errorMessage: string | null;
+  isUnlocking: boolean;
+  onPasscodeChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
   return (
     <main className="grid min-h-screen place-items-center bg-[linear-gradient(180deg,#fff7f3_0%,#ffe8ef_52%,#fffaf7_100%)] px-4 py-10 text-rose-950">
       <section className="w-full max-w-md rounded-[2rem] border border-white/80 bg-white/85 p-6 text-center shadow-2xl shadow-rose-100/70 backdrop-blur sm:p-8">
@@ -159,29 +245,26 @@ function StoryOfUsFinalSiteRoute() {
         <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">
           StoryOfUs
         </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold text-rose-950">
-          {accessState.coupleDisplayName}
-        </h1>
+        <h1 className="mt-3 font-serif text-4xl font-bold text-rose-950">{coupleDisplayName}</h1>
         <p className="mt-4 text-sm leading-7 text-rose-950/65">
           Sayfayı açmak için küçük sırrı tahmin et bakalım.
         </p>
 
-        <form onSubmit={handleUnlock} className="mt-7 grid gap-4">
+        <form onSubmit={onSubmit} className="mt-7 grid gap-4">
           <input
             value={passcode}
             inputMode="numeric"
             maxLength={4}
             pattern="[0-9]*"
             onChange={(event) => {
-              setPasscode(event.target.value.replace(/\D/g, "").slice(0, 4));
-              setErrorMessage(null);
+              onPasscodeChange(event.target.value.replace(/\D/g, "").slice(0, 4));
             }}
             className="mx-auto h-14 w-40 rounded-2xl border border-rose-100 bg-white text-center text-2xl font-bold tracking-[0.45em] text-rose-950 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100"
             aria-label="StoryOfUs şifresi"
           />
-          {accessState.passcodeHint && (
+          {passcodeHint && (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-              İpucu: {accessState.passcodeHint}
+              İpucu: {passcodeHint}
             </p>
           )}
           {errorMessage && <p className="text-sm font-semibold text-rose-600">{errorMessage}</p>}

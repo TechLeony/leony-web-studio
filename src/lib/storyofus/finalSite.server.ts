@@ -15,6 +15,10 @@ import {
   clearStoryOfUsFinalSitePasscodeFailures,
   recordStoryOfUsFinalSitePasscodeFailure,
 } from "./finalSitePasscodeRateLimit.server";
+import {
+  resolveStoryOfUsFinalSitePasscodeUiVersion,
+  type StoryOfUsFinalSitePasscodeUiVersion,
+} from "./finalSitePasscodeUiVersion";
 import { restoreEditableDefaultContent } from "./editableDefaultContent";
 import { verifySitePasscode } from "./passcode.server";
 import {
@@ -119,6 +123,7 @@ type FinalSiteAccessResult =
       status: "found";
       coupleDisplayName: string;
       passcodeHint: string;
+      passcodeUiVersion: StoryOfUsFinalSitePasscodeUiVersion;
     }
   | {
       status: "not_found";
@@ -171,6 +176,7 @@ export const getStoryOfUsFinalSiteAccess = createServerFn({ method: "POST" })
       status: "found",
       coupleDisplayName: published.coupleDisplayName,
       passcodeHint: published.passcodeHint,
+      passcodeUiVersion: published.passcodeUiVersion,
     };
   });
 
@@ -615,7 +621,7 @@ async function loadPublishedGateDataBySlug(siteSlug: string) {
 
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("id, site_passcode_hint")
+    .select("id, site_passcode_hint, passcode_ui_version")
     .eq("final_site_slug", slug)
     .eq("status", "published")
     .not("final_site_url", "is", null)
@@ -635,6 +641,7 @@ async function loadPublishedGateDataBySlug(siteSlug: string) {
   return {
     coupleDisplayName: coupleDetails?.coupleDisplayName || "StoryOfUs",
     passcodeHint: stringValue(data.site_passcode_hint),
+    passcodeUiVersion: resolveStoryOfUsFinalSitePasscodeUiVersion(data.passcode_ui_version),
   };
 }
 
