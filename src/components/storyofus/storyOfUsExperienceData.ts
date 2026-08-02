@@ -294,6 +294,7 @@ export const demoStoryData = {
     letterTitle: STORYOFUS_DEFAULT_LOVE_LETTER_TITLE,
     letterBody: STORYOFUS_DEFAULT_LOVE_LETTER_BODY,
     signaturePrefix: "Sonsuza dek",
+    signatureName: "Ceren",
     letterSidePhoto: {
       src: "/demo-assets/arda-ceren-closeup.webp",
       alt: "Ceren ve Arda romantik yakın an",

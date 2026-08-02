@@ -24,6 +24,7 @@ import {
   getLoveLetterPhotoPublishError,
   isRequiredLoveLetterPhotoMediaRow,
 } from "./loveLetterRequirements";
+import { resolveStoryOfUsSignatureName } from "./signatureName";
 import { storyOfUsSupabaseAdmin } from "./supabaseAdmin.server";
 import type { StoryOfUsEditableDefaultContentState } from "./setupTypes";
 
@@ -56,6 +57,7 @@ type AdminContext = {
 
 export type StoryOfUsFinalSiteData = {
   coupleDisplayName: string;
+  signatureName: string;
   partnerName: string;
   recipientNickname: string;
   relationshipStartDate: string | null;
@@ -760,6 +762,14 @@ async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOf
 
   return {
     coupleDisplayName: coupleDetails?.coupleDisplayName || "StoryOfUs",
+    signatureName: resolveStoryOfUsSignatureName({
+      customerName: submission.customerName,
+      coupleDetailsCustomerName: coupleDetails?.customerName,
+      submissionSnapshot: submission.submissionSnapshot,
+      legacyCoupleDisplayName: coupleDetails?.coupleDisplayName,
+      legacyPartnerName: coupleDetails?.partnerName,
+      legacyRecipientNickname: coupleDetails?.recipientNickname,
+    }),
     partnerName: coupleDetails?.partnerName || "",
     recipientNickname: coupleDetails?.recipientNickname || "",
     relationshipStartDate: coupleDetails?.relationshipStartDate ?? null,
@@ -798,7 +808,7 @@ async function loadStoryOfUsFinalSiteData(submissionId: string): Promise<StoryOf
 async function loadSubmissionBase(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_submissions")
-    .select("order_reference, final_site_url, site_passcode_hint, submission_snapshot")
+    .select("order_reference, final_site_url, site_passcode_hint, submission_snapshot, customer_name")
     .eq("id", submissionId)
     .maybeSingle();
 
@@ -810,6 +820,8 @@ async function loadSubmissionBase(submissionId: string) {
     orderReference: stringValue(data.order_reference),
     finalSiteUrl: nullableString(data.final_site_url),
     passcodeHint: stringValue(data.site_passcode_hint),
+    customerName: stringValue(data.customer_name),
+    submissionSnapshot: data.submission_snapshot,
     timelineSnapshot: getSubmissionSnapshotTimeline(data.submission_snapshot),
     editableDefaultContent: isRecord(data.submission_snapshot)
       ? data.submission_snapshot.editableDefaultContent
@@ -821,7 +833,7 @@ async function loadCoupleDetails(submissionId: string) {
   const { data, error } = await storyOfUsSupabaseAdmin
     .from("storyofus_couple_details")
     .select(
-      "partner_name, couple_display_name, relationship_start_date, special_date_label, recipient_nickname, relationship_story",
+      "customer_name, partner_name, couple_display_name, relationship_start_date, special_date_label, recipient_nickname, relationship_story",
     )
     .eq("submission_id", submissionId)
     .maybeSingle();
@@ -835,6 +847,7 @@ async function loadCoupleDetails(submissionId: string) {
   }
 
   return {
+    customerName: stringValue(data.customer_name),
     partnerName: stringValue(data.partner_name),
     coupleDisplayName: stringValue(data.couple_display_name),
     relationshipStartDate: nullableString(data.relationship_start_date),

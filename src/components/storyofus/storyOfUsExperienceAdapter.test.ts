@@ -28,6 +28,7 @@ function media(overrides: Partial<StoryOfUsFinalSiteMedia>): StoryOfUsFinalSiteM
 function site(overrides: Partial<StoryOfUsFinalSiteData> = {}): StoryOfUsFinalSiteData {
   return {
     coupleDisplayName: "Elif & Mert",
+    signatureName: "Elif",
     partnerName: "Mert",
     recipientNickname: "Elif",
     relationshipStartDate: "2024-06-12",
@@ -360,5 +361,29 @@ describe("createStoryOfUsExperienceDataFromFinalSite", () => {
     assert.equal(experience.timeline.items[0]?.photoSrc, "");
     assert.equal(experience.letter.letterSidePhoto.photoSrc, "");
     assert.doesNotMatch(JSON.stringify(experience), /\/demo-assets\//);
+  });
+
+  it("uses the final-site signature name without re-deriving it from couple names", () => {
+    const experience = createStoryOfUsExperienceDataFromFinalSite(
+      site({
+        coupleDisplayName: "Emira",
+        signatureName: "Emira",
+      }),
+    );
+
+    assert.equal(experience.letter.signatureName, "Emira");
+    assert.equal(experience.relationship.coupleNames.second, "");
+  });
+
+  it("keeps admin preview and final site output identical for the same resolved signature", () => {
+    const sharedSite = site({
+      coupleDisplayName: "Emira",
+      signatureName: "Emira",
+    });
+    const adminPreview = createStoryOfUsExperienceDataFromFinalSite(sharedSite);
+    const finalSite = createStoryOfUsExperienceDataFromFinalSite(sharedSite);
+
+    assert.equal(adminPreview.letter.signatureName, finalSite.letter.signatureName);
+    assert.equal(JSON.stringify(adminPreview.letter), JSON.stringify(finalSite.letter));
   });
 });

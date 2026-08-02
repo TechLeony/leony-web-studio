@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-react";
 
 import { storyOfUsDemoCtaConfig } from "@/lib/storyofus/demoCtaConfig";
+import { createStoryOfUsSignatureLine } from "@/lib/storyofus/signatureName";
 import { demoStoryData, type StoryOfUsExperienceData } from "./storyOfUsExperienceData";
 
 function getElapsed(startIso: string) {
@@ -1062,8 +1063,11 @@ export function StoryOfUsExperience({
                       <span className="ml-1 inline-block h-7 w-px translate-y-1 bg-white/85 animate-pulse" />
                     )}
                   </p>
-                  <p className="relative mt-6 text-sm text-white/80 animate-in fade-in slide-in-from-bottom-2 duration-1000">
-                    {story.letter.signaturePrefix}, {story.relationship.coupleNames.second}
+                  <p className="relative mt-6 whitespace-pre-line text-sm text-white/80 animate-in fade-in slide-in-from-bottom-2 duration-1000">
+                    {createStoryOfUsSignatureLine(
+                      story.letter.signaturePrefix,
+                      story.letter.signatureName,
+                    )}
                   </p>
                 </div>
               </div>

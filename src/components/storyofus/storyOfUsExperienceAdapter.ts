@@ -124,6 +124,7 @@ export function createStoryOfUsExperienceDataFromFinalSite(
       ...demoStoryData.letter,
       letterTitle: loveLetter?.title || demoStoryData.letter.letterTitle,
       letterBody: getLoveLetterBody(loveLetter?.body ?? "", loveLetterOutcome),
+      signatureName: site.signatureName.trim(),
       letterSidePhoto: mediaToExperiencePhoto(
         site.loveLetterPhoto,
         demoStoryData.letter.letterSidePhoto,
