@@ -12,8 +12,20 @@ function readSource(path: string) {
 test("Leony Admin root keeps the existing authenticated shell and login gate", () => {
   const source = readSource("src/routes/admin.tsx");
 
-  assert.match(source, /if \(!session\) return <AdminLogin \/>/);
-  assert.match(source, /session\.email\?\.toLowerCase\(\) === SITE\.adminEmail\.toLowerCase\(\)/);
+  assert.match(source, /if \(!session\)/);
+  assert.match(source, /mode="login"/);
+  assert.match(source, /adminAllowed/);
+  assert.match(source, /setAdminAllowed\(verification\.allowed\)/);
+  assert.match(source, /if \(!adminAllowed\)/);
+  assert.match(source, /if \(!tabVerified\)/);
+  assert.match(source, /<AdminLogin[\s\S]{0,120}mode="reauth"/);
+  assert.match(source, /sessionStorage/);
+  assert.match(source, /verifyAdminTabAccess/);
+  assert.match(source, /writeAdminTabVerification/);
+  assert.match(source, /clearAdminTabVerification/);
+  assert.match(source, /userChanged/);
+  assert.match(source, /currentUserId/);
+  assert.doesNotMatch(source, /SITE\.adminEmail/);
   assert.match(source, /<Outlet \/>/);
   assert.match(source, /to="\/admin\/storyofus-orders"/);
   assert.match(source, /label="Story of Us"/);
@@ -74,6 +86,7 @@ test("order detail route receives the orderId parameter and renders the detail v
 
 test("admin site preview route uses final-site slug without a public bypass token", () => {
   const previewRoute = readSource("src/routes/admin.storyofus-orders.site-preview.$siteSlug.tsx");
+  const adminRoute = readSource("src/routes/admin.tsx");
   const dashboard = readSource("src/components/storyofus/StoryOfUsAdminDashboard.tsx");
   const serverSource = readSource("src/lib/storyofus/finalSite.server.ts");
 
@@ -84,6 +97,8 @@ test("admin site preview route uses final-site slug without a public bypass toke
   assert.match(previewRoute, /getStoryOfUsAdminFinalSitePreviewBySlug/);
   assert.match(previewRoute, /<StoryOfUsFinalSiteRenderer site=\{previewState\.site\} \/>/);
   assert.doesNotMatch(previewRoute, /search|query|token|passcode/i);
+  assert.match(adminRoute, /if \(!tabVerified\)/);
+  assert.match(adminRoute, /<Outlet \/>/);
   assert.match(
     dashboard,
     /href=\{`\/admin\/storyofus-orders\/site-preview\/\$\{encodeURIComponent\(order\.finalSiteSlug\)\}`\}/,
