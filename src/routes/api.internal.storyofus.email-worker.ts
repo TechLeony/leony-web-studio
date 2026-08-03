@@ -3,18 +3,14 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-import {
-  checkStoryOfUsEmailWorkerExecutionRateLimit,
-  checkStoryOfUsEmailWorkerUnauthorizedRateLimit,
-} from "../lib/storyofus/storyOfUsEmailWorkerRateLimit.server";
-import { processStoryOfUsEmailOutboxBatch } from "../lib/storyofus/storyOfUsEmailWorker.server";
-
 export const Route = createFileRoute("/api/internal/storyofus/email-worker")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          if (!isAuthorizedRequest(request)) {
+          if (!isAuthorizedStoryOfUsEmailWorkerRequest(request)) {
+            const { checkStoryOfUsEmailWorkerUnauthorizedRateLimit } =
+              await import("../lib/storyofus/storyOfUsEmailWorkerRateLimit.server");
             const unauthorizedRateLimit = checkStoryOfUsEmailWorkerUnauthorizedRateLimit(request);
 
             if (unauthorizedRateLimit.limited) {
@@ -32,10 +28,12 @@ export const Route = createFileRoute("/api/internal/storyofus/email-worker")({
             return jsonResponse({ ok: false, error: "invalid_request" }, 400);
           }
 
-          if (await hasNonEmptyBody(request)) {
+          if (!(await hasValidStoryOfUsEmailWorkerRequestBody(request))) {
             return jsonResponse({ ok: false, error: "invalid_request" }, 400);
           }
 
+          const { checkStoryOfUsEmailWorkerExecutionRateLimit } =
+            await import("../lib/storyofus/storyOfUsEmailWorkerRateLimit.server");
           const executionRateLimit = checkStoryOfUsEmailWorkerExecutionRateLimit();
 
           if (executionRateLimit.limited) {
@@ -46,6 +44,8 @@ export const Route = createFileRoute("/api/internal/storyofus/email-worker")({
             );
           }
 
+          const { processStoryOfUsEmailOutboxBatch } =
+            await import("../lib/storyofus/storyOfUsEmailWorker.server");
           const summary = await processStoryOfUsEmailOutboxBatch({
             batchSize: STORYOFUS_EMAIL_WORKER_BATCH_SIZE,
           });
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/api/internal/storyofus/email-worker")({
 const STORYOFUS_EMAIL_WORKER_BATCH_SIZE = 10;
 const MIN_WORKER_SECRET_LENGTH = 32;
 
-function isAuthorizedRequest(request: Request) {
+export function isAuthorizedStoryOfUsEmailWorkerRequest(request: Request) {
   const configuredSecret = process.env.STORYOFUS_EMAIL_WORKER_SECRET?.trim() ?? "";
   const suppliedSecret = parseBearerSecret(request.headers.get("authorization"));
 
@@ -91,40 +91,39 @@ function hashSecret(value: string) {
   return createHash("sha256").update(value).digest();
 }
 
-async function hasNonEmptyBody(request: Request) {
+export async function hasValidStoryOfUsEmailWorkerRequestBody(request: Request) {
   const contentLength = request.headers.get("content-length");
   const parsedContentLength = contentLength === null ? null : Number(contentLength);
 
   if (
     parsedContentLength !== null &&
     Number.isFinite(parsedContentLength) &&
-    parsedContentLength > 0
+    parsedContentLength === 0
   ) {
     return true;
   }
 
   if (!request.body) {
-    return false;
+    return true;
   }
 
-  const reader = request.body.getReader();
-
   try {
-    const result = await reader.read();
+    const body = await request.text();
 
-    return !result.done;
-  } finally {
-    try {
-      await reader.cancel();
-    } catch {
-      // The stream may already be closed; either way the body is not needed.
+    if (!body.trim()) {
+      return true;
     }
 
-    try {
-      reader.releaseLock();
-    } catch {
-      // Cleanup failures should not replace the body-read result.
-    }
+    const parsed = JSON.parse(body) as unknown;
+
+    return Boolean(
+      parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        Object.keys(parsed).length === 0,
+    );
+  } catch {
+    return false;
   }
 }
 
