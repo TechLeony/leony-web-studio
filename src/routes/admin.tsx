@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SITE } from "@/lib/site";
 import { LogOut, Inbox, ClipboardList, Heart } from "lucide-react";
+import { passwordRecoveryRedirect } from "@/lib/passwordRecovery";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -128,6 +129,28 @@ function AdminLogin() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [recoveryRequested, setRecoveryRequested] = useState(false);
+
+  async function requestRecovery() {
+    if (!email.trim()) {
+      setErr("Enter your email address first.");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    setRecoveryRequested(false);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: passwordRecoveryRedirect(window.location.origin),
+      });
+      if (error) throw error;
+      setRecoveryRequested(true);
+    } catch {
+      setErr("Recovery email could not be requested. Please try again later.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -165,12 +188,25 @@ function AdminLogin() {
             />
           </label>
           {err && <p className="text-xs text-destructive">{err}</p>}
+          {recoveryRequested && (
+            <p role="status" className="text-sm text-muted-foreground">
+              If an account exists for this email, a password recovery link will be sent.
+            </p>
+          )}
           <button
             type="submit"
             disabled={busy}
             className="mt-1 h-11 rounded-full bg-navy text-navy-foreground text-sm font-semibold disabled:opacity-60 cursor-pointer"
           >
             {busy ? "Giriş yapılıyor..." : "Giriş Yap"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={requestRecovery}
+            className="text-sm text-foreground underline disabled:opacity-60"
+          >
+            Forgot Password?
           </button>
         </form>
       </div>

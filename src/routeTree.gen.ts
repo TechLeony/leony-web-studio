@@ -23,6 +23,7 @@ import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
 import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
 import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
 import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
 import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
@@ -109,6 +110,11 @@ const SektorSlugRoute = SektorSlugRouteImport.update({
 const DemoMiraCafeRoute = DemoMiraCafeRouteImport.update({
   id: '/demo/mira-cafe',
   path: '/demo/mira-cafe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminTasksRoute = AdminTasksRouteImport.update({
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
   '/storyofus/checkout': typeof StoryofusCheckoutRoute
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/checkout'
@@ -350,6 +360,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/checkout'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
     | '/storyofus/checkout'
@@ -415,6 +427,7 @@ export interface RootRouteChildren {
   KvkkRoute: typeof KvkkRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
   StoryofusCheckoutRoute: typeof StoryofusCheckoutRoute
@@ -530,6 +543,13 @@ declare module '@tanstack/react-router' {
       path: '/demo/mira-cafe'
       fullPath: '/demo/mira-cafe'
       preLoaderRoute: typeof DemoMiraCafeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/tasks': {
@@ -723,6 +743,7 @@ const rootRouteChildren: RootRouteChildren = {
   KvkkRoute: KvkkRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,
   StoryofusCheckoutRoute: StoryofusCheckoutRoute,

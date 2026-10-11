@@ -119,6 +119,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const recoveryPage = useRouterState({
+    select: (state) => state.location.pathname === "/auth/reset-password",
+  });
   return (
     <html lang="en">
       {/* <head>
@@ -128,9 +131,10 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
 
         {/* TikTok Pixel */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+        {!recoveryPage && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
         !function (w, d, t) {
           w.TiktokAnalyticsObject=t;
           var ttq=w[t]=w[t]||[];
@@ -195,8 +199,9 @@ function RootShell({ children }: { children: ReactNode }) {
           ttq.page();
         }(window, document, "ttq");
       `,
-          }}
-        />
+            }}
+          />
+        )}
       </head>
       <body>
         {children}
