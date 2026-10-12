@@ -164,6 +164,32 @@ test("final_site_ready email includes final URL and encrypted-page copy but neve
   assert.doesNotMatch(template.text, /Tanıştığımız yıl|Şifre ipucunuz/);
   assert.doesNotMatch(template.html, /2022/);
   assert.doesNotMatch(template.text, /2022/);
+  assert.match(template.html, /Her zaman yanınızdayız! 💌/);
+  assert.match(template.html, /href="mailto:contact@leony\.tech"/);
+  assert.match(template.html, /Mutluluğunuzu bizimle paylaşın! 💗/);
+  assert.match(template.html, /Instagram veya TikTok hikâyelerinizde/);
+  assert.match(template.html, /LEONY \| StoryOfUs Ekibi/);
+  assert.match(template.text, /Her zaman yanınızdayız! 💌/);
+  assert.match(template.text, /contact@leony\.tech/);
+  assert.match(template.text, /Mutluluğunuzu bizimle paylaşın! 💗/);
+  assert.match(template.text, /Instagram veya TikTok hikâyelerinizde/);
+  assert.match(template.text, /Sevgiyle,\nLEONY \| StoryOfUs Ekibi/);
+  assert.ok(template.html.indexOf(FINAL_URL) < template.html.indexOf("Her zaman yanınızdayız!"));
+  assert.ok(template.text.indexOf(FINAL_URL) < template.text.indexOf("Her zaman yanınızdayız!"));
+});
+
+test("warm closing remains exclusive to the final_site_ready email", () => {
+  const template = createStoryOfUsEmailTemplate({
+    emailType: "order_created",
+    customerName: "Elif",
+    orderReference: ORDER_REFERENCE,
+    trackingCode: TRACKING_CODE,
+    setupUrl: SETUP_URL,
+    trackOrderUrl: TRACK_ORDER_URL,
+  });
+
+  assert.doesNotMatch(template.html, /Her zaman yanınızdayız|Mutluluğunuzu bizimle paylaşın/);
+  assert.doesNotMatch(template.text, /Her zaman yanınızdayız|Mutluluğunuzu bizimle paylaşın/);
 });
 
 function escapeRegExp(value: string) {

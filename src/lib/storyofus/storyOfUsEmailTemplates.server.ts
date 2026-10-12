@@ -331,7 +331,7 @@ function createFinalSiteReadyTemplate(
         <p>Sayfanız, güvenliğiniz için şifrelenmiştir. Açmak için kurulum sırasında belirlediğiniz dört haneli şifreyi kullanın.</p>
         ${renderButton("StoryOfUs sayfamı aç", safeFinalSiteUrl)}
         ${renderRawLink("Final site bağlantısı", safeFinalSiteUrl)}
-        ${renderSupportNote()}
+        ${renderFinalSiteClosing()}
       `,
     }),
     text: [
@@ -344,7 +344,16 @@ function createFinalSiteReadyTemplate(
       "",
       `Final site bağlantısı: ${input.finalSiteUrl}`,
       "",
-      `Herhangi bir konuda bize ${SUPPORT_EMAIL} adresinden yazabilirsiniz.`,
+      "Her zaman yanınızdayız! 💌",
+      "",
+      `StoryOfUs deneyiminizle ilgili herhangi bir sorunuz olursa veya bir sorunla karşılaşırsanız ${SUPPORT_EMAIL} adresinden bizimle iletişime geçebilirsiniz. Size yardımcı olmaktan mutluluk duyarız.`,
+      "",
+      "Mutluluğunuzu bizimle paylaşın! 💗",
+      "",
+      "Hazırladığımız bu özel deneyimi beğendiyseniz Instagram veya TikTok hikâyelerinizde paylaşarak bizi etiketlemeniz bizi çok mutlu eder! Paylaşımlarınız sayesinde daha fazla insanın kendi aşk hikâyesini ölümsüzleştirmesine yardımcı olabilirsiniz.",
+      "",
+      "Sevgiyle,",
+      "LEONY | StoryOfUs Ekibi",
     ].join("\n"),
   };
 }
@@ -411,6 +420,16 @@ function renderRawLink(label: string, href: string) {
 
 function renderSupportNote() {
   return `<p style="margin:24px 0 0; padding:16px 18px; border-radius:18px; background:#fff1f5; border:1px solid #fbcfe8; color:#7f1d4e; font-size:14px;">Herhangi bir konuda bize <a href="mailto:${SUPPORT_EMAIL}" style="color:#be185d; font-weight:700;">${SUPPORT_EMAIL}</a> adresinden yazabilirsiniz.</p>`;
+}
+
+function renderFinalSiteClosing() {
+  return `<div style="margin:28px 0 0; padding:20px 18px; border-radius:18px; background:#fff1f5; border:1px solid #fbcfe8; color:#7f1d4e; font-size:14px; line-height:1.7;">
+    <p style="margin:0 0 8px; color:#881337; font-size:16px; font-weight:700;">Her zaman yanınızdayız! 💌</p>
+    <p style="margin:0;">StoryOfUs deneyiminizle ilgili herhangi bir sorunuz olursa veya bir sorunla karşılaşırsanız <a href="mailto:${SUPPORT_EMAIL}" style="color:#be185d; font-weight:700; word-break:break-word;">${SUPPORT_EMAIL}</a> adresinden bizimle iletişime geçebilirsiniz. Size yardımcı olmaktan mutluluk duyarız.</p>
+    <p style="margin:20px 0 8px; color:#881337; font-size:16px; font-weight:700;">Mutluluğunuzu bizimle paylaşın! 💗</p>
+    <p style="margin:0;">Hazırladığımız bu özel deneyimi beğendiyseniz Instagram veya TikTok hikâyelerinizde paylaşarak bizi etiketlemeniz bizi çok mutlu eder! Paylaşımlarınız sayesinde daha fazla insanın kendi aşk hikâyesini ölümsüzleştirmesine yardımcı olabilirsiniz.</p>
+    <p style="margin:20px 0 0;">Sevgiyle,<br><strong>LEONY | StoryOfUs Ekibi</strong></p>
+  </div>`;
 }
 
 function renderNotice(value: string) {
