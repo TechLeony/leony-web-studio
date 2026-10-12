@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { SITE } from "@/lib/site";
 
 import {
   createStoryOfUsFinalSiteSlug,
@@ -45,9 +44,15 @@ type AdminContext = {
             column: string,
             value: string,
           ) => {
-            maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+            maybeSingle: () => PromiseLike<{
+              data: { role?: string } | null;
+              error: { message: string } | null;
+            }>;
           };
-          maybeSingle: () => Promise<{ data: unknown; error: { message: string } | null }>;
+          maybeSingle: () => PromiseLike<{
+            data: { role?: string } | null;
+            error: { message: string } | null;
+          }>;
         };
       };
     };
@@ -965,7 +970,6 @@ async function createSignedUrl(storagePath: string) {
 }
 
 async function assertStoryOfUsAdmin(context: AdminContext) {
-  const email = typeof context.claims?.email === "string" ? context.claims.email : "";
   const { data, error } = await context.supabase
     .from("user_roles")
     .select("role")
@@ -977,7 +981,7 @@ async function assertStoryOfUsAdmin(context: AdminContext) {
     throw new Error("Unable to verify admin role.");
   }
 
-  if (!data && email.toLowerCase() !== SITE.adminEmail.toLowerCase()) {
+  if (data?.role !== "admin") {
     throw new Error("Forbidden: admin access required.");
   }
 }

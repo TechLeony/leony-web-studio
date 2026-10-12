@@ -8,7 +8,7 @@ export const SITE = {
     (import.meta.env.VITE_CONTACT_EMAIL as string | undefined) ?? "contact@leony.tech",
   url:
     (import.meta.env.VITE_SITE_URL as string | undefined) ?? "https://leony.tech",
-  // Approved admin email — only this account can access /admin.
+  // Invitation identity restriction only; protected routes require an actual admin role.
   adminEmail: "contact@leony.tech",
 };
 

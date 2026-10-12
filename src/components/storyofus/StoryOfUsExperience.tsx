@@ -4,6 +4,7 @@ import { Check, Heart, Volume2, VolumeX, Gift, Sparkles, Star, X } from "lucide-
 
 import { storyOfUsDemoCtaConfig } from "@/lib/storyofus/demoCtaConfig";
 import { demoStoryData, type StoryOfUsExperienceData } from "./storyOfUsExperienceData";
+import { neutralSpotifyFallback } from "./storyOfUsExperienceAdapter";
 
 function getElapsed(startIso: string) {
   const diff = Math.max(0, Date.now() - new Date(startIso).getTime());

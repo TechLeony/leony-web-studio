@@ -3,8 +3,6 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 async function assertAdmin(ctx: { supabase: any; userId: string; claims: any }) {
-  const adminEmail = "contact@leony.tech";
-  const email: string | undefined = ctx.claims?.email;
   const { data, error } = await ctx.supabase
     .from("user_roles")
     .select("role")
@@ -12,7 +10,7 @@ async function assertAdmin(ctx: { supabase: any; userId: string; claims: any }) 
     .eq("role", "admin")
     .maybeSingle();
   if (error) throw new Error("Unable to verify admin role");
-  if (!data && email?.toLowerCase() !== adminEmail) {
+  if (data?.role !== "admin") {
     throw new Error("Forbidden: admin access required");
   }
 }

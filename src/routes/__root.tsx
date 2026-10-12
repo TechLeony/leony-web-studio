@@ -120,7 +120,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   const recoveryPage = useRouterState({
-    select: (state) => state.location.pathname === "/auth/reset-password",
+    select: (state) => ["/auth/reset-password", "/auth/callback"].includes(state.location.pathname),
   });
   return (
     <html lang="en">

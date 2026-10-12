@@ -13,7 +13,14 @@ test("Leony Admin root keeps the existing authenticated shell and login gate", (
   const source = readSource("src/routes/admin.tsx");
 
   assert.match(source, /if \(!session\) return <AdminLogin \/>/);
-  assert.match(source, /session\.email\?\.toLowerCase\(\) === SITE\.adminEmail\.toLowerCase\(\)/);
+  assert.match(source, /loadAdminAccess\(\{/);
+  assert.match(source, /getUser: \(\) => supabase\.auth\.getUser\(\)/);
+  assert.match(
+    source,
+    /\.from\("user_roles"\)[\s\S]*?\.eq\("user_id", userId\)[\s\S]*?\.eq\("role", "admin"\)/,
+  );
+  assert.match(source, /if \(!authorized\)/);
+  assert.doesNotMatch(source, /SITE\.adminEmail|session\.email\?\.toLowerCase/);
   assert.match(source, /<Outlet \/>/);
   assert.match(source, /to="\/admin\/storyofus-orders"/);
   assert.match(source, /label="Story of Us"/);

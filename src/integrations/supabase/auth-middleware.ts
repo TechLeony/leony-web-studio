@@ -98,6 +98,15 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: No user ID found in token');
     }
 
+    const { data: identity, error: identityError } = await supabase.auth.getUser(token);
+    if (
+      identityError ||
+      identity.user?.id !== data.claims.sub ||
+      !identity.user?.email_confirmed_at
+    ) {
+      throw new Error("Unauthorized: Verified confirmed identity required");
+    }
+
     return next({
       context: {
         supabase,

@@ -9,52 +9,43 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
-import { Route as KvkkRouteImport } from './routes/kvkk'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as KvkkRouteImport } from './routes/kvkk'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as StoryofusTrackOrderRouteImport } from './routes/storyofus.track-order'
-import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
-import { Route as StoryofusRefundPolicyRouteImport } from './routes/storyofus.refund-policy'
-import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
-import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
-import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
-import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
-import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminStoryofusOrdersRouteImport } from './routes/admin.storyofus-orders'
-import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
-import { Route as StoryofusSiteSiteSlugRouteImport } from './routes/storyofus.site.$siteSlug'
-import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
-import { Route as StoryofusInternalSetupQaRouteImport } from './routes/storyofus.internal.setup-qa'
-import { Route as StoryofusInternalEmailQaRouteImport } from './routes/storyofus.internal.email-qa'
-import { Route as AdminStoryofusOrdersSettingsRouteImport } from './routes/admin.storyofus-orders.settings'
-import { Route as AdminStoryofusOrdersRefundsRouteImport } from './routes/admin.storyofus-orders.refunds'
-import { Route as AdminStoryofusOrdersPreviewsRouteImport } from './routes/admin.storyofus-orders.previews'
-import { Route as AdminStoryofusOrdersOrdersRouteImport } from './routes/admin.storyofus-orders.orders'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as DemoMiraCafeRouteImport } from './routes/demo.mira-cafe'
+import { Route as SektorSlugRouteImport } from './routes/sektor.$slug'
+import { Route as StoryofusIndexRouteImport } from './routes/storyofus.index'
+import { Route as StoryofusCheckoutRouteImport } from './routes/storyofus.checkout'
+import { Route as StoryofusDemoRouteImport } from './routes/storyofus.demo'
+import { Route as StoryofusRefundPolicyRouteImport } from './routes/storyofus.refund-policy'
+import { Route as StoryofusSetupRouteImport } from './routes/storyofus.setup'
+import { Route as StoryofusTrackOrderRouteImport } from './routes/storyofus.track-order'
 import { Route as AdminStoryofusOrdersAnalyticsRouteImport } from './routes/admin.storyofus-orders.analytics'
-import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
-import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
-import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
-import { Route as AdminStoryofusOrdersSitePreviewSiteSlugRouteImport } from './routes/admin.storyofus-orders.site-preview.$siteSlug'
+import { Route as AdminStoryofusOrdersOrdersRouteImport } from './routes/admin.storyofus-orders.orders'
+import { Route as AdminStoryofusOrdersPreviewsRouteImport } from './routes/admin.storyofus-orders.previews'
+import { Route as AdminStoryofusOrdersRefundsRouteImport } from './routes/admin.storyofus-orders.refunds'
+import { Route as AdminStoryofusOrdersSettingsRouteImport } from './routes/admin.storyofus-orders.settings'
+import { Route as StoryofusInternalEmailQaRouteImport } from './routes/storyofus.internal.email-qa'
+import { Route as StoryofusInternalSetupQaRouteImport } from './routes/storyofus.internal.setup-qa'
+import { Route as StoryofusSetupDemoRouteImport } from './routes/storyofus.setup.demo'
+import { Route as StoryofusSiteSiteSlugRouteImport } from './routes/storyofus.site.$siteSlug'
+import { Route as StoryofusStylesStyleRouteImport } from './routes/storyofus.styles.$style'
 import { Route as AdminStoryofusOrdersOrdersOrderIdRouteImport } from './routes/admin.storyofus-orders.orders.$orderId'
+import { Route as AdminStoryofusOrdersSitePreviewSiteSlugRouteImport } from './routes/admin.storyofus-orders.site-preview.$siteSlug'
+import { Route as ApiInternalStoryofusEmailWorkerRouteImport } from './routes/api.internal.storyofus.email-worker'
+import { Route as ApiInternalStoryofusReviewReadyWorkerRouteImport } from './routes/api.internal.storyofus.review-ready-worker'
+import { Route as ApiStoryofusShopierCallbackRouteImport } from './routes/api.storyofus.shopier.callback'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
-  id: '/privacy-policy',
-  path: '/privacy-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KvkkRoute = KvkkRouteImport.update({
-  id: '/kvkk',
-  path: '/kvkk',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -62,14 +53,19 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const KvkkRoute = KvkkRouteImport.update({
+  id: '/kvkk',
+  path: '/kvkk',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusIndexRoute = StoryofusIndexRouteImport.update({
-  id: '/storyofus/',
-  path: '/storyofus/',
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -77,39 +73,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const StoryofusTrackOrderRoute = StoryofusTrackOrderRouteImport.update({
-  id: '/storyofus/track-order',
-  path: '/storyofus/track-order',
-  getParentRoute: () => rootRouteImport,
+const AdminStoryofusOrdersRoute = AdminStoryofusOrdersRouteImport.update({
+  id: '/storyofus-orders',
+  path: '/storyofus-orders',
+  getParentRoute: () => AdminRoute,
 } as any)
-const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
-  id: '/storyofus/setup',
-  path: '/storyofus/setup',
-  getParentRoute: () => rootRouteImport,
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AdminRoute,
 } as any)
-const StoryofusRefundPolicyRoute = StoryofusRefundPolicyRouteImport.update({
-  id: '/storyofus/refund-policy',
-  path: '/storyofus/refund-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
-  id: '/storyofus/demo',
-  path: '/storyofus/demo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StoryofusCheckoutRoute = StoryofusCheckoutRouteImport.update({
-  id: '/storyofus/checkout',
-  path: '/storyofus/checkout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SektorSlugRoute = SektorSlugRouteImport.update({
-  id: '/sektor/$slug',
-  path: '/sektor/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoMiraCafeRoute = DemoMiraCafeRouteImport.update({
-  id: '/demo/mira-cafe',
-  path: '/demo/mira-cafe',
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
@@ -117,59 +93,50 @@ const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminTasksRoute = AdminTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminStoryofusOrdersRoute = AdminStoryofusOrdersRouteImport.update({
-  id: '/storyofus-orders',
-  path: '/storyofus-orders',
-  getParentRoute: () => AdminRoute,
-} as any)
-const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
-  id: '/storyofus/styles/$style',
-  path: '/storyofus/styles/$style',
+const DemoMiraCafeRoute = DemoMiraCafeRouteImport.update({
+  id: '/demo/mira-cafe',
+  path: '/demo/mira-cafe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusSiteSiteSlugRoute = StoryofusSiteSiteSlugRouteImport.update({
-  id: '/storyofus/site/$siteSlug',
-  path: '/storyofus/site/$siteSlug',
+const SektorSlugRoute = SektorSlugRouteImport.update({
+  id: '/sektor/$slug',
+  path: '/sektor/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
-  id: '/demo',
-  path: '/demo',
-  getParentRoute: () => StoryofusSetupRoute,
+const StoryofusIndexRoute = StoryofusIndexRouteImport.update({
+  id: '/storyofus/',
+  path: '/storyofus/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const StoryofusInternalSetupQaRoute =
-  StoryofusInternalSetupQaRouteImport.update({
-    id: '/storyofus/internal/setup-qa',
-    path: '/storyofus/internal/setup-qa',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const StoryofusInternalEmailQaRoute =
-  StoryofusInternalEmailQaRouteImport.update({
-    id: '/storyofus/internal/email-qa',
-    path: '/storyofus/internal/email-qa',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AdminStoryofusOrdersSettingsRoute =
-  AdminStoryofusOrdersSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AdminStoryofusOrdersRoute,
-  } as any)
-const AdminStoryofusOrdersRefundsRoute =
-  AdminStoryofusOrdersRefundsRouteImport.update({
-    id: '/refunds',
-    path: '/refunds',
-    getParentRoute: () => AdminStoryofusOrdersRoute,
-  } as any)
-const AdminStoryofusOrdersPreviewsRoute =
-  AdminStoryofusOrdersPreviewsRouteImport.update({
-    id: '/previews',
-    path: '/previews',
+const StoryofusCheckoutRoute = StoryofusCheckoutRouteImport.update({
+  id: '/storyofus/checkout',
+  path: '/storyofus/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusDemoRoute = StoryofusDemoRouteImport.update({
+  id: '/storyofus/demo',
+  path: '/storyofus/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusRefundPolicyRoute = StoryofusRefundPolicyRouteImport.update({
+  id: '/storyofus/refund-policy',
+  path: '/storyofus/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusSetupRoute = StoryofusSetupRouteImport.update({
+  id: '/storyofus/setup',
+  path: '/storyofus/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusTrackOrderRoute = StoryofusTrackOrderRouteImport.update({
+  id: '/storyofus/track-order',
+  path: '/storyofus/track-order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStoryofusOrdersAnalyticsRoute =
+  AdminStoryofusOrdersAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
     getParentRoute: () => AdminStoryofusOrdersRoute,
   } as any)
 const AdminStoryofusOrdersOrdersRoute =
@@ -178,16 +145,67 @@ const AdminStoryofusOrdersOrdersRoute =
     path: '/orders',
     getParentRoute: () => AdminStoryofusOrdersRoute,
   } as any)
-const AdminStoryofusOrdersAnalyticsRoute =
-  AdminStoryofusOrdersAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
+const AdminStoryofusOrdersPreviewsRoute =
+  AdminStoryofusOrdersPreviewsRouteImport.update({
+    id: '/previews',
+    path: '/previews',
     getParentRoute: () => AdminStoryofusOrdersRoute,
   } as any)
-const ApiStoryofusShopierCallbackRoute =
-  ApiStoryofusShopierCallbackRouteImport.update({
-    id: '/api/storyofus/shopier/callback',
-    path: '/api/storyofus/shopier/callback',
+const AdminStoryofusOrdersRefundsRoute =
+  AdminStoryofusOrdersRefundsRouteImport.update({
+    id: '/refunds',
+    path: '/refunds',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersSettingsRoute =
+  AdminStoryofusOrdersSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const StoryofusInternalEmailQaRoute =
+  StoryofusInternalEmailQaRouteImport.update({
+    id: '/storyofus/internal/email-qa',
+    path: '/storyofus/internal/email-qa',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const StoryofusInternalSetupQaRoute =
+  StoryofusInternalSetupQaRouteImport.update({
+    id: '/storyofus/internal/setup-qa',
+    path: '/storyofus/internal/setup-qa',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const StoryofusSetupDemoRoute = StoryofusSetupDemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => StoryofusSetupRoute,
+} as any)
+const StoryofusSiteSiteSlugRoute = StoryofusSiteSiteSlugRouteImport.update({
+  id: '/storyofus/site/$siteSlug',
+  path: '/storyofus/site/$siteSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryofusStylesStyleRoute = StoryofusStylesStyleRouteImport.update({
+  id: '/storyofus/styles/$style',
+  path: '/storyofus/styles/$style',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStoryofusOrdersOrdersOrderIdRoute =
+  AdminStoryofusOrdersOrdersOrderIdRouteImport.update({
+    id: '/$orderId',
+    path: '/$orderId',
+    getParentRoute: () => AdminStoryofusOrdersOrdersRoute,
+  } as any)
+const AdminStoryofusOrdersSitePreviewSiteSlugRoute =
+  AdminStoryofusOrdersSitePreviewSiteSlugRouteImport.update({
+    id: '/site-preview/$siteSlug',
+    path: '/site-preview/$siteSlug',
+    getParentRoute: () => AdminStoryofusOrdersRoute,
+  } as any)
+const ApiInternalStoryofusEmailWorkerRoute =
+  ApiInternalStoryofusEmailWorkerRouteImport.update({
+    id: '/api/internal/storyofus/email-worker',
+    path: '/api/internal/storyofus/email-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiInternalStoryofusReviewReadyWorkerRoute =
@@ -196,23 +214,11 @@ const ApiInternalStoryofusReviewReadyWorkerRoute =
     path: '/api/internal/storyofus/review-ready-worker',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiInternalStoryofusEmailWorkerRoute =
-  ApiInternalStoryofusEmailWorkerRouteImport.update({
-    id: '/api/internal/storyofus/email-worker',
-    path: '/api/internal/storyofus/email-worker',
+const ApiStoryofusShopierCallbackRoute =
+  ApiStoryofusShopierCallbackRouteImport.update({
+    id: '/api/storyofus/shopier/callback',
+    path: '/api/storyofus/shopier/callback',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const AdminStoryofusOrdersSitePreviewSiteSlugRoute =
-  AdminStoryofusOrdersSitePreviewSiteSlugRouteImport.update({
-    id: '/site-preview/$siteSlug',
-    path: '/site-preview/$siteSlug',
-    getParentRoute: () => AdminStoryofusOrdersRoute,
-  } as any)
-const AdminStoryofusOrdersOrdersOrderIdRoute =
-  AdminStoryofusOrdersOrdersOrderIdRouteImport.update({
-    id: '/$orderId',
-    path: '/$orderId',
-    getParentRoute: () => AdminStoryofusOrdersOrdersRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/storyofus-orders': typeof AdminStoryofusOrdersRouteWithChildren
   '/admin/tasks': typeof AdminTasksRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/demo/mira-cafe': typeof DemoMiraCafeRoute
   '/sektor/$slug': typeof SektorSlugRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/callback'
     | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/callback'
     | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -394,6 +405,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/admin/storyofus-orders'
     | '/admin/tasks'
+    | '/auth/callback'
     | '/auth/reset-password'
     | '/demo/mira-cafe'
     | '/sektor/$slug'
@@ -427,6 +439,7 @@ export interface RootRouteChildren {
   KvkkRoute: typeof KvkkRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   DemoMiraCafeRoute: typeof DemoMiraCafeRoute
   SektorSlugRoute: typeof SektorSlugRoute
@@ -447,25 +460,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy-policy': {
-      id: '/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/privacy-policy'
-      preLoaderRoute: typeof PrivacyPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kvkk': {
-      id: '/kvkk'
-      path: '/kvkk'
-      fullPath: '/kvkk'
-      preLoaderRoute: typeof KvkkRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -475,18 +474,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/kvkk': {
+      id: '/kvkk'
+      path: '/kvkk'
+      fullPath: '/kvkk'
+      preLoaderRoute: typeof KvkkRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus/': {
-      id: '/storyofus/'
-      path: '/storyofus'
-      fullPath: '/storyofus/'
-      preLoaderRoute: typeof StoryofusIndexRouteImport
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -496,53 +502,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/storyofus/track-order': {
-      id: '/storyofus/track-order'
-      path: '/storyofus/track-order'
-      fullPath: '/storyofus/track-order'
-      preLoaderRoute: typeof StoryofusTrackOrderRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/storyofus-orders': {
+      id: '/admin/storyofus-orders'
+      path: '/storyofus-orders'
+      fullPath: '/admin/storyofus-orders'
+      preLoaderRoute: typeof AdminStoryofusOrdersRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/storyofus/setup': {
-      id: '/storyofus/setup'
-      path: '/storyofus/setup'
-      fullPath: '/storyofus/setup'
-      preLoaderRoute: typeof StoryofusSetupRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/storyofus/refund-policy': {
-      id: '/storyofus/refund-policy'
-      path: '/storyofus/refund-policy'
-      fullPath: '/storyofus/refund-policy'
-      preLoaderRoute: typeof StoryofusRefundPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storyofus/demo': {
-      id: '/storyofus/demo'
-      path: '/storyofus/demo'
-      fullPath: '/storyofus/demo'
-      preLoaderRoute: typeof StoryofusDemoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storyofus/checkout': {
-      id: '/storyofus/checkout'
-      path: '/storyofus/checkout'
-      fullPath: '/storyofus/checkout'
-      preLoaderRoute: typeof StoryofusCheckoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sektor/$slug': {
-      id: '/sektor/$slug'
-      path: '/sektor/$slug'
-      fullPath: '/sektor/$slug'
-      preLoaderRoute: typeof SektorSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/mira-cafe': {
-      id: '/demo/mira-cafe'
-      path: '/demo/mira-cafe'
-      fullPath: '/demo/mira-cafe'
-      preLoaderRoute: typeof DemoMiraCafeRouteImport
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/reset-password': {
@@ -552,74 +530,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/tasks': {
-      id: '/admin/tasks'
-      path: '/tasks'
-      fullPath: '/admin/tasks'
-      preLoaderRoute: typeof AdminTasksRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/storyofus-orders': {
-      id: '/admin/storyofus-orders'
-      path: '/storyofus-orders'
-      fullPath: '/admin/storyofus-orders'
-      preLoaderRoute: typeof AdminStoryofusOrdersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/storyofus/styles/$style': {
-      id: '/storyofus/styles/$style'
-      path: '/storyofus/styles/$style'
-      fullPath: '/storyofus/styles/$style'
-      preLoaderRoute: typeof StoryofusStylesStyleRouteImport
+    '/demo/mira-cafe': {
+      id: '/demo/mira-cafe'
+      path: '/demo/mira-cafe'
+      fullPath: '/demo/mira-cafe'
+      preLoaderRoute: typeof DemoMiraCafeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus/site/$siteSlug': {
-      id: '/storyofus/site/$siteSlug'
-      path: '/storyofus/site/$siteSlug'
-      fullPath: '/storyofus/site/$siteSlug'
-      preLoaderRoute: typeof StoryofusSiteSiteSlugRouteImport
+    '/sektor/$slug': {
+      id: '/sektor/$slug'
+      path: '/sektor/$slug'
+      fullPath: '/sektor/$slug'
+      preLoaderRoute: typeof SektorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus/setup/demo': {
-      id: '/storyofus/setup/demo'
-      path: '/demo'
-      fullPath: '/storyofus/setup/demo'
-      preLoaderRoute: typeof StoryofusSetupDemoRouteImport
-      parentRoute: typeof StoryofusSetupRoute
-    }
-    '/storyofus/internal/setup-qa': {
-      id: '/storyofus/internal/setup-qa'
-      path: '/storyofus/internal/setup-qa'
-      fullPath: '/storyofus/internal/setup-qa'
-      preLoaderRoute: typeof StoryofusInternalSetupQaRouteImport
+    '/storyofus/': {
+      id: '/storyofus/'
+      path: '/storyofus'
+      fullPath: '/storyofus/'
+      preLoaderRoute: typeof StoryofusIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/storyofus/internal/email-qa': {
-      id: '/storyofus/internal/email-qa'
-      path: '/storyofus/internal/email-qa'
-      fullPath: '/storyofus/internal/email-qa'
-      preLoaderRoute: typeof StoryofusInternalEmailQaRouteImport
+    '/storyofus/checkout': {
+      id: '/storyofus/checkout'
+      path: '/storyofus/checkout'
+      fullPath: '/storyofus/checkout'
+      preLoaderRoute: typeof StoryofusCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/storyofus-orders/settings': {
-      id: '/admin/storyofus-orders/settings'
-      path: '/settings'
-      fullPath: '/admin/storyofus-orders/settings'
-      preLoaderRoute: typeof AdminStoryofusOrdersSettingsRouteImport
-      parentRoute: typeof AdminStoryofusOrdersRoute
+    '/storyofus/demo': {
+      id: '/storyofus/demo'
+      path: '/storyofus/demo'
+      fullPath: '/storyofus/demo'
+      preLoaderRoute: typeof StoryofusDemoRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/storyofus-orders/refunds': {
-      id: '/admin/storyofus-orders/refunds'
-      path: '/refunds'
-      fullPath: '/admin/storyofus-orders/refunds'
-      preLoaderRoute: typeof AdminStoryofusOrdersRefundsRouteImport
-      parentRoute: typeof AdminStoryofusOrdersRoute
+    '/storyofus/refund-policy': {
+      id: '/storyofus/refund-policy'
+      path: '/storyofus/refund-policy'
+      fullPath: '/storyofus/refund-policy'
+      preLoaderRoute: typeof StoryofusRefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/storyofus-orders/previews': {
-      id: '/admin/storyofus-orders/previews'
-      path: '/previews'
-      fullPath: '/admin/storyofus-orders/previews'
-      preLoaderRoute: typeof AdminStoryofusOrdersPreviewsRouteImport
+    '/storyofus/setup': {
+      id: '/storyofus/setup'
+      path: '/storyofus/setup'
+      fullPath: '/storyofus/setup'
+      preLoaderRoute: typeof StoryofusSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/track-order': {
+      id: '/storyofus/track-order'
+      path: '/storyofus/track-order'
+      fullPath: '/storyofus/track-order'
+      preLoaderRoute: typeof StoryofusTrackOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/storyofus-orders/analytics': {
+      id: '/admin/storyofus-orders/analytics'
+      path: '/analytics'
+      fullPath: '/admin/storyofus-orders/analytics'
+      preLoaderRoute: typeof AdminStoryofusOrdersAnalyticsRouteImport
       parentRoute: typeof AdminStoryofusOrdersRoute
     }
     '/admin/storyofus-orders/orders': {
@@ -629,18 +600,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStoryofusOrdersOrdersRouteImport
       parentRoute: typeof AdminStoryofusOrdersRoute
     }
-    '/admin/storyofus-orders/analytics': {
-      id: '/admin/storyofus-orders/analytics'
-      path: '/analytics'
-      fullPath: '/admin/storyofus-orders/analytics'
-      preLoaderRoute: typeof AdminStoryofusOrdersAnalyticsRouteImport
+    '/admin/storyofus-orders/previews': {
+      id: '/admin/storyofus-orders/previews'
+      path: '/previews'
+      fullPath: '/admin/storyofus-orders/previews'
+      preLoaderRoute: typeof AdminStoryofusOrdersPreviewsRouteImport
       parentRoute: typeof AdminStoryofusOrdersRoute
     }
-    '/api/storyofus/shopier/callback': {
-      id: '/api/storyofus/shopier/callback'
-      path: '/api/storyofus/shopier/callback'
-      fullPath: '/api/storyofus/shopier/callback'
-      preLoaderRoute: typeof ApiStoryofusShopierCallbackRouteImport
+    '/admin/storyofus-orders/refunds': {
+      id: '/admin/storyofus-orders/refunds'
+      path: '/refunds'
+      fullPath: '/admin/storyofus-orders/refunds'
+      preLoaderRoute: typeof AdminStoryofusOrdersRefundsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/admin/storyofus-orders/settings': {
+      id: '/admin/storyofus-orders/settings'
+      path: '/settings'
+      fullPath: '/admin/storyofus-orders/settings'
+      preLoaderRoute: typeof AdminStoryofusOrdersSettingsRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/storyofus/internal/email-qa': {
+      id: '/storyofus/internal/email-qa'
+      path: '/storyofus/internal/email-qa'
+      fullPath: '/storyofus/internal/email-qa'
+      preLoaderRoute: typeof StoryofusInternalEmailQaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/internal/setup-qa': {
+      id: '/storyofus/internal/setup-qa'
+      path: '/storyofus/internal/setup-qa'
+      fullPath: '/storyofus/internal/setup-qa'
+      preLoaderRoute: typeof StoryofusInternalSetupQaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/setup/demo': {
+      id: '/storyofus/setup/demo'
+      path: '/demo'
+      fullPath: '/storyofus/setup/demo'
+      preLoaderRoute: typeof StoryofusSetupDemoRouteImport
+      parentRoute: typeof StoryofusSetupRoute
+    }
+    '/storyofus/site/$siteSlug': {
+      id: '/storyofus/site/$siteSlug'
+      path: '/storyofus/site/$siteSlug'
+      fullPath: '/storyofus/site/$siteSlug'
+      preLoaderRoute: typeof StoryofusSiteSiteSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storyofus/styles/$style': {
+      id: '/storyofus/styles/$style'
+      path: '/storyofus/styles/$style'
+      fullPath: '/storyofus/styles/$style'
+      preLoaderRoute: typeof StoryofusStylesStyleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/storyofus-orders/orders/$orderId': {
+      id: '/admin/storyofus-orders/orders/$orderId'
+      path: '/$orderId'
+      fullPath: '/admin/storyofus-orders/orders/$orderId'
+      preLoaderRoute: typeof AdminStoryofusOrdersOrdersOrderIdRouteImport
+      parentRoute: typeof AdminStoryofusOrdersOrdersRoute
+    }
+    '/admin/storyofus-orders/site-preview/$siteSlug': {
+      id: '/admin/storyofus-orders/site-preview/$siteSlug'
+      path: '/site-preview/$siteSlug'
+      fullPath: '/admin/storyofus-orders/site-preview/$siteSlug'
+      preLoaderRoute: typeof AdminStoryofusOrdersSitePreviewSiteSlugRouteImport
+      parentRoute: typeof AdminStoryofusOrdersRoute
+    }
+    '/api/internal/storyofus/email-worker': {
+      id: '/api/internal/storyofus/email-worker'
+      path: '/api/internal/storyofus/email-worker'
+      fullPath: '/api/internal/storyofus/email-worker'
+      preLoaderRoute: typeof ApiInternalStoryofusEmailWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/storyofus/review-ready-worker': {
@@ -650,26 +684,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalStoryofusReviewReadyWorkerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/internal/storyofus/email-worker': {
-      id: '/api/internal/storyofus/email-worker'
-      path: '/api/internal/storyofus/email-worker'
-      fullPath: '/api/internal/storyofus/email-worker'
-      preLoaderRoute: typeof ApiInternalStoryofusEmailWorkerRouteImport
+    '/api/storyofus/shopier/callback': {
+      id: '/api/storyofus/shopier/callback'
+      path: '/api/storyofus/shopier/callback'
+      fullPath: '/api/storyofus/shopier/callback'
+      preLoaderRoute: typeof ApiStoryofusShopierCallbackRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/storyofus-orders/site-preview/$siteSlug': {
-      id: '/admin/storyofus-orders/site-preview/$siteSlug'
-      path: '/site-preview/$siteSlug'
-      fullPath: '/admin/storyofus-orders/site-preview/$siteSlug'
-      preLoaderRoute: typeof AdminStoryofusOrdersSitePreviewSiteSlugRouteImport
-      parentRoute: typeof AdminStoryofusOrdersRoute
-    }
-    '/admin/storyofus-orders/orders/$orderId': {
-      id: '/admin/storyofus-orders/orders/$orderId'
-      path: '/$orderId'
-      fullPath: '/admin/storyofus-orders/orders/$orderId'
-      preLoaderRoute: typeof AdminStoryofusOrdersOrdersOrderIdRouteImport
-      parentRoute: typeof AdminStoryofusOrdersOrdersRoute
     }
   }
 }
@@ -743,6 +763,7 @@ const rootRouteChildren: RootRouteChildren = {
   KvkkRoute: KvkkRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   DemoMiraCafeRoute: DemoMiraCafeRoute,
   SektorSlugRoute: SektorSlugRoute,

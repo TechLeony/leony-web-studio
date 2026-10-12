@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SITE } from "@/lib/site";
+import { loadAdminAccess } from "@/lib/adminAccess";
 import { LogOut, Inbox, ClipboardList, Heart } from "lucide-react";
 import { passwordRecoveryRedirect } from "@/lib/passwordRecovery";
 
@@ -16,19 +16,42 @@ export const Route = createFileRoute("/admin")({
 function AdminLayout() {
   const [session, setSession] = useState<null | { email: string | null }>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session?.user ? { email: data.session.user.email ?? null } : null);
+    let generation = 0;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    async function verifyAccess(run: number) {
+      const access = await loadAdminAccess({
+        auth: { getUser: () => supabase.auth.getUser() },
+        getAdminRole: async (userId) => {
+          const { data, error } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .eq("role", "admin")
+            .maybeSingle();
+          return { data, error };
+        },
+      });
+      if (!mounted || run !== generation) return;
+      setSession(access.user ? { email: access.user.email ?? null } : null);
+      setAuthorized(access.authorized);
       setAuthChecking(false);
+    }
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      const run = ++generation;
+      setAuthorized(false);
+      setAuthChecking(true);
+      // Auth calls must run after the SDK notification lock is released.
+      timers.add(setTimeout(() => void verifyAccess(run), 0));
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s?.user ? { email: s.user.email ?? null } : null);
-    });
+    void verifyAccess(++generation);
     return () => {
       mounted = false;
+      generation++;
+      for (const timer of timers) clearTimeout(timer);
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -36,14 +59,12 @@ function AdminLayout() {
   if (authChecking) return <CenterMsg>Yükleniyor...</CenterMsg>;
   if (!session) return <AdminLogin />;
 
-  const allowed = session.email?.toLowerCase() === SITE.adminEmail.toLowerCase();
-  if (!allowed) {
+  if (!authorized) {
     return (
       <CenterMsg>
         <p className="text-foreground font-semibold">
           Bu hesap admin paneline erişim yetkisine sahip değil.
         </p>
-        <p className="text-sm text-muted-foreground mt-2">Yetkili admin: {SITE.adminEmail}</p>
         <button
           type="button"
           onClick={() => supabase.auth.signOut()}

@@ -9,7 +9,7 @@ import {
 } from "../../lib/storyofus/finalSiteUtils.ts";
 import { demoStoryData, type StoryOfUsExperienceData } from "./storyOfUsExperienceData.ts";
 
-const neutralSpotifyFallback = {
+export const neutralSpotifyFallback = {
   songTitle: "Şarkımız",
   artist: "Bize özel",
   note: "Bu şarkı bana hep seni hatırlatıyor 💖",
